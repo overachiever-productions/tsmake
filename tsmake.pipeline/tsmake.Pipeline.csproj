@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net5.0</TargetFramework>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\tsmake.factories\tsmake.Factories.csproj" />
+    <ProjectReference Include="..\tsmake.filemanagement\tsmake.FileManagement.csproj" />
+    <ProjectReference Include="..\tsmake.interfaces\tsmake.Interfaces.csproj" />
+    <ProjectReference Include="..\tsmake.Processors\tsmake.Processors.csproj" />
+  </ItemGroup>
+
+</Project>
