@@ -28,7 +28,7 @@ public static class COMMAND
 	public static class NOTE
 	{
 		public const string Syntax = "--##NOTE";
-		public const string RegularExpression = @"--\s*NOTE:.*\n{1}";
+		public const string RegularExpression = @"--\s*##NOTE:.*\n{1}";
 		public const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.Multiline;
 	}
 

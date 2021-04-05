@@ -1,4 +1,5 @@
-﻿using System.Text.RegularExpressions;
+﻿using System;
+using System.Text.RegularExpressions;
 using tsmake.Interfaces.Core;
 using tsmake.Interfaces.Enums;
 
@@ -18,24 +19,15 @@ namespace tsmake.Processors.GlobalProcessors.Commands
 
 		public override string Process(string input)
 		{
+			int length = input.Length;
 			string pattern = COMMAND.NOTE.RegularExpression;
 
-			Regex r = new Regex(pattern, RegexOptions.CultureInvariant | RegexOptions.Multiline);
-			Match m = r.Match(input);
+			string output = Regex.Replace(input, pattern, String.Empty, COMMAND.NOTE.Options);
 
-			if (m.Success)
-			{
+			if (output.Length < length)
 				base.Matched = true;
 
-
-				string comment = m.Value.Trim(); // TODO: this could potentially be 0 - N matches... 
-
-				string output = input.Replace(m.Value, string.Empty);
-
-				return output;
-			}
-
-			return input;
+			return output;
 		}
 	}
 }
