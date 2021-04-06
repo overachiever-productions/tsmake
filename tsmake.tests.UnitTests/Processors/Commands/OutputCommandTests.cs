@@ -49,5 +49,19 @@ namespace tsmake.Tests.UnitTests.Processors.Commands
 
 			StringAssert.AreEqualIgnoringCase(@"--##NOTE: This is a build file only (i.e., it stores upgade/install directives + place-holders for code to drop into admindb, etc.)", output);
 		}
+
+		[Test]
+		public void OutputCommand_ReportsMatched_WhenOutputDirectiveFound()
+		{
+			var context = new Mock<IBuildContext>();
+
+			string input = @"--##OUTPUT: \\Deployment
+--##NOTE: This is a build file only (i.e., it stores upgade/install directives + place-holders for code to drop into admindb, etc.)";
+
+			OutputCommand sut = new OutputCommand(context.Object);
+			string output = sut.Process(input);
+
+			Assert.True(sut.Matched);
+		}
 	}
 }
