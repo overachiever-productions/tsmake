@@ -1,5 +1,4 @@
 ﻿using tsmake.Interfaces.Core;
-using tsmake.Interfaces.Enums;
 
 namespace tsmake.Pipeline
 {

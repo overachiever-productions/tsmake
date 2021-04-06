@@ -14,6 +14,7 @@ namespace tsmake.Interfaces.Core
 		public string OutputPath { get; }
 
 		public void SetOutputPath(string outputPath);
+		public void SetProjectRoot(string projectRoot);
 
 	}
 }
