@@ -84,8 +84,8 @@ public static class OPERATOR
 {
 	public static class HEADER_COMMENT_REMOVER
 	{
-		public const string Syntax = "xx";
-		public const string RegularExpression = @"";
+		public const string Syntax = "/*     */";
+		public const string RegularExpression = @"/\*(?:(?!\*/)(?:.|[\r\n]+))*\*/";       // simpler: \/\*(.|\n)*?\*\/ 
 		public const RegexOptions Options = RegexOptions.CultureInvariant | RegexOptions.Multiline;
 	}
 }
