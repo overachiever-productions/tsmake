@@ -1,5 +1,4 @@
-﻿using tsmake.Interfaces.Enums;
-
+﻿
 namespace tsmake.Interfaces.Core
 {
 	public interface IBuildVersion

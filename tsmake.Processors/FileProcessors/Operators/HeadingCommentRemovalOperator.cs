@@ -1,5 +1,6 @@
-﻿using tsmake.Interfaces.Core;
-using tsmake.Interfaces.Enums;
+﻿using System;
+using System.Text.RegularExpressions;
+using tsmake.Interfaces.Core;
 
 namespace tsmake.Processors.FileProcessors.Operators
 {
@@ -9,17 +10,25 @@ namespace tsmake.Processors.FileProcessors.Operators
 		public HeadingCommentRemovalOperator(IBuildContext buildContext)
 		{
 			base.BuildContext = buildContext;
-
-			//base.LineScope = LineScope.MultiLine;
-			//base.ProcessingScope = ProcessingScope.File;
-			//base.SyntaxType = SyntaxType.Operator;
-			//base.ProcessorName = this.GetType().Name;
 		}
 
 		public override string Process(string input)
 		{
-			// SCOPE: Doesn't attempt to remove all multi-line comments - just the first set IF it's above CREATE/ALTER statements... 
-			return base.Process(input);
+			string trimmed = input.TrimStart();
+
+			if (trimmed.StartsWith("/*"))
+			{
+				base.Matched = true;
+
+				string pattern = OPERATOR.HEADER_COMMENT_REMOVER.RegularExpression;
+
+				Regex r = new Regex(pattern, OPERATOR.HEADER_COMMENT_REMOVER.Options);
+				string output = r.Replace(input, string.Empty, 1);
+
+				return output;
+			}
+
+			return trimmed;
 		}
 	}
 }

@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Text.RegularExpressions;
 using tsmake.Interfaces.Core;
-using tsmake.Interfaces.Enums;
 
 namespace tsmake.Processors.GlobalProcessors.Commands
 {
@@ -10,11 +9,6 @@ namespace tsmake.Processors.GlobalProcessors.Commands
 		public NoteCommand(IBuildContext buildContext)
 		{
 			base.BuildContext = buildContext;
-
-			//base.LineScope = LineScope.SingleLine;
-			//base.ProcessingScope = ProcessingScope.Global;
-			//base.SyntaxType = SyntaxType.Command;
-			//base.ProcessorName = this.GetType().Name;
 		}
 
 		public override string Process(string input)
