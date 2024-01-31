@@ -1,8 +1,0 @@
-{
-  "profiles": {
-    "tsmake.terminal": {
-      "commandName": "Project",
-      "commandLineArgs": "-b \"D:\\Repositories\\proj\\Deployment\\build\\current.build.sql\" -v \"9.2\" -s \"Chutes and Ladders...\""
-    }
-  }
-}
