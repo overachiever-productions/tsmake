@@ -4,8 +4,10 @@ namespace tsmake.Interfaces.Core
 {
 	public interface IBuildManager
 	{
-		public IBuildContext BuildContext { get; }
+		void ProcessBuildPipeline();
 
-		void ConfigureProcessors(IProcessorFactory processorFactory);
+		//public IBuildContext BuildContext { get; }
+
+		//void ConfigureProcessors(IProcessorFactory processorFactory);
 	}
 }

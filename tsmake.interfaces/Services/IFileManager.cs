@@ -3,12 +3,11 @@ namespace tsmake.Interfaces.Services
 {
 	public interface IFileManager
 	{
-		//string LoadFileContents(string path);  
-		IIncludedFile LoadIncludedFile(string path);
+		IResourceFile GetFile(string fullPath);
 
-		// void WriteOutputCode(StringBuilder output);
-		// void WriteMarkerFile(?)
+		// void WriteOutputCode(string file, string contents);
+		// void CreateMarkerFile(string path, string contents)
 
-		// string GetOutputPath? 
+		// string CalculateOutputPath(string relativePath);
 	}
 }

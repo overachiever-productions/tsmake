@@ -34,18 +34,18 @@ namespace tsmake.Processors.BuildProcessors.Commands
 				string command = m.Value;
 				string includePath = command.Split(":")[1].Trim();
 
-				IIncludedFile file = null;
+				IResourceFile resourceFile = null;
 				try
 				{
-					file = this.BuildContext.FileManager.LoadIncludedFile(includePath);
-					this.BuildContext.BuildFile.AddIncludedFile(file);
+					resourceFile = this.BuildContext.FileManager.GetFile(includePath);
+					this.BuildContext.BuildFile.AddIncludedFile(resourceFile);
 				}
 				catch (Exception ex)
 				{
 
 				}
 
-				string processedFileOutput = file.FileContents;
+				string processedFileOutput = resourceFile.FileContents;
 
 
 				// FILE HANDLER (most likely) order of operations:
@@ -113,10 +113,10 @@ namespace tsmake.Processors.BuildProcessors.Commands
 	//			string command = m.Value;
 	//			string includePath = command.Split(":")[1].Trim();
 
-	//			IIncludedFile file = null;
+	//			IResourceFile file = null;
 	//			try
 	//			{
-	//				IIncludedFile file = base.BuildContext.FileManager.LoadIncludedFile(includePath);
+	//				IResourceFile file = base.BuildContext.FileManager.LoadFile(includePath);
 	//				base.BuildContext.BuildFile.AddIncludedFile(file);
 	//			}
 	//			catch (Exception ex)
@@ -157,7 +157,7 @@ namespace tsmake.Processors.BuildProcessors.Commands
 
 	//		//	try
 	//		//	{
-	//		//		IIncludedFile file = base.BuildContext.FileManager.LoadIncludedFile(includePath);
+	//		//		IResourceFile file = base.BuildContext.FileManager.LoadFile(includePath);
 	//		//		base.BuildContext.BuildFile.AddIncludedFile(file);
 	//		//	}
 	//		//	catch(Exception ex)

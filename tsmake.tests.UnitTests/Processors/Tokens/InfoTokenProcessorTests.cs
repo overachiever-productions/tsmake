@@ -18,7 +18,7 @@ namespace tsmake.Tests.UnitTests.Processors.Tokens
 
 			string infoText = "For more info see https://github.com/whatever";
 			config.Setup(x => x.ProjectInfoText).Returns(infoText);
-			context.Setup(x => x.BuildConfiguration).Returns(config.Object);
+			context.Setup(x => x.Configuration).Returns(config.Object);
 
 			string input = "-- {{##INFO}}    ";
 			InfoTokenProcessor sut = new InfoTokenProcessor(context.Object);

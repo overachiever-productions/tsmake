@@ -1,4 +1,4 @@
-﻿using System.Diagnostics.CodeAnalysis;using System.Security.Principal;
+﻿using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 
 [ExcludeFromCodeCoverage]

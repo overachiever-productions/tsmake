@@ -1,5 +1,8 @@
-﻿namespace tsmake.Tests.UnitTests
+﻿using System.Diagnostics.CodeAnalysis;
+
+namespace tsmake.Tests.UnitTests
 {
+	[ExcludeFromCodeCoverage]
 	internal static class FAKE_CODE_FILES
 	{
 

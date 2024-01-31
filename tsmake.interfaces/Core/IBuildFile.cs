@@ -3,11 +3,14 @@ using tsmake.Interfaces.Services;
 
 namespace tsmake.Interfaces.Core
 {
+	// REFACTOR: rename to ... IBuildManifest ... or IBuild? 
 	public interface IBuildFile
 	{
 		public string RootPath { get; }
-		List<string> IncludedFiles { get; }
+		List<IResourceFile> IncludedFiles { get; }
 
-		void AddIncludedFile(IIncludedFile path);
+		string LoadBuildFile(string buildFilePath);
+
+		void AddIncludedFile(IResourceFile path);
 	}
 }

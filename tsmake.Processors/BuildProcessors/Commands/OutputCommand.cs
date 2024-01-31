@@ -1,6 +1,8 @@
 ﻿using System.Text.RegularExpressions;
 using tsmake.Interfaces.Core;
 
+// TODO: the logic for loading/getting the --##OUTPUT: directive has been shoved into the BuildFile (IBuildFile) 's .LoadBuildFile() method cuz... it's so critical to overall config/workflow that we get that info up-front. 
+//		which means that either: a) I remove this object as a processor or b) I rework IBuildFile.LoadBuildFile() to use a processor instead... 
 namespace tsmake.Processors.BuildProcessors.Commands
 {
 	public class OutputCommand : BaseProcessor

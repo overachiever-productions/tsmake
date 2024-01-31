@@ -1,4 +1,6 @@
-﻿
+﻿using System.Diagnostics.CodeAnalysis;
+
+[ExcludeFromCodeCoverage]
 internal static class FAKE_BUILD_SCRIPTS
 {
 	internal static class S4_SAMPLE

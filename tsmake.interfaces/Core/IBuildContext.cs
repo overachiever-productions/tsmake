@@ -5,7 +5,7 @@ namespace tsmake.Interfaces.Core
 {
 	public interface IBuildContext
 	{
-		public IBuildConfig BuildConfiguration { get; }
+		public IBuildConfig Configuration { get; }
 		public IBuildVersion BuildVersion { get; }
 		public IFileManager FileManager { get; }
 		public IBuildFile BuildFile { get; }
@@ -15,6 +15,5 @@ namespace tsmake.Interfaces.Core
 
 		public void SetOutputPath(string outputPath);
 		public void SetProjectRoot(string projectRoot);
-
 	}
 }

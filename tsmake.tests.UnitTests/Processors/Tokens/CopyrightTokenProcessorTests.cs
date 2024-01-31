@@ -16,8 +16,8 @@ namespace tsmake.Tests.UnitTests.Processors.Tokens
 			var context = new Mock<IBuildContext>();
 
 			string configCopyrightText = "2019 - by me!";
-			config.Setup(x => x.CopyRightText).Returns(configCopyrightText);
-			context.Setup(x => x.BuildConfiguration).Returns(config.Object);
+			config.Setup(x => x.CopyrightText).Returns(configCopyrightText);
+			context.Setup(x => x.Configuration).Returns(config.Object);
 
 			string input = "this is a string that has a {{##COPYRIGHT}} token in it.";
 			CopyrightTokenProcessor sut = new CopyrightTokenProcessor(context.Object);

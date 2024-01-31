@@ -13,7 +13,7 @@ namespace tsmake.Processors.GlobalProcessors.Tokens
 		public override string Process(string input)
 		{
 			string pattern = TOKEN.INFO.RegularExpression;
-			string replacement = this.BuildContext.BuildConfiguration.ProjectInfoText;
+			string replacement = this.BuildContext.Configuration.ProjectInfoText;
 
 			string replaced = Regex.Replace(input, pattern, replacement);
 
