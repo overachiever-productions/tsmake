@@ -348,3 +348,7 @@ MigrationBackup/
 
 # Ionide (cross platform F# VS Code tools) working folder
 .ionide/
+/Test-Module.ps1
+/tsmake.psm1
+/tsmake.psproj
+/tsmake.psprojs
