@@ -34,11 +34,54 @@ function Execute-Pipeline {
 		# ====================================================================================================
 		# 1. Create BuildManifest
 		# ====================================================================================================	
+		[tsmake.models.BuildManifest]$buildManifest = [tsmake.models.BuildManifest]($BuildContext.BuildFile);
 		
-		# TODO: this'll be some sort of C# or MUCH MORE advanced code than this... 
-		$content = Get-Content -Path ($BuildContext.BuildFile);
+		foreach ($line in $buildManifest.Lines) {
+			#write-host "$($line.LineNumber)  -> $($line.LineType)";
+			
+			
+#			if ($line.LineType.HasFlag([tsmake.enums.LineType]::WhitespaceOnly)) {
+#				Write-Host "$($line.LineNumber)  -> $($line.Content)";
+#			}
+#			if ($line.LineType.HasFlag([tsmake.enums.LineType]::RawContent)) {
+#				if (-not ($line.LineType.HasFlag([tsmake.enums.LineType]::WhitespaceOnly))) {
+#					Write-Host "$($line.LineNumber)  -> $($line.Content)";
+#				}
+#			}
+			
+			
+#			if ($line.LineType.HasFlag([tsmake.enums.LineType]::Directive)) {
+#				Write-Host "$($line.LineNumber)  -> $($line.Content)";
+#			}
+			
+#			if ($line.LineType.HasFlag([tsmake.enums.LineType]::TokenizedContent)) {
+#				
+#				Write-Host "$($line.LineNumber)  -> $($line.Content)";
+#				foreach ($t in $line.Tokens) {
+#					Write-Host "	TokenName: $($t.Name)  -> Value: $($t.DefaultValue)  -> Location: $($t.LineNumber), $($t.Position) ";
+#				}
+#			}
+		}
 		
-		Write-Host $content;
+		Write-Host "-------------------------------------------------------";
+		
+		foreach ($t in $buildManifest.Tokens) {
+			# For validation purposes ... need to go through each of these and: 
+			#  a) see if it has a default or not. 
+			#     if it does, check to see if I've got a TokenDefinition that matches and whether it PREVENTS defaults. 
+			# 	  if it does not... see if I've got a TokenDefinition - and if it has a value. (If not, throw.)
+			# 		and, actually: don't throw on error. instead, route into a helper func that stores 'parser errors' and ... if -ThrowOnError = $true .. then throw on first (or any) execution
+			
+			Write-Host "Token Location: $($t.Location.LineNumber), $($t.Location.ColumnNumber) -> TokenName: $($t.Name)  -> DefaultValue: $($t.DefaultValue)  ";
+		}
+		
+		
+		Write-Host "-------------------------------------------------------";
+		Write-Host "Count: $($buildManifest.Directives.Count)"
+		foreach ($d in $buildManifest.Directives) {
+			Write-Host "Directive Location:  $($d.Location.LineNumber), $($d.Location.ColumnNumber) -> DirectiveName: $($d.Name)"
+		}
+		
 		
 		# ====================================================================================================
 		# 2. Runtime Validation
@@ -53,7 +96,6 @@ function Execute-Pipeline {
 		# 			so... do I check these 2x or .. wait until the end? or ... include everything up front. 
 		# 
 		
-		Write-Host "in ur pipeline doing pipeline stuff.";
 		
 	};
 	
