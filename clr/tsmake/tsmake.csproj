@@ -9,7 +9,7 @@
   <ItemGroup>
     <Folder Include="enums\" />
     <Folder Include="interfaces\" />
-    <Folder Include="models\" />
+    <Folder Include="models\directives\" />
   </ItemGroup>
 
 </Project>
