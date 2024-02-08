@@ -184,7 +184,7 @@ function Process-Build {
 			BuildFile = $BuildFile
 			Output    = $Output
 			Version   = $Version # TODO: this should probably be an object (i.e., C# model) at this point... 
-			# Verb? Build | Build+Docs (the option for Docs can only come from Invoke-TsmDocs)
+			# Verb? Build | Docs | Build+Docs (the option for Docs can only come from Invoke-TsmDocs)
 			# Tokens... 
 			# Documentation/Transformer Directives
 		}

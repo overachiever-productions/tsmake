@@ -38,8 +38,7 @@ function Execute-Pipeline {
 		
 		foreach ($line in $buildManifest.Lines) {
 			#write-host "$($line.LineNumber)  -> $($line.LineType)";
-			
-			
+						
 #			if ($line.LineType.HasFlag([tsmake.enums.LineType]::WhitespaceOnly)) {
 #				Write-Host "$($line.LineNumber)  -> $($line.Content)";
 #			}
