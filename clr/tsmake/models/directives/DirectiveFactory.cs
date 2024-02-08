@@ -1,0 +1,32 @@
+﻿using System;
+
+namespace tsmake.models.directives
+{
+    public class DirectiveFactory
+    {
+        public static IDirectiveInstance CreateDirective(string directiveName, Line line, Location location)
+        {
+            switch (directiveName)
+            {
+                // REFACTOR: I need to work on the .ctor/signtatures for IDirectiveInstances a bit more - i.e., I think I should pass in the entire Line object ... vs just location + content. 
+                case "OUTPUT":
+                    return new OutputDirective(directiveName, line.Content, location);
+                case "FILE":
+                    return new IncludeFileDirective(directiveName, line.Content, location);
+                case "DIRECTORY":
+                    return new IncludeDirectoryDirective(directiveName, line.Content, location);
+                case "NOTE": // or COMMENT... 
+                    // TODO: need to work on this - don't think I want to require ##NOTE as the actual ... directive.... i think ##: or ##:: might just be it? 
+                    //      i.e., I'm going to have to 1) figure out what I want for syntax rules/options and 2) implement - which'll probably mean some sort of 
+                    //      semi-hack/work-around where I look for, say, a) normal directives, and then b) ##:: as a specialized directive and .. if I find it ... 'mark' it in some way so that it can get passed into this... 
+                    return new CommentDirective(directiveName, line.Content, location);
+                default:
+                    throw new InvalidCastException($"Unknown Directive: {directiveName}.");
+            }
+
+
+            // hack/proof-of-concept: 
+            //return new SomethingDirective(directiveName, line.Content, location);
+        }
+    }
+}

@@ -13,12 +13,13 @@ namespace tsmake.models
         public string Source { get; }
         public LineType LineType { get; set; }
         public List<TokenInstance> Tokens { get;}
-        public List<IDirectiveInstance> Directives { get;}
+        //public List<IDirectiveInstance> Directives { get;}
+        public IDirectiveInstance Directive { get; private set; }
 
         public Line(int number, string content, string source)
         {
             this.Tokens = new List<TokenInstance>();
-            this.Directives = new List<IDirectiveInstance>();
+            //this.Directives = new List<IDirectiveInstance>();
 
             this.LineNumber = number;
             this.Content = content;
@@ -54,9 +55,8 @@ namespace tsmake.models
 
                     Location location = new Location(line.Source, line.LineNumber, index);
 
-                    // TODO: get the ... Directive Instance from a 'factory' or something that can .ctor these up as needed... 
-                    SomethingDirective x = new SomethingDirective(directiveName, line.Content, location);
-                    this.Directives.Add(x);
+                    IDirectiveInstance instance = DirectiveFactory.CreateDirective(directiveName, this, location);
+                    this.Directive = instance;
 
                     // TODO: do I return at this point? or can a line have TOKENS in it - even if/when it's a directive? 
                     //      i.e., just need to figure out how I want to parse various syntax rules. 

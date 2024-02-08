@@ -21,8 +21,45 @@
         }
     }
 
-    public class SomethingDirective : BaseDirectiveInstance
+    //public class SomethingDirective : BaseDirectiveInstance
+    //{
+    //    public SomethingDirective(string name, string rawData, Location location) : base(name, rawData, location) {}
+    //}
+
+    public class RootPathDirective : BaseDirectiveInstance
     {
-        public SomethingDirective(string name, string rawData, Location location) : base(name, rawData, location) {}
+        public RootPathDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class OutputDirective : BaseDirectiveInstance
+    {
+        public OutputDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class CommentDirective : BaseDirectiveInstance
+    {
+        public CommentDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class VersionCheckerDirective : BaseDirectiveInstance
+    {
+        public VersionCheckerDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class IncludeFileDirective : BaseDirectiveInstance
+    {
+        public IncludeFileDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class IncludeDirectoryDirective : BaseDirectiveInstance
+    {
+        public IncludeDirectoryDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
+    }
+
+    public class ConditionalBlockDirective : BaseDirectiveInstance
+    {
+        // not sure if this'll be a single directive, or a 'family' of 4x directives... 
+
+        public ConditionalBlockDirective(string name, string rawData, Location location) : base(name, rawData, location) { }
     }
 }

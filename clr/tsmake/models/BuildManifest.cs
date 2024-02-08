@@ -1,5 +1,6 @@
 ﻿using System.IO;
 using System.Collections.Generic;
+using tsmake.enums;
 using tsmake.models.directives;
 
 namespace tsmake.models
@@ -34,8 +35,22 @@ namespace tsmake.models
                     if (line.Tokens.Count > 0)
                         this.Tokens.AddRange(line.Tokens);
 
-                    if(line.Directives.Count > 0)
-                        this.Directives.AddRange(line.Directives);
+                    if(line.LineType.HasFlag(LineType.Directive))
+                        this.Directives.Add(line.Directive);
+
+                    // NOTE: in terms of comments, there are a few different types: 
+                    //      - tsmake comment (i.e, directive).
+                    //      - line-terminating comment - e.g., -- xxxx 
+                    //          and... this can be at the start of the line (i.e., whole line) or ... part of the way through the line. 
+                    //          so... i'm probably going to want to differentiate between 'SingleLineComment' and 'SingleLineCommentThatIsTheWholeLine' ... 
+                    //          though, obviously, i need better names... 
+                    //      - multi-line comments (style)... which can be of ... multiple types: 
+                    //          - inline - i.e. somewhere within a line is an /* ENTIRE SET OF COMMENTS */, but they're not the entire line. 
+                    //          - starts i.e., /* and then some text (or not) and ... a carriage return. 
+                    //          - midline... i.e., there was a /* somewhere and we haven't yet hit the line with */
+                    //          - terminating ... 
+                    //              and... terminating with text/whitespace after it OR terminating with NOTHING after it?
+
 
                     // TODO: if ... line.CommentType == CommentType.MultilineStart
                     //      then... mark that ... somehow that we're 'in' a multi-line comment... 
