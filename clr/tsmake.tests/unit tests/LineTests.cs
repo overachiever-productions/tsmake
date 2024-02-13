@@ -1,4 +1,4 @@
-﻿using tsmake.enums;
+﻿using tsmake;
 
 namespace tsmake.tests.unit_tests;
 

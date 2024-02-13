@@ -7,8 +7,10 @@ filter Import-Types {
 	
 	# NOTE: Import order can/does impact BUILD operations
 	$classFiles = @(
-		"$ScriptRoot\clr\tsmake\enums\VersionScheme.cs";
-		"$ScriptRoot\clr\tsmake\enums\LineType.cs";
+		"$ScriptRoot\clr\tsmake\Globals.cs";
+		"$ScriptRoot\clr\tsmake\Extensions.cs";
+		
+		"$ScriptRoot\clr\tsmake\enums\Enums.cs";
 		
 		"$ScriptRoot\clr\tsmake\models\Location.cs";
 		"$ScriptRoot\clr\tsmake\models\TokenDefinition.cs";

@@ -62,6 +62,45 @@ function Execute-Pipeline {
 #			}
 		}
 		
+		
+		# ====================================================================================================
+		# X. ... NEXT
+		# ====================================================================================================			
+		# these notes replace everything down below. ... 
+		# 
+		# now that we've gotten a list of ALL directives: 
+		# 	1. look for a ROOT. No biggie if we don't have one - it'll be the path/folder where the current .build.sql file is. 
+		# 		but, if there is one, try to establish it and so on... i.e., validate and everything. 
+		# 	  1.a ...do the same for ... OUTPUT, FILEMARKER and an others... 
+		# 	  1.b Ah yeah... ##VERSION_CHECKER should be processed here - i.e., either there is one and I need to find the code for what was specified. 
+		# 			or.... i spam in the tsmake 'default' version-checker ... that'll also, presumably? get dropped at the end? 
+		# 	2. foreach LINE in $buildManifest.Lines: 
+		# 		a. if the line is a FILE-INCLUDE 
+		# 		b or if the line is a DIRECTORY-INCLUDE 
+		# 			then, RECURSIVELY, work through addition of any new directives. 
+		# 			as in, for each file to be added (not file-include - but each FILE)... 
+		# 			pull the contents into a new $fileBuffer or whatever. 
+		# 					skim it's contents for INCLUDE (FILE/DIRECTORY) directives... 
+		# 					and, if they're present ... include/replace them... over and over and over ... until we're done with 'INCLUDES'
+		# 		c. if the line is a ROOT directive... then, skip/continue to the next line (i.e., don't copy into the next 'overall' buffer)
+		# 			ditto on things like: ##OUTPUT, ##FILEMARKER and any other 'high-level'/meta-data directives.
+		# 		d. if the line is NOT one of the 3x directives above, then ... just copy it out of $buildManifest into $includeExplodedManifest. 
+		
+		#  at this point, we've got an $includeExplodedManifest with: 
+		# 		1. all included directives processed
+		# 		2. root processed as well (if there was a ROOT directive)
+		# 		3. lines of normal code
+		# 		4. tsmake comments - i.e., "COMMENT" directives
+		#		5. CONDITIONAL directives. 
+		# 			but, what's 'nice' is that all of my conditional directives at this point are ... 'serial' or easy to find/identify. 
+		
+		# 			meaning that the NEXT and FINAL pass/loop/step is: 
+		# 				go through and find/replace all conditional directives with ... dynamic SQL that'll do whatever it needs to to make the build work.
+		
+		# 	And then, finally: process tokens.
+		
+		
+		
 		Write-Host "-------------------------------------------------------";
 		
 		foreach ($t in $buildManifest.Tokens) {
