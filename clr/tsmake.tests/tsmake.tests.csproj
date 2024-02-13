@@ -19,7 +19,7 @@
 
   <ItemGroup>
     <Folder Include="functional tests\" />
-    <Folder Include="unit tests\" />
+    <Folder Include="unit tests\directive tests\" />
   </ItemGroup>
 
   <ItemGroup>
