@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text.RegularExpressions;
-using tsmake.enums;
 using tsmake.models.directives;
 
 namespace tsmake.models
@@ -40,9 +39,7 @@ namespace tsmake.models
                     return;
                 }
 
-                var options = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
-
-                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>\w+)\s*", options);
+                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>(\w+)|[::]{1,})\s*", Global.RegexOptions);
                 Match m = regex.Match(line.Content);
                 if (m.Success)
                 {
@@ -63,7 +60,7 @@ namespace tsmake.models
                     //      because EVEN IF I end up using something like tokens in something like, say, the ## FILEMARKER: ... , I COULD just process those WITHOUT full-blown 'token support'.
                 }
 
-                regex = new Regex(@"\{\{##(?<token>[^\}\}]+)\}\}", options);
+                regex = new Regex(@"\{\{##(?<token>[^\}\}]+)\}\}", Global.RegexOptions);
                 m = regex.Match(line.Content);
                 if(m.Success) { 
                     this.LineType |= LineType.TokenizedContent;  // NOTE that currently, this allows for combinations of RawContent | Directives to be 'decorated' with TokenizedContent... 
@@ -71,7 +68,7 @@ namespace tsmake.models
                     foreach (Match x in regex.Matches(line.Content))
                     {
                         string tokenData = x.Groups["token"].Value;
-                        int index = line.Content.IndexOf(tokenData) - 4;
+                        int index = line.Content.IndexOf(tokenData, StringComparison.Ordinal) - 4;
                         Location location = new Location(line.Source, line.LineNumber, index);
 
                         TokenInstance i = new TokenInstance(tokenData, location);
