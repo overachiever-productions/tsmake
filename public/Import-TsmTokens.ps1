@@ -55,7 +55,7 @@ function Import-TsmTokens {
 	
 	process {
 		if (Has-ArrayValue $TokenObject) {
-			Write-Verbose "	Importing Tokens from serialized objects.";
+			Write-Verbose "		Importing Tokens from serialized objects.";
 			
 			foreach ($keyName in $TokenObject.Keys) {
 				switch ($TokenObject[$keyName].GetType().Name) {
@@ -79,7 +79,7 @@ function Import-TsmTokens {
 		}
 		
 		if (Has-ArrayValue $TokenStrings) {
-			Write-Verbose "	Importing Tokens from serialized strings.";
+			Write-Verbose "		Importing Tokens from serialized strings.";
 			
 			foreach ($tokenString in $TokenStrings) {
 				Write-Verbose "		Importing Key-Value Pair: [$tokenString] as Token.";
@@ -104,7 +104,7 @@ function Import-TsmTokens {
 			$tsmTokenRegistry.SetToken($token, $AllowValueOverride);
 		}
 		
-		Write-Verbose "		Imported $($tsmTokenRegistry.DefinedTokens.Count) token(s).";
+		Write-Verbose "		$($tsmTokenRegistry.DefinedTokens.Count) Token(s) loaded/specified.";
 	};
 }
 

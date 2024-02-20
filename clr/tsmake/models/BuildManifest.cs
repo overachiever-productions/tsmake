@@ -1,19 +1,37 @@
-﻿using System.IO;
+﻿using System;
+using System.IO;
 using System.Collections.Generic;
 using tsmake.models.directives;
 
 namespace tsmake.models
 {
+
+    // REFACTOR: may want to a) rename this to 'BuildFile' and b) move it into a folder called 'Files' - along with CodeFile (for an 'include') and such...
+    //      that way I'd have: 
+    //          - a BuildFile to represent ... the build file. 
+    //          - CodeFile(s) to represent - code files that are included via DIRECTORY or FILE 
+    //                  and might even make sense to have a DirectoryManifest
+    //          - a BuildMANIFEST would then be the intermediate stage - i.e., once we'd processed/shredded the BuildFile and included ALL directives... I'd have
+    //                  a Build 'Manifest'... 
+    //                  where the only things left to be processed would be CONDITIONAL directives and Tokens. 
+    //          - finally, a BufferManifest or OutputFile (i.e., 2 different NAMING options for the same things) would be the final 'processor' - that'd be dumped/written to a flat-file/artifact. 
+    //              
     public class BuildManifest
     {
+        // TODO: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
         public string Source { get; }
+        public List<Errors> ParserErrors { get; }
         public List<Line> Lines { get; }
         public List<TokenInstance> Tokens { get; }
         public List<IDirectiveInstance> Directives { get; }
 
+        public RootPathDirective RootDirective { get; private set; }
+        public OutputDirective OutputDirective { get; private set; }
+
         public BuildManifest(string buildFile)
         {
             this.Source = buildFile;
+            this.ParserErrors = new List<Errors>();
             this.Lines = new List<Line>();
             this.Tokens = new List<TokenInstance>();
             this.Directives = new List<IDirectiveInstance>();
@@ -34,8 +52,45 @@ namespace tsmake.models
                     if (line.Tokens.Count > 0)
                         this.Tokens.AddRange(line.Tokens);
 
-                    if(line.LineType.HasFlag(LineType.Directive))
+                    if (line.LineType.HasFlag(LineType.Directive))
+                    {
+                        // TODO: there are a few directives we can't duplicate - like: ROOT, OUTPUT, VERSION-CHECKER, etc. 
+                        if (line.Directive.DirectiveName == "ROOT")
+                        {
+                            if (null == this.RootDirective)
+                                this.RootDirective = (RootPathDirective)line.Directive;
+                            else
+                            {
+                                string errorMessage = $"Duplicate ROOT: directive detected in file: [{line.Directive.Line.Source}].";
+                                string context = $"First ROOT: defined on line: [{this.RootDirective.Location.LineNumber}].";
+                                context += Environment.NewLine;
+                                context += "Duplicate ROOT: defined on line: [{line.Directive.Location.LineNumber}].";
+
+                                var parserError = new Errors(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
+                                this.ParserErrors.Add(parserError);
+                                continue; // don't add to .Directives - just move on to the next directive, etc. 
+                            }
+                        }
+
+                        if (line.Directive.DirectiveName == "OUTPUT")
+                        {
+                            if (null == this.OutputDirective)
+                                this.OutputDirective = (OutputDirective)line.Directive;
+                            else
+                            {
+                                string errorMessage = $"Duplicate OUTPUT: directive detected in file: [{line.Directive.Line.Source}].";
+                                string context = $"First OUTPUT: defined on line: [{this.OutputDirective.Location.LineNumber}].";
+                                context += Environment.NewLine;
+                                context += "Duplicate OUTPUT: defined on line: [{line.Directive.Location.LineNumber}].";
+
+                                var parserError = new Errors(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
+                                this.ParserErrors.Add(parserError);
+                                continue;
+                            }
+                        }
+
                         this.Directives.Add(line.Directive);
+                    }
 
                     // NOTE: in terms of comments, there are a few different types: 
                     //      - tsmake comment (i.e, directive).

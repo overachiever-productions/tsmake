@@ -12,6 +12,8 @@ $global:VerbosePreference = "Continue";
 
 
 
+Get-TsmToken -Name "Doc_Link";
+
 	#$files = @("D:\Dropbox\Repositories\tsmake\~~spelunking\current.build.sql", "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql);
 	#$files | Invoke-TsmBuild;
 
@@ -35,6 +37,7 @@ function Invoke-TsmBuild {
 		# -SkipFileMarker (default is to include one?)
 		# -SkipDocumentation
 		# -StopOnFirstErrorOrWhatever
+		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)
 		
 	);
 	
@@ -162,7 +165,7 @@ function Process-Build {
 		if (Has-Value $ConfigData) {
 			$configFilePath = $ConfigData.ConfigDataSource;
 			
-			Write-Verbose "Leveraging Config Data from file: [$configFilePath].";
+			Write-Verbose "	Leveraging Config Data from file: [$configFilePath].";
 			
 			# push paths, options, and such into BuildContext, OptionsObject, and the likes... 
 			
@@ -175,7 +178,7 @@ function Process-Build {
 		}
 		
 		if ($null -ne $Tokens) {
-			Write-Verbose "	Setting Token Values from Command-Line Input for -Tokens.";
+			Write-Verbose "-Tokens being set from command-line input.";
 			Import-TsmTokens -TokenStrings $Tokens -Source "COMMAND-LINE: $Tokens" -AllowValueOverride $true;
 		}
 		
@@ -184,18 +187,17 @@ function Process-Build {
 			BuildFile = $BuildFile
 			Output    = $Output
 			Version   = $Version # TODO: this should probably be an object (i.e., C# model) at this point... 
+			WorkingDirectory = Get-Location
 			# Verb? Build | Docs | Build+Docs (the option for Docs can only come from Invoke-TsmDocs)
 			# Tokens... 
 			# Documentation/Transformer Directives
 		}
 		
-		Execute-Pipeline -BuildContext $buildContext -Verbose:$xVerbose -Debug:$xDebug;
+		$result = Execute-Pipeline -BuildContext $buildContext -Verbose:$xVerbose -Debug:$xDebug;
 	}
 	
 	end {
-		Get-TsmToken -Name "Doc_Link";
-		
-		#return "<TODO: put in some sort of success|failed + context info here... >";
+		return $result;
 	}
 }
 
