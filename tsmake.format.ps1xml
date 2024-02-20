@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Configuration>
+	<ViewDefinitions>
+		<View>
+			<Name>BuildResult-Default</Name>
+			<ViewSelectedBy>
+				<TypeName>tsmake.BuildResult</TypeName>
+            </ViewSelectedBy>
+			<CustomControl>
+				<CustomEntries>
+					<CustomEntry>
+						<CustomItem>
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.SizedDash(118)</ScriptBlock>
+							</ExpressionBinding>
+							<NewLine />
+							<Text>  BUILD RESULT:</Text>
+							<NewLine />
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ColumnHeading(8, '> BUILD-FILE: "' + $_.BuildFile + '"', 90)</ScriptBlock>
+                            </ExpressionBinding>
+							<NewLine />
+							<!--<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ResultOutcome(8, '> OUTCOME: ' + $_.Outcome.ToString().ToUpper() , 90)</ScriptBlock>
+                            </ExpressionBinding>-->
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ResultOutcome(8, $_,  '> OUTCOME: {0}' , 90)</ScriptBlock>
+                            </ExpressionBinding>							
+							<NewLine />
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.SizedDash(118)</ScriptBlock>
+							</ExpressionBinding>							
+                        </CustomItem>
+                    </CustomEntry>
+                </CustomEntries>
+            </CustomControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>
