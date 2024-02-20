@@ -7,18 +7,20 @@ filter Import-Types {
 	
 	# NOTE: Import order can/does impact BUILD operations
 	$classFiles = @(
+		"$ScriptRoot\clr\tsmake\Enums.cs";
 		"$ScriptRoot\clr\tsmake\Globals.cs";
+		"$ScriptRoot\clr\tsmake\Errors.cs";
 		"$ScriptRoot\clr\tsmake\Extensions.cs";
-		
-		"$ScriptRoot\clr\tsmake\enums\Enums.cs";
 		
 		"$ScriptRoot\clr\tsmake\models\Location.cs";
 		"$ScriptRoot\clr\tsmake\models\TokenDefinition.cs";
 		"$ScriptRoot\clr\tsmake\models\directives\DirectiveInstance.cs";
 		"$ScriptRoot\clr\tsmake\models\directives\DirectiveFactory.cs";
 		"$ScriptRoot\clr\tsmake\models\TokenInstance.cs";
-		
 		"$ScriptRoot\clr\tsmake\models\Line.cs";
+		
+		"$ScriptRoot\clr\tsmake\ProcessingResult.cs";
+		"$ScriptRoot\clr\tsmake\Formatter.cs";
 		
 		"$ScriptRoot\clr\tsmake\models\TokenRegistry.cs";
 		"$ScriptRoot\clr\tsmake\models\BuildManifest.cs";

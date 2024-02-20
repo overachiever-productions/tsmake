@@ -1,5 +1,9 @@
 ﻿Set-StrictMode -Version 1.0;
 
+# Intrinsics: 
+$global:TsmFormatter = [tsmake.Formatter]::Instance;
+$TsmFormatter.SetCurrentHostInfo($Host.Name);
+
 function Write-TsmDebug {
 	[CmdletBinding()]
 	param (
@@ -112,7 +116,30 @@ filter Translate-Path {
 	return $output;
 }
 
-$root = "D:\Dropbox\Repositories\S4\Deployment\__build";
-#(Get-Item -Path $root).Parent.FullName;
+filter New-ParserError {
+	param (
+		[tsmake.ErrorSeverity]$Severity,
+		[tsmake.Location]$Location,
+		[string]$ErrorMessage
+	);
+	
+}
 
-Translate-Path -CurrentPath $root -PathDirective "..\..\oink.sql";
+# REFACTOR: not sure if it makes sense to try and 'collapse' New-ParserError and New-RuntimeError down to the same func. 
+# TODO: New-RuntimeError should also allow for a .Exception as an input/param.
+filter New-RuntimeError {
+	param (
+		[tsmake.ErrorSeverity]$Severity,
+		[tsmake.Location]$Location = $null,
+		[string]$ErrorMessage
+	)
+	
+	# NOTE that RuntimeErrors CAN allow a Location to be NULL. Doesn't HAVE to be - but commonly will be. 
+
+}
+
+#$root = "D:\Dropbox\Repositories\S4\Deployment\__build";
+##(Get-Item -Path $root).Parent.FullName;
+#
+#Translate-Path -CurrentPath $root -PathDirective "..\..\oink.sql";
+
