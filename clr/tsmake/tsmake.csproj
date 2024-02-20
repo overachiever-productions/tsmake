@@ -7,9 +7,11 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="enums\" />
-    <Folder Include="interfaces\" />
     <Folder Include="models\directives\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management.Automation" Version="7.3.11" />
   </ItemGroup>
 
 </Project>
