@@ -38,4 +38,16 @@ namespace tsmake
         Directive = 8
     }
 
+    public enum ErrorSeverity
+    {
+        Fatal,
+        // might need something in the middle - between Fatal/Warning... 
+        Warning
+    }
+
+    public enum ProcessingOutcome
+    {
+        Failure, 
+        Success
+    }
 }
