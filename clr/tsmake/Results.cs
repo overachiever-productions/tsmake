@@ -1,14 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace tsmake
+﻿namespace tsmake
 {
     public interface IProcessingResult
     {
         // .Start and .End times? 
         public string OperationType { get; }  // might make more sense to have this as yet-another ENUM? 
         public ProcessingOutcome Outcome { get; }
-        public List<Errors> ParserErrors { get; }
+        public List<ParserError> ParserErrors { get; }
 
         // .GetFatalErrors()
         // .GetAllErrors() ? 
@@ -18,15 +15,15 @@ namespace tsmake
     {
         public string OperationType { get; protected set; }
         public ProcessingOutcome Outcome { get; private set; }
-        public List<Errors> ParserErrors { get; }
+        public List<ParserError> ParserErrors { get; }
 
         protected BaseProcessingResult()
         {
             this.Outcome = ProcessingOutcome.Failure; // default to failed. 
-            this.ParserErrors = new List<Errors>();
+            this.ParserErrors = new List<ParserError>();
         }
 
-        public void AddProcessingError(Errors error)
+        public void AddParserError(ParserError error)
         {
             this.ParserErrors.Add(error);
         }
