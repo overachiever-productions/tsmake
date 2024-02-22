@@ -1,10 +1,4 @@
-﻿using System;
-using System.Text.RegularExpressions;
-using System.Collections.Generic;
-using System.Linq;
-using System.Linq.Expressions;
-
-namespace tsmake.models.directives
+﻿namespace tsmake.models.directives
 {
     // REFACTOR: I'm getting old and stupid. Tokens can/will have TokenDefinitions and TokenInstances - cuz end-users are allowed
     //      to define tokens. End-users can't define Directives... so, i don't really need to differentiate between Directives and Directive 'Instances'. 

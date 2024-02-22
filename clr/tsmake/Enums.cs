@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace tsmake
+﻿namespace tsmake
 {
     public enum VersionScheme
     {
@@ -49,5 +47,14 @@ namespace tsmake
     {
         Failure, 
         Success
+    }
+
+    public enum CommentRemovalOption
+    {
+        None, // don't remove any comments. 
+        FirstHeaderBlockComment, // only remove the first header comment. 
+        AllHeaderBlockComments, 
+        AllBlockComments, 
+        AllComments // block, header, everything. NOT sure I'm going to be able to tackle this but... it's worth a shot. 
     }
 }

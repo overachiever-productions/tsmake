@@ -1,9 +1,4 @@
-﻿using System;
-using System.Management.Automation;
-using System.Text.RegularExpressions;
-using System.Xml.Linq;
-
-namespace tsmake
+﻿namespace tsmake
 {
     public class Formatter
     {

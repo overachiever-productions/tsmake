@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Text.RegularExpressions;
-using tsmake.models;
+﻿using tsmake.models;
 using tsmake.models.directives;
 
 namespace tsmake
@@ -16,7 +13,7 @@ namespace tsmake
                     throw new InvalidOperationException("tsmake Workflow Exception: Can not evaluate PathType when Path is deemed invalid.");
             }
 
-            if (input.StartsWith(@"///"))
+            if (input.StartsWith(@"\\\"))
                 return PathType.Rooted;
             
             // Absolute - Local File

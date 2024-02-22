@@ -1,7 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Collections.Generic;
-using tsmake.models.directives;
+﻿using tsmake.models.directives;
 
 namespace tsmake.models
 {
@@ -20,7 +17,8 @@ namespace tsmake.models
     {
         // TODO: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
         public string Source { get; }
-        public List<Errors> ParserErrors { get; }
+        public List<ParserError> ParserErrors { get; }
+        public List<ParserError> FatalParserErrors { get; }
         public List<Line> Lines { get; }
         public List<TokenInstance> Tokens { get; }
         public List<IDirectiveInstance> Directives { get; }
@@ -31,7 +29,8 @@ namespace tsmake.models
         public BuildManifest(string buildFile)
         {
             this.Source = buildFile;
-            this.ParserErrors = new List<Errors>();
+            this.ParserErrors = new List<ParserError>();
+            this.FatalParserErrors = new List<ParserError>();
             this.Lines = new List<Line>();
             this.Tokens = new List<TokenInstance>();
             this.Directives = new List<IDirectiveInstance>();
@@ -66,8 +65,9 @@ namespace tsmake.models
                                 context += Environment.NewLine;
                                 context += "Duplicate ROOT: defined on line: [{line.Directive.Location.LineNumber}].";
 
-                                var parserError = new Errors(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
+                                var parserError = new ParserError(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
                                 this.ParserErrors.Add(parserError);
+                                this.FatalParserErrors.Add(parserError);
                                 continue; // don't add to .Directives - just move on to the next directive, etc. 
                             }
                         }
@@ -83,8 +83,9 @@ namespace tsmake.models
                                 context += Environment.NewLine;
                                 context += "Duplicate OUTPUT: defined on line: [{line.Directive.Location.LineNumber}].";
 
-                                var parserError = new Errors(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
+                                var parserError = new ParserError(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
                                 this.ParserErrors.Add(parserError);
+                                this.FatalParserErrors.Add(parserError);
                                 continue;
                             }
                         }

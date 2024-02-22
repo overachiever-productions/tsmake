@@ -1,5 +1,6 @@
 ﻿namespace tsmake.models
 {
+    // REFACTOR: these can be called Tokens (yeah, they're instances, but it's clear that TokenDefinitions are the ... definitions). 
     public class TokenInstance
     {
         public string Name { get; }

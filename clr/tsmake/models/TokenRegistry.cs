@@ -1,7 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-
-namespace tsmake.models
+﻿namespace tsmake.models
 {
     public class TokenRegistry
     {

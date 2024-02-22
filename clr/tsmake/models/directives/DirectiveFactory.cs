@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace tsmake.models.directives
+﻿namespace tsmake.models.directives
 {
     public class DirectiveFactory
     {
