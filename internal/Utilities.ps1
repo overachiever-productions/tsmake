@@ -1,9 +1,5 @@
 ﻿Set-StrictMode -Version 1.0;
 
-# Intrinsics: 
-$global:TsmFormatter = [tsmake.Formatter]::Instance;
-$TsmFormatter.SetCurrentHostInfo($Host.Name);
-
 function Write-TsmDebug {
 	[CmdletBinding()]
 	param (
@@ -116,21 +112,37 @@ filter Translate-Path {
 	return $output;
 }
 
-filter New-ParserError {
+filter New-FatalParserError {
 	param (
-		[tsmake.ErrorSeverity]$Severity,
+		[Parameter(Mandatory)]
 		[tsmake.Location]$Location,
+		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	);
 	
+	return New-ParserError -Severity "Fatal" -Location $Location -ErrorMessage $ErrorMessage;
+}
+
+filter New-ParserError {
+	param (
+		[Parameter(Mandatory)]
+		[tsmake.ErrorSeverity]$Severity,
+		[Parameter(Mandatory)]
+		[tsmake.Location]$Location,
+		[Parameter(Mandatory)]
+		[string]$ErrorMessage
+	);
+	
+	return New-Object tsmake.ParserError($Severity, $Location, $ErrorMessage);
 }
 
 # REFACTOR: not sure if it makes sense to try and 'collapse' New-ParserError and New-RuntimeError down to the same func. 
 # TODO: New-RuntimeError should also allow for a .Exception as an input/param.
 filter New-RuntimeError {
 	param (
-		[tsmake.ErrorSeverity]$Severity,
+		[tsmake.ErrorSeverity]$Severity = "Fatal",
 		[tsmake.Location]$Location = $null,
+		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	)
 	

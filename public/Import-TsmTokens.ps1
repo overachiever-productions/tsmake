@@ -35,7 +35,7 @@ $global:VerbosePreference = "Continue";
 
 #>
 
-$global:tsmTokenRegistry = [tsmake.models.TokenRegistry]::Instance;
+
 
 function Import-TsmTokens {
 	[CmdletBinding()]

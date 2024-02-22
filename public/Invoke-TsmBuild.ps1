@@ -8,16 +8,14 @@
 $global:VerbosePreference = "Continue";
 
 	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net";
+	Get-TsmToken -Name "Doc_Link";
 
 
 
 
-Get-TsmToken -Name "Doc_Link";
 
 	#$files = @("D:\Dropbox\Repositories\tsmake\~~spelunking\current.build.sql", "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql);
 	#$files | Invoke-TsmBuild;
-
-
 #>
 
 function Invoke-TsmBuild {
@@ -28,9 +26,7 @@ function Invoke-TsmBuild {
 		[string]$BuildFile,
 		[string]$ConfigFile,
 		[string]$Output, 		# TODO: Can't set -Output if/when multiple build-files are PIPED into this func - so... set up a parameter-set accordingly.
-
 		[string]$Version, 		# TODO: Pass it in as a string and have C# code parse it to determing if Semantic, FourPart, or Organic/Custom...
-		
 		[string[]]$Tokens
 		
 		# options/switches: 
@@ -38,7 +34,6 @@ function Invoke-TsmBuild {
 		# -SkipDocumentation
 		# -StopOnFirstErrorOrWhatever
 		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)
-		
 	);
 	
 	begin {
@@ -73,7 +68,7 @@ function Invoke-TsmBuild {
 					$fn = Split-Path -Path $cf -Leaf;
 					Write-Verbose "	Assigning Config-File: [$($fn)] - to Build-File: [$($bf)].";
 					
-					$cData = Load-ConfigDataFromConfigFile -ConfigFile $cf;
+					$cData = Load-ConfigDataFromConfigFile -ConfigFile $cf -Verbose:$xVerbose -Debug:$xDebug;
 				}
 				
 				$results += Process-Build -BuildFile $bf -ConfigData $cData -Version $Version -Verbose:$xVerbose -Debug:$xDebug;
@@ -118,14 +113,7 @@ function Invoke-TsmBuild {
 				$filename = Split-Path -Path $ConfigFile -Leaf;
 				Write-Verbose "	Found config file: [$($filename)] - Assigning to -ConfigFile.";
 				
-				$configData = Import-PowerShellDataFile $ConfigFile;
-
-				if (Has-Value $configData) {
-					# VALIDATION: 
-					# TODO: need to figure out which sections are 'required or not... ' and... honestly, I don't think ANY of them are 'required'.
-					
-					$configData | Add-Member -MemberType NoteProperty -Name ConfigDataSource -Value $filename -Force;
-				}
+				$configData = Load-ConfigDataFromConfigFile $ConfigFile -Verbose:$xVerbose -Debug:$xDebug;
 			}
 			
 			$results += Process-Build -BuildFile $BuildFile -ConfigData $configData -Version $Version -Tokens $Tokens -Verbose:$xVerbose -Debug:$xDebug;
@@ -170,8 +158,8 @@ function Process-Build {
 			# push paths, options, and such into BuildContext, OptionsObject, and the likes... 
 			
 			
-			if (Has-Value $ConfigData['BuildTokens']) {
-				[PSCustomObject]$configFileTokens = $ConfigData['BuildTokens'];
+			if (Has-Value $ConfigData['TokenDefinitions']) {
+				[PSCustomObject]$configFileTokens = $ConfigData['TokenDefinitions'];
 				
 				Import-TsmTokens -TokenObject $configFileTokens -Source "CONFIG-FILE: $configFilePath" -AllowValueOverride $false;
 			}
@@ -182,16 +170,7 @@ function Process-Build {
 			Import-TsmTokens -TokenStrings $Tokens -Source "COMMAND-LINE: $Tokens" -AllowValueOverride $true;
 		}
 		
-		# TODO: eventually going to turn this into a C# class/object... instead of 'loosely typed whatever... '
-		[PSCustomObject]$buildContext = [PSCustomObject]@{
-			BuildFile = $BuildFile
-			Output    = $Output
-			Version   = $Version # TODO: this should probably be an object (i.e., C# model) at this point... 
-			WorkingDirectory = Get-Location
-			# Verb? Build | Docs | Build+Docs (the option for Docs can only come from Invoke-TsmDocs)
-			# Tokens... 
-			# Documentation/Transformer Directives
-		}
+		[PSCustomObject]$buildContext = New-BuildContext -BuildFile $BuildFile -Output $Output -Version $Version -WorkingDirectory (Get-Location) -Verbose:$xVerbose -Debug:$xDebug;;
 		
 		$result = Execute-Pipeline -BuildContext $buildContext -Verbose:$xVerbose -Debug:$xDebug;
 	}
@@ -199,6 +178,27 @@ function Process-Build {
 	end {
 		return $result;
 	}
+}
+
+function Load-ConfigDataFromConfigFile {
+	param (
+		[Parameter(Mandatory)]
+		[string]$ConfigFile
+	);
+	
+	$configData = Import-PowerShellDataFile $ConfigFile;
+	
+	# TODO: figure out best way to THROW if/when there's an error here. 
+	# 	or if there's no data.  i.e., just a simple throw (with try/catch in the callers? or ... should this
+	# 		instead be a RuntimeError? (should probably be a runtime error) or maybe a ConfigError - or whatever.)
+	if (Has-Value $configData) {
+		# VALIDATION: 
+		# TODO: need to figure out which sections are 'required or not... ' and... honestly, I don't think ANY of them are 'required'.
+		
+		$configData | Add-Member -MemberType NoteProperty -Name ConfigDataSource -Value $filename -Force;
+	}
+	
+	return $configData;
 }
 
 filter Find-ConfigFileByFileNameConvention {
