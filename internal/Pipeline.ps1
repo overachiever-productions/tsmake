@@ -6,13 +6,9 @@ function Execute-Pipeline {
 		[PSCustomObject]$BuildContext  # this'll end up being a C# object... 
 		# params I'm going to need:
 		#  -> build? or docs? or build + docs? - so, basically, a VERB or verbs... maybe an OperationType enum?
-		#  -> BuildContext - with things like 
-		# 		- file-paths for: input/output. 
-		# 		- file-path for CONFIG data - but... the config data can/already-will be defined and imported.
-		#       - token-sets (i.e., name-value-pairs for tokens and their explicit values)
 		#  -> options - such as: 
 		# 		- marker file?  (create one or not - and where?)
-		# 		- remove all /* headers */ -or just the first ones? 
+		# 		- comment-removal options - See Enums.CommentRemovalOption.
 		# 		- verbose and debug directives (think these'll just get passed in natively though)
 		# 		- strict/stop-on-first-error(s) or ... let errors be processed in 'gulps'
 		# -> documentation directives - i.e., specific 'config stuff' for 'transformers and the likes
@@ -37,20 +33,17 @@ function Execute-Pipeline {
 		[tsmake.models.BuildManifest]$buildManifest = [tsmake.models.BuildManifest]($BuildContext.BuildFile);
 		
 		# ====================================================================================================
-		# 2. Check-for and Report on (or Handle) and ParserErrors:
+		# 2. Check-for and report-on ParserErrors:
 		# ====================================================================================================		
 		if ($buildManifest.ParserErrors.Count -gt 0) {
 			
-			# REFACTOR: probably do a better job of handing off errors/details from one model to the next here (i.e., just have buildManifest hand off to results or whatever)
-			#  	and then, if we're in a 'fatal' state or found a fatal set of errors, bail... 
-			
 			# list/process any FATAL errors first
 			$fatalErrors = $false;
-			foreach($error in $buildManifest.ParserErrors | Where-Object { "FATAL" -eq $_.Severity }) {
+			foreach($error in $buildManifest.FatalParserErrors ) {
 				$fatalErrors = $true;
 				
 				Write-Verbose "Fatal Parsing Error: $($error.ErrorMessage)";
-				$buildResult.AddProcessingError($error);
+				$buildResult.AddParserError($error);
 			}
 			
 			# TODO: MIGHT want to NOT spit these out IF -StopOnFirstError (or whatever I'm going to call it) is set... 
@@ -61,70 +54,44 @@ function Execute-Pipeline {
 			}
 			
 			if ($fatalErrors) {
-				return;  # which actually sends us out to the end {} block 
+				return; # i.e., go to end {}
 			}
 		}
 		
 		# ====================================================================================================
-		# 3. Get / Evaluate Global Directives (ROOT, OUTPUT, FILEMARKER, VERSIONCHECKER, etc.)
+		# 3. Evaluate + Process Global Directives (ROOT, OUTPUT, FILEMARKER, VERSIONCHECKER, etc.)
 		# ====================================================================================================		
 		$fatalError = $null;
 		if ($null -ne $buildManifest.RootDirective) {
 			$root = $buildManifest.RootDirective;
 			Write-Verbose "	RootPath Directive found. Path: [$($root.Path)] => PathType: $($root.PathType). Location: $($root.Location.LineNumber), $($root.Location.ColumnNumber).";
 			
+			$rootPath = $null;
 			switch ($root.PathType) {
 				"Absolute" {
-					if (-not (Test-Path -Path ($root.Path))) {
-						$fatalError = New-ParserError -Severity "Fatal" -Location ($root.Location) -ErrorMessage "Specified Root Path: [$($root.Path)] does NOT exist.";
-					}
-					
-					Write-Verbose "		RootPath Explicitly Set to: [$($root.Path)].";
-					# TODO: Set .BuildCOntext.RootPath to ... newly defined root path. 
-					# 	only... in order to do the above... i'll need an actual object - with a couple of helper methods or whatever... (i.e., don't want to directly manipulate the object from here).	
+					$rootPath = $root.Path;
+					Write-Verbose "		Root Directive specifies Absolute root path: [$rootPath].";
 				}
 				"Relative" {
-					$translatedRootPath = Translate-Path -CurrentPath ($BuildContext.WorkingDirectory) -PathDirective ($root.Path);
-					
-					if (-not (Test-Path -Path $translatedRootPath)) {
-						$fatalError = New-ParserError -Severity "Fatal" -Location ($root.Location) -ErrorMessage "Specified Root Path: [$($translatedRootPath)] does NOT exist.";
-					}
-					
-					Write-Verbose "		RootPath Explicitly Set to: [$($translatedRootPath)].";
-					
-					# TODO: set path (as per above).
+					$rootPath = Translate-Path -CurrentPath ($BuildContext.WorkingDirectory) -PathDirective ($root.Path);
+					Write-Verbose "		Root Directive specifies Relative root path: [$rootPath].";
 				}
 				"Rooted" {
-					$fatalError = New-ParserError -Severity "Fatal" -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives.";
+					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives.";
 				}
 				default {
 					$msg = "Unknown PathType: [$($root.PathType)] specified for RootPath Directive.";
-					$fatalError = New-ParserError -Severity "Fatal" -Location ($root.Location) -ErrorMessage $msg;
+					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage $msg;
 				}
 			}
 			
-			if ($null -ne $fatalError) {
-				return;
-			}
-		}
-		
-		if ($null -ne $buildManifest.OutputDirective) {
-			$outputDirective = $buildManifest.OutputDirective;
-			Write-Verbose "	Output Directive found. xxxx";
-			
-			if ($null -eq $BuildContext.Output) {
-				# TODO: 3x tasks:
-				# 1. build/define (relative or absolute or rooted) path... 
-				# 2. test it. 
-				# 3. assign it. 
-				#  then... Write-Verbose about how it was set... 
-			}
-			else {
-				Write-Verbose "		-Output Specified via Command Line supersedes ##OUTPUT directive set within .build file.";
-			}
-			
-			if ($null -eq $BuildContext.Output) {
-				#$fatalError = New-RuntimeError 
+			if (Has-Value $rootPath) {
+				if (-not (Test-Path -Path ($rootPath))) {
+					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage "Directive Specified Root Path: [$rootPath] does NOT exist.";
+				}				
+				
+				$BuildContext.SetRoot($rootPath);
+				Write-Verbose "			Root Path Explicitly Set to: [$rootPath].";
 			}
 			
 			if ($null -ne $fatalError) {
@@ -135,6 +102,65 @@ function Execute-Pipeline {
 		# TODO: VERSION_CHECKER
 		# TODO: FILEMARKER
 		# TODO: anything else? 
+		
+		if ($null -ne $buildManifest.OutputDirective) {
+			$outputDirective = $buildManifest.OutputDirective;
+			Write-Verbose "	Output Directive found. Output Path: $($outputDirective.Path)";
+			
+			if (Is-Empty $BuildContext.Output) {
+				Write-Verbose " 		-Output NOT specified via Command-Line. Attempting to set -Output from Output Directive on build file line # $($outputDirective.Location.LineNumber).";
+				$outputPath = $null;
+				switch ($outputDirective.PathType) {
+					"Absolute" {
+						$outputPath = = $outputDirective.Path;
+						Write-Verbose "			Output Directive specifies Absolute path: [$($outputDirective.Path)].";
+					}
+					"Relative" {
+						$outputPath = Translate-Path -CurrentPath $BuildContext.Root -PathDirective $outputDirective.Path;
+						Write-Verbose "			Output Directive specifies Relative path: [$($outputDirective.Path)].";
+					}
+					"Rooted" {
+						$unrooted = $outputDirective.Path.Replace("\\\", "");
+						$outputPath = Translate-Path -CurrentPath $BuildContext.Root -PathDirective $unrooted;
+						Write-Verbose "			Output Directive specifies Rooted path: [$($outputDirective.Path)].";
+					}
+					default {
+						$msg = "Unknown PathType: [$($root.PathType)] specified for Output Directive.";
+						$fatalError = New-RuntimeError -Severity "Fatal" -ErrorMessage $msg -Location $outputDirective.Location;
+					}
+				}
+				
+				if (Has-Value $outputPath) {
+					$outputDirectory = Split-Path -Path $outputPath -Parent;
+					
+					if (-not (Test-Path $outputDirectory)) {
+						$fatalError = New-RuntimeError -Severity "Fatal" -Location $($outputDirective.Location) -ErrorMessage "Output Directory Specified by Output Directive does NOT exist: [$outputDirectory].";
+					}
+					
+					if (Test-Path -Path $outputPath) {
+						Write-Verbose "		Output file: [$outputPath] specified by Output Directory already exists.";
+						
+						# TODO: default behavior is to simply overwrite $outputPath. 
+						# 		but, there can/will be some sort of OPTIONAL preference or switch that'll be the equivalent of -PreventOutputOverwrite
+						# 		and, if when set to $true ... then: $fatalError = New-RuntimeError -Severity "Fatal" -Location (xxx) -ErrorMessage "file exists - preference it so not overwrite. terminating...";
+					}
+					
+					$BuildContext.SetOutput($outputPath);
+					Write-Verbose "				Output Explicitly Set to: [$outputPath].";
+				}
+			}
+			else {
+				Write-Verbose "		-Output Specified via Command Line supersedes ##OUTPUT directive set within .build file.";
+			}
+		}
+		
+		if (Is-Empty $BuildContext.Output) {
+			$fatalError = New-RuntimeError -Severity "Fatal" -ErrorMessage "Either specify -Output via command-line operations, or make sure to include an ##OUTPUT: directive within .build file.";
+		}
+		
+		if ($null -ne $fatalError) {
+			return;
+		}
 		
 		# ====================================================================================================
 		# 4. Process all INCLUDES (FILE/DIRECTORY/RECURSIVE... )
