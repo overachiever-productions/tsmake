@@ -1,9 +1,6 @@
-﻿namespace tsmake.models.directives
+﻿namespace tsmake.models
 {
-    // REFACTOR: I'm getting old and stupid. Tokens can/will have TokenDefinitions and TokenInstances - cuz end-users are allowed
-    //      to define tokens. End-users can't define Directives... so, i don't really need to differentiate between Directives and Directive 'Instances'. 
-    //      in short, these can simply become Directives.
-    public interface IDirectiveInstance
+    public interface IDirective
     {
         string DirectiveName { get; }
         Line Line { get; }
@@ -13,7 +10,7 @@
         public string ValidationMessage { get; }
     }
 
-    public abstract class BaseDirectiveInstance : IDirectiveInstance
+    public abstract class BaseDirective : IDirective
     {
         public string DirectiveName { get; protected set; }
         public Line Line { get; }
@@ -21,24 +18,24 @@
         public bool IsValid { get; protected set; }
         public string ValidationMessage { get; protected set; }
 
-        protected BaseDirectiveInstance(Line line, Location location)
+        protected BaseDirective(Line line, Location location)
         {
-            this.DirectiveName = "BASE";
-            this.Line = line;
-            this.Location = location;
+            DirectiveName = "BASE";
+            Line = line;
+            Location = location;
 
-            this.IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
+            IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
         }
     }
 
-    public class RootPathDirective : BaseDirectiveInstance
+    public class RootPathDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
 
         public RootPathDirective(Line line, Location location) : base(line, location)
         {
-            base.DirectiveName = "ROOT";
+            DirectiveName = "ROOT";
 
             string data = this.GetDirectiveLineData();
 
@@ -46,51 +43,51 @@
             if (data.IsValidPath())
             {
                 // TODO: don't allow PathType.Rooted for ... the Root. Those can ONLY be used once this is set.
-                this.PathType = data.GetPathType();
-                this.Path = data;
+                PathType = data.GetPathType();
+                Path = data;
 
-                this.IsValid = true;
+                IsValid = true;
             }
-            else 
-                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.FileName}, line: {location.LineNumber}.";
+            else
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.FileName}, line: {location.LineNumber}.";
         }
     }
 
-    public class OutputDirective : BaseDirectiveInstance
+    public class OutputDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
 
         public OutputDirective(Line line, Location location) : base(line, location)
         {
-            base.DirectiveName = "OUTPUT";
+            DirectiveName = "OUTPUT";
 
             string data = this.GetDirectiveLineData();
 
             // Two primary options for RootPath: a) hard-coded/absolute path (e.g., local windows path like F:\blah, OR a UNC file-share path), or b) a relative path (from xxx.build.sql file).
             if (data.IsValidPath())
             {
-                this.PathType = data.GetPathType();
-                this.Path = data;
+                PathType = data.GetPathType();
+                Path = data;
 
-                this.IsValid = true;
+                IsValid = true;
             }
-            else 
-                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.FileName}, line: {location.LineNumber}.";
+            else
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.FileName}, line: {location.LineNumber}.";
         }
     }
 
-    public class CommentDirective : BaseDirectiveInstance
+    public class CommentDirective : BaseDirective
     {
         public CommentDirective(Line line, Location location) : base(line, location)
         {
-            base.DirectiveName = "COMMENT";
+            DirectiveName = "COMMENT";
             // And... done. 
             // As in, there's NOTHING to do here.
         }
     }
 
-    public class VersionCheckerDirective : BaseDirectiveInstance
+    public class VersionCheckerDirective : BaseDirective
     {
         public VersionCheckerDirective(string name, Line line, Location location) : base(line, location) { }
     }
@@ -98,29 +95,29 @@
     // REFACTOR: IncludeFileDirective, RootPathDirective, and OutputDirective all have - for all intents and purposes - the SAME underlying functionality IN THE .CTOR
     //      in essence, they all: a) get the directive data/input, b) check to see if it's a valid path and assign it + type if it is, c) throw an exception if not valid path. 
     //      ultimately, in terms of .ctor logic - the ONLY thing that's different is the error message. 
-    public class IncludeFileDirective : BaseDirectiveInstance
+    public class IncludeFileDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
 
         public IncludeFileDirective(Line line, Location location) : base(line, location)
         {
-            base.DirectiveName = "FILE";
+            DirectiveName = "FILE";
 
             string data = this.GetDirectiveLineData();
             if (data.IsValidPath())
             {
-                this.PathType = data.GetPathType();
-                this.Path = data;
+                PathType = data.GetPathType();
+                Path = data;
 
-                this.IsValid = true;
+                IsValid = true;
             }
-            else 
-                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [INCLUDEFILE] in file {location.FileName}, line: {location.LineNumber}.";
+            else
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [INCLUDEFILE] in file {location.FileName}, line: {location.LineNumber}.";
         }
     }
 
-    public class IncludeDirectoryDirective : BaseDirectiveInstance
+    public class IncludeDirectoryDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
@@ -132,10 +129,10 @@
 
         public IncludeDirectoryDirective(Line line, Location location) : base(line, location)
         {
-            base.DirectiveName = "DIRECTORY";
-            this.Exclusions = new List<string>();
-            this.Priorities = new List<string>();
-            this.UnPriorities = new List<string>();
+            DirectiveName = "DIRECTORY";
+            Exclusions = new List<string>();
+            Priorities = new List<string>();
+            UnPriorities = new List<string>();
 
             string data = this.GetDirectiveLineData();
 
@@ -152,7 +149,7 @@
                 {
                     int start = parts[i].Index;
                     int end = data.Length;
-                    if (i < count - 1) 
+                    if (i < count - 1)
                         end = parts[i + 1].Index;
 
                     key = parts[i].Value.Replace(":", "");
@@ -171,7 +168,7 @@
             {
                 // if we didn't match on sub-directives, then either: a) this is a simple DIRECTORY directive with <path_and_nothing_else> or, b) it's invalid.
                 string directoryPath = data.Trim();
-                
+
                 // TODO: now ... check to see if [data] could be a path/directory (without, necessarily) checking it... 
                 //  and... if it could be (i.e., I need a regex for any/all valid paths - sigh)... then: 
                 //      add the path and get the path-type (well, set the .Path and .PathType). 
@@ -182,15 +179,15 @@
                 }
                 else
                 {
-                    this.IsValid = false;
-                    this.ValidationMessage =
+                    IsValid = false;
+                    ValidationMessage =
                         "Something about incorrect syntax. Needed/expected ORDERBY, EXCLUDE, PRIORITIES and (optionally) PATH... but not found";
                 }
             }
 
             // TODO: ensure that I don't need to (error-check that this isn't null) check this ... think i probably do... 
-            this.Path = components["PATH"];
-            this.PathType = this.Path.GetPathType();
+            Path = components["PATH"];
+            PathType = Path.GetPathType();
 
             if (components.ContainsKey("ORDERBY"))
             {
@@ -199,27 +196,27 @@
                 // NOTE: not even 'bothering' to check for entire 'words' here - just enough to know that the intention is/was specified (or not).
                 if (data.ToLowerInvariant().Contains("modi"))
                 {
-                    this.OrderBy = OrderBy.ModifyDate;
+                    OrderBy = OrderBy.ModifyDate;
                 }
                 else
                 {
-                    if (data.ToLowerInvariant().Contains("crea")) 
+                    if (data.ToLowerInvariant().Contains("crea"))
                     {
-                        this.OrderBy = OrderBy.CreateDate;
+                        OrderBy = OrderBy.CreateDate;
                     }
                     else
-                        this.OrderBy = OrderBy.Alphabetical; // note that this ends up being the default (i.e., if nothing is explicitly specified).
+                        OrderBy = OrderBy.Alphabetical; // note that this ends up being the default (i.e., if nothing is explicitly specified).
                 }
 
                 if (data.ToLowerInvariant().Contains("desc"))
-                    this.Direction = Direction.Descending;
-                else 
-                    this.Direction = Direction.Ascending;  // also the default - if nothing is explicitly specified.
+                    Direction = Direction.Descending;
+                else
+                    Direction = Direction.Ascending;  // also the default - if nothing is explicitly specified.
             }
 
             if (components.ContainsKey("EXCLUDE"))
             {
-                this.Exclusions.AddRange(components["EXCLUDE"].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim())); 
+                Exclusions.AddRange(components["EXCLUDE"].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
             }
 
             if (components.ContainsKey("PRIORITIES"))
@@ -231,26 +228,48 @@
                     case 0:
                         break;
                     case 1:
-                        this.Priorities.AddRange(priorities[0].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+                        Priorities.AddRange(priorities[0].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
                         break;
                     case 2:
-                        this.Priorities.AddRange(priorities[0].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
-                        this.UnPriorities.AddRange(priorities[1].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+                        Priorities.AddRange(priorities[0].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
+                        UnPriorities.AddRange(priorities[1].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
                         break;
                     default:
-                        this.ValidationMessage = "Invalid Syntax for PRIORITIES: - multiple semi-colons (;) found - should only be 1.";
+                        ValidationMessage = "Invalid Syntax for PRIORITIES: - multiple semi-colons (;) found - should only be 1.";
                         return;
                 }
             }
 
-            this.IsValid = true;
+            IsValid = true;
         }
     }
 
-    public class ConditionalBlockDirective : BaseDirectiveInstance
+    public class ConditionalBlockDirective : BaseDirective
     {
         // not sure if this'll be a single directive, or a 'family' of 4x directives... 
 
         public ConditionalBlockDirective(Line line, Location location) : base(line, location) { }
+    }
+
+    public class DirectiveFactory
+    {
+        public static IDirective CreateDirective(string directiveName, Line line, Location location)
+        {
+            switch (directiveName)
+            {
+                case "::": // or COMMENT... 
+                    return new CommentDirective(line, location);
+                case "ROOT":
+                    return new RootPathDirective(line, location);
+                case "OUTPUT":
+                    return new OutputDirective(line, location);
+                case "FILE":
+                    return new IncludeFileDirective(line, location);
+                case "DIRECTORY":
+                    return new IncludeDirectoryDirective(line, location);
+                default:
+                    throw new InvalidCastException($"Unknown Directive: {directiveName}.");
+            }
+        }
     }
 }

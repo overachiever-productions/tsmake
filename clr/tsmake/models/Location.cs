@@ -19,5 +19,10 @@
         {
             this.OriginalLocation = originalLocation;
         }
+
+        public string GetLocationContext()
+        {
+            return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber}).";
+        }
     }
 }

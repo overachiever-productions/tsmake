@@ -6,10 +6,15 @@
 # ====================================================================================================	
 function New-BuildContext {
 	param (
+		[parameter(Mandatory)]
 		[string]$BuildFile,
 		[string]$Output,
 		[string]$Version,
-		[string]$WorkingDirectory
+		[parameter(Mandatory)]
+		[string]$WorkingDirectory,
+		[parameter(Mandatory)]
+		[ValidateSet("BUILD", "DOCS", "BOTH")]
+		[string]$Verb
 	)
 	
 	begin {
@@ -34,12 +39,13 @@ function New-BuildContext {
 	
 	process {
 		[PSCustomObject]$context = [PSCustomObject]@{
-			BuildFile	     = $BuildFile
-			Output		     = $Output
-			Version		     = $Version 				# TODO: this should probably be an object (i.e., C# model) at this point... 
-			WorkingDirectory = $WorkingDirectory
-			Root		 	 = "" 						# Build Root. Set later/explicitly.
-			# Verb? Build | Docs | Build+Docs (the option for Docs can only come from Invoke-TsmDocs)
+			BuildFile	     		= $BuildFile
+			Output		     		= $Output
+			Version		     		= $Version 				# TODO: this should probably be an object (i.e., C# model) at this point... 
+			WorkingDirectory 		= $WorkingDirectory
+			Root			 		= "" # Build Root. Set later/explicitly.
+			Verb 			 		= $Verb
+			
 			# Documentation/Transformer Directives
 		}
 		

@@ -1,5 +1,4 @@
 ﻿using tsmake.models;
-using tsmake.models.directives;
 
 namespace tsmake
 {
@@ -103,7 +102,7 @@ namespace tsmake
             return false;
         }
 
-        public static string GetDirectiveLineData(this IDirectiveInstance instance, bool removeTsMakeLineComments = true)
+        public static string GetDirectiveLineData(this IDirective instance, bool removeTsMakeLineComments = true)
         {
             // TODO: I MAY have a bug with my logic/REGEX where: 1) I've been assuming that directives have XXXX: syntax (where the colon HAS to be immediately after the name)
             //      only... it MAY BE that ... I can have directives in the form of "XXXX      :" and so on... 

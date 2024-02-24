@@ -1,6 +1,4 @@
-﻿using tsmake.models.directives;
-
-namespace tsmake.models
+﻿namespace tsmake.models
 {
     public class Line
     {
@@ -9,13 +7,13 @@ namespace tsmake.models
         public string Source { get; }
         public LineType LineType { get; set; }
         public List<TokenInstance> Tokens { get;}
-        //public List<IDirectiveInstance> Directives { get;}
-        public IDirectiveInstance Directive { get; private set; }
+        //public List<IDirective> Directives { get;}
+        public IDirective Directive { get; private set; }
 
         public Line(int number, string content, string source)
         {
             this.Tokens = new List<TokenInstance>();
-            //this.Directives = new List<IDirectiveInstance>();
+            //this.Directives = new List<IDirective>();
 
             this.LineNumber = number;
             this.Content = content;
@@ -49,7 +47,7 @@ namespace tsmake.models
 
                     Location location = new Location(line.Source, line.LineNumber, index);
 
-                    IDirectiveInstance instance = DirectiveFactory.CreateDirective(directiveName, this, location);
+                    IDirective instance = DirectiveFactory.CreateDirective(directiveName, this, location);
                     this.Directive = instance;
 
                     // TODO: do I return at this point? or can a line have TOKENS in it - even if/when it's a directive? 

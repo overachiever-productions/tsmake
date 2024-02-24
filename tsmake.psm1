@@ -12,18 +12,15 @@ filter Import-Types {
 		"$ScriptRoot\clr\tsmake\Errors.cs";
 		"$ScriptRoot\clr\tsmake\Extensions.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\Location.cs";
-		"$ScriptRoot\clr\tsmake\models\TokenDefinition.cs";
-		"$ScriptRoot\clr\tsmake\models\directives\DirectiveInstance.cs";
-		"$ScriptRoot\clr\tsmake\models\directives\DirectiveFactory.cs";
-		"$ScriptRoot\clr\tsmake\models\TokenInstance.cs";
 		"$ScriptRoot\clr\tsmake\models\Line.cs";
+		"$ScriptRoot\clr\tsmake\models\Location.cs";
+		"$ScriptRoot\clr\tsmake\models\Tokens.cs";
+		"$ScriptRoot\clr\tsmake\models\Directives.cs";
 		
+		"$ScriptRoot\clr\tsmake\models\Files.cs";
 		"$ScriptRoot\clr\tsmake\Results.cs";
-		"$ScriptRoot\clr\tsmake\Formatter.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\TokenRegistry.cs";
-		"$ScriptRoot\clr\tsmake\models\BuildManifest.cs";
+		"$ScriptRoot\clr\tsmake\Formatter.cs";
 	);
 	
 	Add-Type -Path $classFiles;

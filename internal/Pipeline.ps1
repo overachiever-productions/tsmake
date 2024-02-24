@@ -22,48 +22,39 @@ function Execute-Pipeline {
 		
 		Write-Debug "$(Get-PipelineDebugIndent -Key "Root")Starting Pipeline Operations.";
 		Write-Verbose "Starting Pipeline Operations.";
-		
-		[tsmake.BuildResult]$buildResult = New-Object tsmake.BuildResult($BuildContext.BuildFile);  
+	
+		[tsmake.BuildResult]$buildResult = New-Object tsmake.BuildResult($BuildContext.BuildFile, ($BuildContext.Verb));  
 	};
 	
 	process {
 		# ====================================================================================================
-		# 1. Create BuildManifest
+		# 1. Create BuildManifest (which does a gob of work processing individual lines in the .build.sql file...)
 		# ====================================================================================================	
-		[tsmake.models.BuildManifest]$buildManifest = [tsmake.models.BuildManifest]($BuildContext.BuildFile);
+		[tsmake.models.BuildFile]$buildFile = [tsmake.models.BuildFile]($BuildContext.BuildFile);
 		
 		# ====================================================================================================
 		# 2. Check-for and report-on ParserErrors:
-		# ====================================================================================================		
-		if ($buildManifest.ParserErrors.Count -gt 0) {
-			
-			# list/process any FATAL errors first
-			$fatalErrors = $false;
-			foreach($error in $buildManifest.FatalParserErrors ) {
-				$fatalErrors = $true;
-				
-				Write-Verbose "Fatal Parsing Error: $($error.ErrorMessage)";
-				$buildResult.AddParserError($error);
+		# ====================================================================================================
+		if ($buildFile.ParserErrors.Count -gt 0) {
+			foreach ($fatalError in $buildFile.FatalParserErrors) {
+				$buildResult.AddFatalError($fatalError);
 			}
 			
-			# TODO: MIGHT want to NOT spit these out IF -StopOnFirstError (or whatever I'm going to call it) is set... 
-			foreach($error in $buildManifest.ParserErrors | Where-Object { "FATAL" -ne $_.Severity }) {
-				$fatalErrors = $true;
-				
-				Write-Verbose "Parser Warning: $($error.ErrorMessage)";
+			# TODO: these may not even end up being used. 
+			foreach ($nonFatalError in $buildFile.NonFatalParserErrors) {
+				$buildResult.AddNonFatalError($nonFatalError);
 			}
 			
-			if ($fatalErrors) {
-				return; # i.e., go to end {}
+			if ($buildResult.HasFatalError) {
+				return;
 			}
 		}
 		
 		# ====================================================================================================
 		# 3. Evaluate + Process Global Directives (ROOT, OUTPUT, FILEMARKER, VERSIONCHECKER, etc.)
 		# ====================================================================================================		
-		$fatalError = $null;
-		if ($null -ne $buildManifest.RootDirective) {
-			$root = $buildManifest.RootDirective;
+		if (Has-Value $buildFile.RootDirective) {
+			$root = $buildFile.RootDirective;
 			Write-Verbose "	RootPath Directive found. Path: [$($root.Path)] => PathType: $($root.PathType). Location: $($root.Location.LineNumber), $($root.Location.ColumnNumber).";
 			
 			$rootPath = $null;
@@ -77,24 +68,24 @@ function Execute-Pipeline {
 					Write-Verbose "		Root Directive specifies Relative root path: [$rootPath].";
 				}
 				"Rooted" {
-					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives.";
+					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives."));
 				}
 				default {
 					$msg = "Unknown PathType: [$($root.PathType)] specified for RootPath Directive.";
-					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage $msg;
+					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage $msg));
 				}
 			}
 			
 			if (Has-Value $rootPath) {
 				if (-not (Test-Path -Path ($rootPath))) {
-					$fatalError = New-FatalParserError -Location ($root.Location) -ErrorMessage "Directive Specified Root Path: [$rootPath] does NOT exist.";
+					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage "Directive Specified Root Path: [$rootPath] does NOT exist."));
 				}				
 				
 				$BuildContext.SetRoot($rootPath);
 				Write-Verbose "			Root Path Explicitly Set to: [$rootPath].";
 			}
 			
-			if ($null -ne $fatalError) {
+			if ($buildFile.HasFatalError) {
 				return;
 			}
 		}
@@ -103,8 +94,8 @@ function Execute-Pipeline {
 		# TODO: FILEMARKER
 		# TODO: anything else? 
 		
-		if ($null -ne $buildManifest.OutputDirective) {
-			$outputDirective = $buildManifest.OutputDirective;
+		if ($null -ne $buildFile.OutputDirective) {
+			$outputDirective = $buildFile.OutputDirective;
 			Write-Verbose "	Output Directive found. Output Path: $($outputDirective.Path)";
 			
 			if (Is-Empty $BuildContext.Output) {
@@ -126,7 +117,7 @@ function Execute-Pipeline {
 					}
 					default {
 						$msg = "Unknown PathType: [$($root.PathType)] specified for Output Directive.";
-						$fatalError = New-RuntimeError -Severity "Fatal" -ErrorMessage $msg -Location $outputDirective.Location;
+						$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage $msg));
 					}
 				}
 				
@@ -134,7 +125,7 @@ function Execute-Pipeline {
 					$outputDirectory = Split-Path -Path $outputPath -Parent;
 					
 					if (-not (Test-Path $outputDirectory)) {
-						$fatalError = New-RuntimeError -Severity "Fatal" -Location $($outputDirective.Location) -ErrorMessage "Output Directory Specified by Output Directive does NOT exist: [$outputDirectory].";
+						$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage "Output Directory Specified by Output Directive does NOT exist: [$outputDirectory]."));
 					}
 					
 					if (Test-Path -Path $outputPath) {
@@ -142,7 +133,7 @@ function Execute-Pipeline {
 						
 						# TODO: default behavior is to simply overwrite $outputPath. 
 						# 		but, there can/will be some sort of OPTIONAL preference or switch that'll be the equivalent of -PreventOutputOverwrite
-						# 		and, if when set to $true ... then: $fatalError = New-RuntimeError -Severity "Fatal" -Location (xxx) -ErrorMessage "file exists - preference it so not overwrite. terminating...";
+						# 		and, if when set to $true ... then: $buildResult.AddFatalError((New-RuntimeError -Severity "Fatal" -Location (xxx) -ErrorMessage "file exists - preference it so not overwrite. terminating..."));
 					}
 					
 					$BuildContext.SetOutput($outputPath);
@@ -155,20 +146,21 @@ function Execute-Pipeline {
 		}
 		
 		if (Is-Empty $BuildContext.Output) {
-			$fatalError = New-RuntimeError -Severity "Fatal" -ErrorMessage "Either specify -Output via command-line operations, or make sure to include an ##OUTPUT: directive within .build file.";
+			$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage "Either specify -Output via command-line operations, or make sure to include an ##OUTPUT: directive within .build file."));
 		}
 		
-		if ($null -ne $fatalError) {
+		if ($buildResult.HasFatalError) {
 			return;
 		}
 		
 		# ====================================================================================================
 		# 4. Process all INCLUDES (FILE/DIRECTORY/RECURSIVE... )
 		# ====================================================================================================			
-		
 		# Start by Validating and Assigning Actual Paths:
-		foreach($include in $buildManifest.Directives | Where-Object { $_.DirectiveName -in ("FILE", "DIRECTORY")}){
+		foreach($include in $buildFile.Directives | Where-Object { $_.DirectiveName -in ("FILE", "DIRECTORY")}){
 			if (-not ($include.IsValid)) {
+				
+				
 				Write-Host "TODO: Add a parser validation error with line/location and message = $($include.ValidationMessage).";
 				# todo add some context to the above... actually, the context will be the line/location and the filename the error came from.
 			}
@@ -179,7 +171,7 @@ function Execute-Pipeline {
 				# use .PathType + .Path to create the .ConcretePath (or whatever). 
 				#  check to see if .ConcretePath is valid. Since we're dealing with files and directories (i.e., includes), each file/directory 
 				# 			should exist at this point. 
-				# 		if it doesn't, need to add a 'ParserError' (though, hmm... it's not actually a PARSER error)
+				# 		if it doesn't, need to add a BuildError - with the location of the line in question - showing that the path of the file trying to be included is invalid.
 				# 			maybe there are IProcessingErrors of types ParsingError, Execution/RuntimeError (which is what this'd be), and ... i dunno, logic (dynamic directives, etc.) or whatever errors? 
 				# 		yeah... do the above - i.e., have different error types. ParserErrors, RuntimeErrors, Write/OutputErrors, MigrationErrors, Generator(from .git or whatever)Errors, and the likes. 
 				# 			they can all use VERY similar, underlying, functionality and interfaces + a base type ... but, they should be different TYPES of errors. 
@@ -191,7 +183,7 @@ function Execute-Pipeline {
 			
 			# once the above is done... (and assuming that we're not in -EagerFailure = $true (or -StopOnFirstError - i.e., whatever I call it))
 			# 		then go ahead and, for each .IsTrulyValid INCLUDE directive... 
-			# 			start (recursively) COPYING content from $buildFile (replacement name for $buildManifest) into NewBuildManifest or ExpandoManifest - whatever I'm going to call it.
+			# 			start (recursively) COPYING content from $buildFile (replacement name for $buildFile) into NewBuildManifest or ExpandoManifest - whatever I'm going to call it.
 			# 				where RECURSIVELY means ... for each FileManifest or DirectoryManifest that I create ... pull in the contents, look for FILE/DIRECTORY includes in those... and, if found... recurse on down. 
 # 	NOTE: 	FileManifests will be what end up being used for generating IN-FILE documentation. 
 # 		 not sure that HAS TO BE processed here (chronologically/logicallty) 
@@ -218,7 +210,7 @@ function Execute-Pipeline {
 			
 		}
 		
-		#		foreach ($line in $buildManifest.Lines) {
+		#		foreach ($line in $buildFile.Lines) {
 		#			#write-host "$($line.LineNumber)  -> $($line.LineType)";
 		#						
 		##			if ($line.LineType.HasFlag([tsmake.enums.LineType]::WhitespaceOnly)) {
@@ -244,15 +236,7 @@ function Execute-Pipeline {
 		##			}
 		#		}		
 		
-		
-		
-		#		
-#		if ($buildManifest.Directives.ContainsKey("ROOT")) {
-#			Write-Host "found a ROOT..."
-#		}
-#		else {
-#			Write-Host "didn't find a ROOT"
-#		}
+			
 		
 		$buildResult.SetSucceeded(); # just pretend for now... 
 		
@@ -269,7 +253,7 @@ function Execute-Pipeline {
 		# 	  1.a ...do the same for ... OUTPUT, FILEMARKER and an others... 
 		# 	  1.b Ah yeah... ##VERSION_CHECKER should be processed here - i.e., either there is one and I need to find the code for what was specified. 
 		# 			or.... i spam in the tsmake 'default' version-checker ... that'll also, presumably? get dropped at the end? 
-		# 	2. foreach LINE in $buildManifest.Lines: 
+		# 	2. foreach LINE in $buildFile.Lines: 
 		# 		a. if the line is a FILE-INCLUDE 
 		# 		b or if the line is a DIRECTORY-INCLUDE 
 		# 			then, RECURSIVELY, work through addition of any new directives. 
@@ -279,7 +263,7 @@ function Execute-Pipeline {
 		# 					and, if they're present ... include/replace them... over and over and over ... until we're done with 'INCLUDES'
 		# 		c. if the line is a ROOT directive... then, skip/continue to the next line (i.e., don't copy into the next 'overall' buffer)
 		# 			ditto on things like: ##OUTPUT, ##FILEMARKER and any other 'high-level'/meta-data directives.
-		# 		d. if the line is NOT one of the 3x directives above, then ... just copy it out of $buildManifest into $includeExplodedManifest. 
+		# 		d. if the line is NOT one of the 3x directives above, then ... just copy it out of $buildFile into $includeExplodedManifest. 
 		
 		#  at this point, we've got an $includeExplodedManifest with: 
 		# 		1. all included directives processed
@@ -298,7 +282,7 @@ function Execute-Pipeline {
 		
 		Write-Host "-------------------------------------------------------";
 		
-		foreach ($t in $buildManifest.Tokens) {
+		foreach ($t in $buildFile.Tokens) {
 			# For validation purposes ... need to go through each of these and: 
 			#  a) see if it has a default or not. 
 			#     if it does, check to see if I've got a TokenDefinition that matches and whether it PREVENTS defaults. 
@@ -310,8 +294,8 @@ function Execute-Pipeline {
 		
 		
 #		Write-Host "-------------------------------------------------------";
-#		Write-Host "Count: $($buildManifest.Directives.Count)"
-#		foreach ($d in $buildManifest.Directives) {
+#		Write-Host "Count: $($buildFile.Directives.Count)"
+#		foreach ($d in $buildFile.Directives) {
 #			Write-Host "Directive Location:  $($d.Location.LineNumber), $($d.Location.ColumnNumber) -> Name: $($d.DirectiveName)"
 #		}
 		
@@ -333,7 +317,7 @@ function Execute-Pipeline {
 	};
 	
 	end {
-		return $buildResult;
+		return $buildFile;
 	};
 }
 

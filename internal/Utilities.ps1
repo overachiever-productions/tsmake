@@ -133,25 +133,14 @@ filter New-ParserError {
 		[string]$ErrorMessage
 	);
 	
-	return New-Object tsmake.ParserError($Severity, $Location, $ErrorMessage);
+	return New-Object tsmake.ParserError($Severity, $ErrorMessage, $Location);
 }
 
-# REFACTOR: not sure if it makes sense to try and 'collapse' New-ParserError and New-RuntimeError down to the same func. 
-# TODO: New-RuntimeError should also allow for a .Exception as an input/param.
-filter New-RuntimeError {
+filter New-BuildError {
 	param (
 		[tsmake.ErrorSeverity]$Severity = "Fatal",
-		[tsmake.Location]$Location = $null,
 		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	)
-	
-	# NOTE that RuntimeErrors CAN allow a Location to be NULL. Doesn't HAVE to be - but commonly will be. 
 
 }
-
-#$root = "D:\Dropbox\Repositories\S4\Deployment\__build";
-##(Get-Item -Path $root).Parent.FullName;
-#
-#Translate-Path -CurrentPath $root -PathDirective "..\..\oink.sql";
-

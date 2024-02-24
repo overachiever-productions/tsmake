@@ -2,30 +2,37 @@
 {
     public interface IProcessingResult
     {
-        // .Start and .End times? 
-        public string OperationType { get; }  // might make more sense to have this as yet-another ENUM? 
+        public bool HasFatalError { get; }
+        public OperationType OperationType { get; } 
         public ProcessingOutcome Outcome { get; }
-        public List<ParserError> ParserErrors { get; }
-
-        // .GetFatalErrors()
-        // .GetAllErrors() ? 
+        public List<IError> FatalErrors { get; }
+        public List<IError> NonFatalErrors { get; }
+        // .Start and .End times? 
     }
 
     public abstract class BaseProcessingResult : IProcessingResult
     {
-        public string OperationType { get; protected set; }
+        public bool HasFatalError => this.FatalErrors.Count > 0;
+        public OperationType OperationType { get; protected set; }
         public ProcessingOutcome Outcome { get; private set; }
-        public List<ParserError> ParserErrors { get; }
+        public List<IError> FatalErrors { get; }
+        public List<IError> NonFatalErrors { get; }
 
         protected BaseProcessingResult()
         {
             this.Outcome = ProcessingOutcome.Failure; // default to failed. 
-            this.ParserErrors = new List<ParserError>();
+            this.FatalErrors = new List<IError>();
+            this.NonFatalErrors = new List<IError>();
         }
 
-        public void AddParserError(ParserError error)
+        public void AddFatalError(IError error)
         {
-            this.ParserErrors.Add(error);
+            this.FatalErrors.Add(error);
+        }
+
+        public void AddNonFatalError(IError error)
+        {
+            this.NonFatalErrors.Add(error);
         }
 
         public void SetSucceeded()
@@ -36,21 +43,21 @@
 
     public class BuildResult : BaseProcessingResult 
     {
-        // properties that this should have: 
-        // .BuildFile 
-        // ??? 
         public string BuildFile { get; }
-
 
         //      GUESSING that I should all all of the ? below via Set Success and/or SetFailure (i.e., even if build fails, I want to know # of lines, tokens, directives, etc)
         // .TokensCount?   - and... there are 2 potential counts: found, successfully-processed, etc. 
         // .DirectivesCount?   -- ditto on found/defined vs processed. 
         // .Lines(total)ProcessedCount ? 
 
-        public BuildResult(string buildFile)
+        public BuildResult(string buildFile, string verb)
         {
-            base.OperationType = "BUILD";  // TODO: yeah... this needs to be an enum... 
             this.BuildFile = buildFile;
+
+            if (verb.ToLowerInvariant() == "both")
+                base.OperationType = OperationType.DocsAndBuild;
+            else
+                base.OperationType = OperationType.Build;
         }
     }
 
@@ -60,6 +67,6 @@
 
     // OTHER, eventual, results will be: 
     //      MigrationRun (or whatever I call it)
-    //      git/source-controlBuild (or whatever)
+    //      git/source-controlBuild (or whatever)  (generator?)
     //  and so on.
 }

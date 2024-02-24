@@ -57,4 +57,13 @@
         AllBlockComments, 
         AllComments // block, header, everything. NOT sure I'm going to be able to tackle this but... it's worth a shot. 
     }
+
+    public enum OperationType
+    {
+        Docs,
+        Build,
+        DocsAndBuild, 
+        Runner, 
+        Generator
+    }
 }

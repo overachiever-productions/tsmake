@@ -27,11 +27,10 @@ function Invoke-TsmBuild {
 		[string]$ConfigFile,
 		[string]$Output, 		# TODO: Can't set -Output if/when multiple build-files are PIPED into this func - so... set up a parameter-set accordingly.
 		[string]$Version, 		# TODO: Pass it in as a string and have C# code parse it to determing if Semantic, FourPart, or Organic/Custom...
-		[string[]]$Tokens
-		
+		[string[]]$Tokens,
+		[switch]$SkipDocumentation = $false 
 		# options/switches: 
 		# -SkipFileMarker (default is to include one?)
-		# -SkipDocumentation
 		# -StopOnFirstErrorOrWhatever
 		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)
 	);
@@ -40,7 +39,7 @@ function Invoke-TsmBuild {
 		[bool]$xVerbose = ("Continue" -eq $global:VerbosePreference) -or ($PSBoundParameters["Verbose"] -eq $true);
 		[bool]$xDebug = ("Continue" -eq $global:DebugPreference) -or ($PSBoundParameters["Debug"] -eq $true);
 		
-		# TODO: process Version, Tokens, and other 'global' options that apply to situations where there's 1 build file or MULTIPLE.
+		# TODO: process Version
 		
 		# THEN: if $Tokens isn't empty... pass contents of $Tokens into Import-TsmTokens
 		# 		where, down at the end{} part of the func... will add each token into the TokenRegistry if it DOESN'T already exist, and, if it does, will set the value... 
@@ -50,7 +49,10 @@ function Invoke-TsmBuild {
 		# 		- skip/process file-marker, 
 		# 		- remove all /* header comments */ or just the FIRST set. 
 		# 		- StopOnFirstError or whatever I'm going to call that feature/option.
-		
+		$verb = "BOTH";
+		if ($SkipDocumentation) {
+			$verb = "BUILD";
+		}
 		
 		$results = @();
 	};
@@ -71,7 +73,7 @@ function Invoke-TsmBuild {
 					$cData = Load-ConfigDataFromConfigFile -ConfigFile $cf -Verbose:$xVerbose -Debug:$xDebug;
 				}
 				
-				$results += Process-Build -BuildFile $bf -ConfigData $cData -Version $Version -Verbose:$xVerbose -Debug:$xDebug;
+				$results += Process-Build -BuildFile $bf -ConfigData $cData -Version $Version -Verb $verb -Verbose:$xVerbose -Debug:$xDebug;
 			}
 		}
 		else {
@@ -116,7 +118,7 @@ function Invoke-TsmBuild {
 				$configData = Load-ConfigDataFromConfigFile $ConfigFile -Verbose:$xVerbose -Debug:$xDebug;
 			}
 			
-			$results += Process-Build -BuildFile $BuildFile -ConfigData $configData -Version $Version -Tokens $Tokens -Verbose:$xVerbose -Debug:$xDebug;
+			$results += Process-Build -BuildFile $BuildFile -ConfigData $configData -Version $Version -Tokens $Tokens -Verb $verb -Verbose:$xVerbose -Debug:$xDebug;
 		}
 	};
 	
@@ -136,7 +138,7 @@ function Process-Build {
 		[PSCustomObject]$ConfigData,
 		[string[]]$Tokens,
 		[PSCustomObject]$Options,
-		[ValidateSet('SQL', 'DOCS', 'BOTH')]
+		[ValidateSet("BUILD", "DOCS", "BOTH")]
 		[string]$Verb
 	)
 	
@@ -149,14 +151,12 @@ function Process-Build {
 	
 	process {
 		
-		
 		if (Has-Value $ConfigData) {
 			$configFilePath = $ConfigData.ConfigDataSource;
 			
 			Write-Verbose "	Leveraging Config Data from file: [$configFilePath].";
 			
-			# push paths, options, and such into BuildContext, OptionsObject, and the likes... 
-			
+			# TODO: Address options for things like Root, Output, FileMarker, Comment-Removal, and the likes into the BuildContext and/or BuildOptions objects.
 			
 			if (Has-Value $ConfigData['TokenDefinitions']) {
 				[PSCustomObject]$configFileTokens = $ConfigData['TokenDefinitions'];
@@ -170,7 +170,8 @@ function Process-Build {
 			Import-TsmTokens -TokenStrings $Tokens -Source "COMMAND-LINE: $Tokens" -AllowValueOverride $true;
 		}
 		
-		[PSCustomObject]$buildContext = New-BuildContext -BuildFile $BuildFile -Output $Output -Version $Version -WorkingDirectory (Get-Location) -Verbose:$xVerbose -Debug:$xDebug;;
+		[PSCustomObject]$buildContext = New-BuildContext -BuildFile $BuildFile -Output $Output -Version $Version `
+			-WorkingDirectory (Get-Location) -Verb $Verb -Verbose:$xVerbose -Debug:$xDebug;;
 		
 		$result = Execute-Pipeline -BuildContext $buildContext -Verbose:$xVerbose -Debug:$xDebug;
 	}
@@ -178,6 +179,21 @@ function Process-Build {
 	end {
 		return $result;
 	}
+}
+
+filter Find-ConfigFileByFileNameConvention {
+	param (
+		[string]$BuildFile
+	)
+	
+	$buildFileCoreName = (Split-Path -Path $BuildFile -Leaf).Replace(".build.sql", "");
+	
+	$potentialConfig = Get-ChildItem -Path $pwd -Filter "$($buildFileCoreName).build.psd1";
+	if ($null -eq $potentialConfig) {
+		$potentialConfig = Get-ChildItem -Path $pwd -Filter "$($buildFileCoreName).build.config";
+	}
+	
+	return $potentialConfig;
 }
 
 function Load-ConfigDataFromConfigFile {
@@ -199,19 +215,4 @@ function Load-ConfigDataFromConfigFile {
 	}
 	
 	return $configData;
-}
-
-filter Find-ConfigFileByFileNameConvention {
-	param (
-		[string]$BuildFile
-	)
-	
-	$buildFileCoreName = (Split-Path -Path $BuildFile -Leaf).Replace(".build.sql", "");
-	
-	$potentialConfig = Get-ChildItem -Path $pwd -Filter "$($buildFileCoreName).build.psd1";
-	if ($null -eq $potentialConfig) {
-		$potentialConfig = Get-ChildItem -Path $pwd -Filter "$($buildFileCoreName).build.config";
-	}
-	
-	return $potentialConfig;
 }

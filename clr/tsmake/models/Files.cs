@@ -1,6 +1,4 @@
-﻿using tsmake.models.directives;
-
-namespace tsmake.models
+﻿namespace tsmake.models
 {
 
     // REFACTOR: may want to a) rename this to 'BuildFile' and b) move it into a folder called 'Files' - along with CodeFile (for an 'include') and such...
@@ -13,27 +11,27 @@ namespace tsmake.models
     //                  where the only things left to be processed would be CONDITIONAL directives and Tokens. 
     //          - finally, a BufferManifest or OutputFile (i.e., 2 different NAMING options for the same things) would be the final 'processor' - that'd be dumped/written to a flat-file/artifact. 
     //              
-    public class BuildManifest
+    public class BuildFile
     {
         // TODO: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
         public string Source { get; }
-        public List<ParserError> ParserErrors { get; }
+        public List<ParserError> NonFatalParserErrors { get; }      // TODO: I'm not sure these'll ever even be used/needed. i.e., UNLESS there's some sort of 'warning' or whatever that can happen down within .ParseLines, then this isn't needed. 
         public List<ParserError> FatalParserErrors { get; }
         public List<Line> Lines { get; }
         public List<TokenInstance> Tokens { get; }
-        public List<IDirectiveInstance> Directives { get; }
+        public List<IDirective> Directives { get; }
 
         public RootPathDirective RootDirective { get; private set; }
         public OutputDirective OutputDirective { get; private set; }
 
-        public BuildManifest(string buildFile)
+        public BuildFile(string buildFile)
         {
             this.Source = buildFile;
-            this.ParserErrors = new List<ParserError>();
+            this.NonFatalParserErrors = new List<ParserError>();
             this.FatalParserErrors = new List<ParserError>();
             this.Lines = new List<Line>();
             this.Tokens = new List<TokenInstance>();
-            this.Directives = new List<IDirectiveInstance>();
+            this.Directives = new List<IDirective>();
 
             this.ParseLines();
         }
@@ -65,8 +63,7 @@ namespace tsmake.models
                                 context += Environment.NewLine;
                                 context += "Duplicate ROOT: defined on line: [{line.Directive.Location.LineNumber}].";
 
-                                var parserError = new ParserError(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
-                                this.ParserErrors.Add(parserError);
+                                var parserError = new ParserError(ErrorSeverity.Fatal, errorMessage, line.Directive.Location,  context);
                                 this.FatalParserErrors.Add(parserError);
                                 continue; // don't add to .Directives - just move on to the next directive, etc. 
                             }
@@ -83,8 +80,7 @@ namespace tsmake.models
                                 context += Environment.NewLine;
                                 context += "Duplicate OUTPUT: defined on line: [{line.Directive.Location.LineNumber}].";
 
-                                var parserError = new ParserError(ErrorSeverity.Fatal, line.Directive.Location, errorMessage, context);
-                                this.ParserErrors.Add(parserError);
+                                var parserError = new ParserError(ErrorSeverity.Fatal, errorMessage, line.Directive.Location, context);
                                 this.FatalParserErrors.Add(parserError);
                                 continue;
                             }
@@ -119,4 +115,21 @@ namespace tsmake.models
             }
         }
     }
+
+    public class CodeFile
+    {
+        // represents an individual 'include' (i.e., the guts/contents of a .sql file that is added to the build). 
+        //      can be a .FILE include, a .DIRECTORY (file) include, or the recursive instance of a file in EITHER of those. 
+
+        // NOTE: BuildFile's .ParseLines is ... going to need to be something that's pushed out into a 'helper' or 
+        //  whatever so that ... yup, it can be included here. 
+
+    }
+
+    // and. of course... the other problem with 'Directory' is that it's already part of System.IO
+    //public class Directory
+    //{
+    //    // might not want to have this... but, might. 
+    //    //      if i do it's the representation of every file in a DIRECTORY (include) - along with recursive ... includes and so on. 
+    //}
 }
