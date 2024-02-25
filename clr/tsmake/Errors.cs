@@ -12,6 +12,8 @@ namespace tsmake
         public ErrorSeverity Severity { get; }
         public string ErrorMessage { get; }
         public string Context { get; }
+
+        public string GetErrorText();
     }
 
     public abstract class BaseError : IError
@@ -26,6 +28,8 @@ namespace tsmake
             this.ErrorMessage = errorMessage;
             this.Context = context;
         }
+
+        public abstract string GetErrorText();
     }
 
     public class ParserError : BaseError, IError
@@ -39,6 +43,11 @@ namespace tsmake
 
             if (string.IsNullOrEmpty(base.Context))
                 base.Context = this.Location.GetLocationContext();
+        }
+
+        public override string GetErrorText()
+        {
+            return $"PARSER ERROR: {base.ErrorMessage} at {base.Context}";
         }
     }
 
@@ -58,6 +67,11 @@ namespace tsmake
                     base.Context = record.ScriptStackTrace;
                 }
             }
+        }
+
+        public override string GetErrorText()
+        {
+            throw new NotImplementedException();
         }
     }
 

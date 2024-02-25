@@ -40,14 +40,21 @@ function Execute-Pipeline {
 				$buildResult.AddFatalError($fatalError);
 			}
 			
-			# TODO: these may not even end up being used. 
-			foreach ($nonFatalError in $buildFile.NonFatalParserErrors) {
-				$buildResult.AddNonFatalError($nonFatalError);
-			}
-			
 			if ($buildResult.HasFatalError) {
 				return;
 			}
+		}
+		
+		foreach ($directive in $buildFile.Directives | Where-Object { $_.IsValid -eq $false	}) {
+#			Write-Host ($directive.ValidationMessage)
+#			Write-Host "ParserError: Type: $($directive.DirectiveName) - $($directive.ValidationMessage) at $($directive.Location.GetLocationContext()).";
+			$buildResult.AddFatalError((New-FatalParserError -Location ($directive.Location) -ErrorMessage ($directive.ValidationMessage)));
+		}
+		
+		return;
+		
+		if ($buildResult.HasFatalError) {
+			return;
 		}
 		
 		# ====================================================================================================
@@ -156,30 +163,22 @@ function Execute-Pipeline {
 		# ====================================================================================================
 		# 4. Process all INCLUDES (FILE/DIRECTORY/RECURSIVE... )
 		# ====================================================================================================			
-		# Start by Validating and Assigning Actual Paths:
 		foreach($include in $buildFile.Directives | Where-Object { $_.DirectiveName -in ("FILE", "DIRECTORY")}){
-			if (-not ($include.IsValid)) {
-				
-				
-				Write-Host "TODO: Add a parser validation error with line/location and message = $($include.ValidationMessage).";
-				# todo add some context to the above... actually, the context will be the line/location and the filename the error came from.
-			}
-			else {
-				# check the path type... 	
-				Write-Host "TODO: check/validate actual path + store for: $($include.DirectiveName) -> ($($include.PathType)) $($include.Path)";
-				
-				# use .PathType + .Path to create the .ConcretePath (or whatever). 
-				#  check to see if .ConcretePath is valid. Since we're dealing with files and directories (i.e., includes), each file/directory 
-				# 			should exist at this point. 
-				# 		if it doesn't, need to add a BuildError - with the location of the line in question - showing that the path of the file trying to be included is invalid.
-				# 			maybe there are IProcessingErrors of types ParsingError, Execution/RuntimeError (which is what this'd be), and ... i dunno, logic (dynamic directives, etc.) or whatever errors? 
-				# 		yeah... do the above - i.e., have different error types. ParserErrors, RuntimeErrors, Write/OutputErrors, MigrationErrors, Generator(from .git or whatever)Errors, and the likes. 
-				# 			they can all use VERY similar, underlying, functionality and interfaces + a base type ... but, they should be different TYPES of errors. 
-				
-				#  otherwise, IF the .ConcretePath truly exists: 
-				# 		$include.SetConcretePath($concretePath)
-				# 			which'll also set some sort of .IsReallyValid = true as well... 
-			}
+			
+			# check the path type... 	
+			Write-Host "TODO: check/validate actual path + store for: $($include.DirectiveName) -> ($($include.PathType)) $($include.Path)";
+			
+			# use .PathType + .Path to create the .ConcretePath (or whatever). 
+			#  check to see if .ConcretePath is valid. Since we're dealing with files and directories (i.e., includes), each file/directory 
+			# 			should exist at this point. 
+			# 		if it doesn't, need to add a BuildError - with the location of the line in question - showing that the path of the file trying to be included is invalid.
+			# 			maybe there are IProcessingErrors of types ParsingError, Execution/RuntimeError (which is what this'd be), and ... i dunno, logic (dynamic directives, etc.) or whatever errors? 
+			# 		yeah... do the above - i.e., have different error types. ParserErrors, RuntimeErrors, Write/OutputErrors, MigrationErrors, Generator(from .git or whatever)Errors, and the likes. 
+			# 			they can all use VERY similar, underlying, functionality and interfaces + a base type ... but, they should be different TYPES of errors. 
+			
+			#  otherwise, IF the .ConcretePath truly exists: 
+			# 		$include.SetConcretePath($concretePath)
+			# 			which'll also set some sort of .IsReallyValid = true as well... 
 			
 			# once the above is done... (and assuming that we're not in -EagerFailure = $true (or -StopOnFirstError - i.e., whatever I call it))
 			# 		then go ahead and, for each .IsTrulyValid INCLUDE directive... 
@@ -203,9 +202,6 @@ function Execute-Pipeline {
 			# 		d) writing output to OUTPUT.xxx 
 			#   	e) file-marker content/output. 
 			# 		f) spitting back results on stats and the overall outcome and the likes. 
-			
-			
-			
 			
 			
 		}
@@ -317,7 +313,7 @@ function Execute-Pipeline {
 	};
 	
 	end {
-		return $buildFile;
+		return $buildResult;
 	};
 }
 

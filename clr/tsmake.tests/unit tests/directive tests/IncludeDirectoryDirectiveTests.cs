@@ -1,5 +1,4 @@
 ﻿using NUnit.Framework.Internal;
-using tsmake.models.directives;
 using System.Collections.Generic;
 
 namespace tsmake.tests.unit_tests.directive_tests;
@@ -13,9 +12,8 @@ public class IncludeDirectoryDirectiveTests
     public void Simple_Directory_Directive_Extracts_Directory_Name()
     {
         var line = new Line(12, "-- ## DIRECTORY: Common ", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.Path, Is.EqualTo("Common"));
@@ -25,9 +23,8 @@ public class IncludeDirectoryDirectiveTests
     public void Simple_Directory_Directive_Identifies_Directory_Path_Type()
     {
         var line = new Line(12, "-- ## DIRECTORY: Common ", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.PathType, Is.EqualTo(PathType.Relative));
@@ -37,9 +34,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_Explicit_Path_Extracts_Directory_Name()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.Path, Is.EqualTo("Utilities"));
@@ -49,9 +45,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_Without_OrderBy_Orders_Alphabetically_By_Default()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.OrderBy, Is.EqualTo(OrderBy.Alphabetical));
@@ -61,9 +56,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_Sets_Explicit_OrderBy()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.OrderBy, Is.EqualTo(OrderBy.CreateDate));
@@ -73,9 +67,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_Sets_Explicit_Descending_Direction()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.OrderBy, Is.EqualTo(OrderBy.CreateDate));
@@ -86,10 +79,9 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_Single_Exclusion_Captures_Exclusion()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
-        
+        var sut = (IncludeDirectoryDirective)line.Directive;
+
         Assert.True(sut.IsValid);
         Assert.That(sut.Exclusions.Count, Is.EqualTo(1));
         Assert.That(sut.Exclusions.First(), Is.EqualTo("%~~%"));
@@ -99,9 +91,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_Multiple_Exclusions_Captures_Exclusions()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.Exclusions.Count, Is.EqualTo(2));
@@ -113,10 +104,9 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_Priorities_Captures_Priorities_In_Order()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
-        
+        var sut = (IncludeDirectoryDirective)line.Directive;
+
         Assert.True(sut.IsValid);
         Assert.That(sut.Priorities.Count, Is.EqualTo(2));
         Assert.That(sut.Priorities[0], Is.EqualTo("%priority_one%"));
@@ -127,9 +117,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_Empty_Priorities_Does_Not_Cause_Problems()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: ;", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.Priorities.Count, Is.EqualTo(0));
@@ -139,9 +128,8 @@ public class IncludeDirectoryDirectiveTests
     public void Directory_Directive_With_UnPriorities_Captures_Unpriorities_In_Order()
     {
         var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized", "build.sql");
-        var location = new Location("build.sql", 83, line.Content.IndexOf("DIRECTORY", StringComparison.Ordinal));
 
-        var sut = new IncludeDirectoryDirective(line, location);
+        var sut = (IncludeDirectoryDirective)line.Directive;
 
         Assert.True(sut.IsValid);
         Assert.That(sut.UnPriorities.Count, Is.EqualTo(2));

@@ -115,7 +115,7 @@ filter Translate-Path {
 filter New-FatalParserError {
 	param (
 		[Parameter(Mandatory)]
-		[tsmake.Location]$Location,
+		[tsmake.models.Location]$Location,
 		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	);
@@ -128,7 +128,7 @@ filter New-ParserError {
 		[Parameter(Mandatory)]
 		[tsmake.ErrorSeverity]$Severity,
 		[Parameter(Mandatory)]
-		[tsmake.Location]$Location,
+		[tsmake.models.Location]$Location,
 		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	);

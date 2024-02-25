@@ -8,9 +8,8 @@
 $global:VerbosePreference = "Continue";
 
 	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net";
+
 	Get-TsmToken -Name "Doc_Link";
-
-
 
 
 

@@ -82,8 +82,7 @@
         public CommentDirective(Line line, Location location) : base(line, location)
         {
             DirectiveName = "COMMENT";
-            // And... done. 
-            // As in, there's NOTHING to do here.
+            this.IsValid = true;
         }
     }
 
@@ -113,7 +112,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [INCLUDEFILE] in file {location.FileName}, line: {location.LineNumber}.";
+                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [INCLUDEFILE] in file {location.FileName}, line: {location.LineNumber}.";
         }
     }
 
@@ -180,7 +179,7 @@
                 else
                 {
                     IsValid = false;
-                    ValidationMessage =
+                    base.ValidationMessage =
                         "Something about incorrect syntax. Needed/expected ORDERBY, EXCLUDE, PRIORITIES and (optionally) PATH... but not found";
                 }
             }
@@ -235,7 +234,7 @@
                         UnPriorities.AddRange(priorities[1].Split(",", StringSplitOptions.RemoveEmptyEntries).Select(s => s.Trim()));
                         break;
                     default:
-                        ValidationMessage = "Invalid Syntax for PRIORITIES: - multiple semi-colons (;) found - should only be 1.";
+                        base.ValidationMessage = "Invalid Syntax for PRIORITIES: - multiple semi-colons (;) found - should only be 1.";
                         return;
                 }
             }

@@ -22,7 +22,7 @@
 
         public string GetLocationContext()
         {
-            return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber}).";
+            return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber})";
         }
     }
 }

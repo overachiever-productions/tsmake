@@ -67,4 +67,4 @@ $global:tsmTokenRegistry = [tsmake.models.TokenRegistry]::Instance;
 # Formatter
 # ====================================================================================================	
 $global:TsmFormatter = [tsmake.Formatter]::Instance;
-$TsmFormatter.SetCurrentHostInfo($Host.Name);
+$TsmFormatter.SetCurrentHostInfo($Host.Name, $Host.UI.RawUI.WindowSize.Width);
