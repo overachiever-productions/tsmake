@@ -30,28 +30,18 @@ function Execute-Pipeline {
 		# ====================================================================================================
 		# 1. Create BuildManifest (which does a gob of work processing individual lines in the .build.sql file...)
 		# ====================================================================================================	
-		[tsmake.models.BuildFile]$buildFile = [tsmake.models.BuildFile]($BuildContext.BuildFile);
+		[tsmake.models.BuildFile]$buildFile = New-Object tsmake.models.BuildFile($BuildContext.BuildFile);
 		
 		# ====================================================================================================
 		# 2. Check-for and report-on ParserErrors:
 		# ====================================================================================================
-		if ($buildFile.ParserErrors.Count -gt 0) {
-			foreach ($fatalError in $buildFile.FatalParserErrors) {
-				$buildResult.AddFatalError($fatalError);
-			}
-			
-			if ($buildResult.HasFatalError) {
-				return;
-			}
+		foreach ($fatalError in $buildFile.FatalParserErrors) {
+			$buildResult.AddFatalError($fatalError);
 		}
-		
+				
 		foreach ($directive in $buildFile.Directives | Where-Object { $_.IsValid -eq $false	}) {
-#			Write-Host ($directive.ValidationMessage)
-#			Write-Host "ParserError: Type: $($directive.DirectiveName) - $($directive.ValidationMessage) at $($directive.Location.GetLocationContext()).";
 			$buildResult.AddFatalError((New-FatalParserError -Location ($directive.Location) -ErrorMessage ($directive.ValidationMessage)));
 		}
-		
-		return;
 		
 		if ($buildResult.HasFatalError) {
 			return;
@@ -161,22 +151,69 @@ function Execute-Pipeline {
 		}
 		
 		# ====================================================================================================
-		# 4. Process all INCLUDES (FILE/DIRECTORY/RECURSIVE... )
+		# 4. Validate Include File Paths...
 		# ====================================================================================================			
-		foreach($include in $buildFile.Directives | Where-Object { $_.DirectiveName -in ("FILE", "DIRECTORY")}){
+		Write-Verbose "	Validating FILE and DIRECTORY paths.";
+		foreach ($include in $buildFile.Directives | Where-Object {	$_.DirectiveName -in ("FILE", "DIRECTORY")	}) {
 			
-			# check the path type... 	
-			Write-Host "TODO: check/validate actual path + store for: $($include.DirectiveName) -> ($($include.PathType)) $($include.Path)";
+			$concretePath = $null;
+			Write-Verbose "		Setting $($include.PathType) path for $($include.DirectiveName): $($include.Path).";
+			switch ($include.PathType) {
+				"Absolute" {
+					$concretePath = $include.Path;
+				}
+				"Relative" {
+					$concretePath = Translate-Path -CurrentPath ($BuildContext.WorkingDirectory) -PathDirective ($include.Path);
+				}
+				"Rooted" {
+					$concretePath = Translate-Path -CurrentPath ($BuildContext.Root) -PathDirective ($include.Path.Replace("\\\", ""));
+				}
+			}
+			Write-Verbose "			Concrete Path: $($concretePath).";
 			
-			# use .PathType + .Path to create the .ConcretePath (or whatever). 
-			#  check to see if .ConcretePath is valid. Since we're dealing with files and directories (i.e., includes), each file/directory 
-			# 			should exist at this point. 
-			# 		if it doesn't, need to add a BuildError - with the location of the line in question - showing that the path of the file trying to be included is invalid.
-			# 			maybe there are IProcessingErrors of types ParsingError, Execution/RuntimeError (which is what this'd be), and ... i dunno, logic (dynamic directives, etc.) or whatever errors? 
-			# 		yeah... do the above - i.e., have different error types. ParserErrors, RuntimeErrors, Write/OutputErrors, MigrationErrors, Generator(from .git or whatever)Errors, and the likes. 
-			# 			they can all use VERY similar, underlying, functionality and interfaces + a base type ... but, they should be different TYPES of errors. 
+			try {
+				$exists = Test-Path -Path $concretePath;
+				if (-not ($exists)) {
+					$buildResult.AddFatalError((New-BuildError -Severity Fatal -ErrorMessage "$($include.DirectiveName) not found: [$($concretePath)]." -Location ($include.Location)));
+					Write-Verbose "				Concrete Path Not Found: [$concretePath]."
+				}
+			}
+			catch {
+				$buildResult.AddFatalError((New-BuildError -Severity Fatal -ErrorMessage "Path: [$concretePath] is invalid." -Exception $_));
+			}
 			
-			#  otherwise, IF the .ConcretePath truly exists: 
+			$include.SetTranslatedPath($concretePath);
+		}
+		
+		if ($buildResult.HasFatalError) {
+			return;
+		}
+		
+		# ====================================================================================================
+		# 5. Process File Inclusions:
+		# ====================================================================================================		
+		Write-Verbose "	Processing FILE and DIRECTORY inclusions.";
+		[tsmake.models.BuildManifest]$buildManifest = New-Object tsmake.models.BuildManifest];
+		foreach ($line in $buildFile.Lines) {
+			if (Has-Value $line.Directive) {
+				switch ($line.Directive.DirectiveName) {
+					{ $_ -in ("ROOT", "OUTPUT", "FILEMARKER", "VERSION_CHECKER", "COMMENT") } {
+						continue; # skip
+					}
+					{ $_ -in ("FILE", "DIRECTORY") } {
+						# do recursive inclusion... 
+						Write-Host "need to include: $($line.Directive.DirectiveName) => $($line.Directive.TranslatedPath)";
+					}
+					{ $_ -in ("CONDITIONAL_X", "CONDITIONAL_Y")	} {
+						$buildManifest.AddLine($line);
+					}
+				}
+			}
+			else {
+				$buildManifest.AddLine($line);
+			}
+		}
+		#  otherwise, IF the .ConcretePath truly exists: 
 			# 		$include.SetConcretePath($concretePath)
 			# 			which'll also set some sort of .IsReallyValid = true as well... 
 			
@@ -204,7 +241,6 @@ function Execute-Pipeline {
 			# 		f) spitting back results on stats and the overall outcome and the likes. 
 			
 			
-		}
 		
 		#		foreach ($line in $buildFile.Lines) {
 		#			#write-host "$($line.LineNumber)  -> $($line.LineType)";
@@ -233,9 +269,6 @@ function Execute-Pipeline {
 		#		}		
 		
 			
-		
-		$buildResult.SetSucceeded(); # just pretend for now... 
-		
 		# ====================================================================================================
 		# X. ... NEXT
 		# ====================================================================================================			
@@ -309,7 +342,8 @@ function Execute-Pipeline {
 		# 			so... do I check these 2x or .. wait until the end? or ... include everything up front. 
 		# 
 		
-		
+		# TODO: Presumably, if we get 'here' then... there were no fatal errors or problems that stopped the build... 
+		$buildResult.SetSucceeded();  
 	};
 	
 	end {

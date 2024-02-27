@@ -8,6 +8,8 @@
 
         bool IsValid { get; }
         public string ValidationMessage { get; }
+
+        public void SetTranslatedPath(string translatedPath);
     }
 
     public abstract class BaseDirective : IDirective
@@ -17,6 +19,7 @@
         public Location Location { get; }
         public bool IsValid { get; protected set; }
         public string ValidationMessage { get; protected set; }
+        public string TranslatedPath { get; private set; }
 
         protected BaseDirective(Line line, Location location)
         {
@@ -25,6 +28,11 @@
             Location = location;
 
             IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
+        }
+
+        public void SetTranslatedPath(string translatedPath)
+        {
+            this.TranslatedPath = translatedPath;
         }
     }
 
@@ -112,7 +120,7 @@
                 IsValid = true;
             }
             else
-                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [INCLUDEFILE] in file {location.FileName}, line: {location.LineNumber}.";
+                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive: [INCLUDEFILE].";
         }
     }
 

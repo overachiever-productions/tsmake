@@ -47,7 +47,7 @@ namespace tsmake
 
         public override string GetErrorText()
         {
-            return $"PARSER ERROR: {base.ErrorMessage} at {base.Context}";
+            return $"PARSER ERROR: {base.ErrorMessage} At {base.Context}";
         }
     }
 
@@ -71,7 +71,7 @@ namespace tsmake
 
         public override string GetErrorText()
         {
-            throw new NotImplementedException();
+            return $"BUILD ERROR: {base.ErrorMessage}";
         }
     }
 

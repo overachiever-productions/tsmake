@@ -165,6 +165,7 @@ namespace tsmake
             return output;
         }
 
+        // NOTE: Interestingly enough, if I did, say, 3x of these 'side by side' ... i'd have columns. 
         private string WrapText(int leftPadding, int maxWidth, string data, int rightPadding)
         {
             int totalLength = data.Length;

@@ -140,7 +140,15 @@ filter New-BuildError {
 	param (
 		[tsmake.ErrorSeverity]$Severity = "Fatal",
 		[Parameter(Mandatory)]
-		[string]$ErrorMessage
+		[string]$ErrorMessage,
+		[System.Management.Automation.ErrorRecord]$Exception,
+		[tsmake.models.Location]$Location
 	)
-
+	
+	[string]$context = $null;
+	if ($null -ne $Location) {
+		$context = "Source: [$($Location.FileName)]($($Location.LineNumber), $($Location.ColumnNumber)).";
+	}
+	
+	return New-Object tsmake.BuildError($Severity, $ErrorMessage, $Exception, $context);
 }

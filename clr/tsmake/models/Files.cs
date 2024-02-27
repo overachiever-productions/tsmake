@@ -15,7 +15,7 @@
     {
         // TODO: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
         public string Source { get; }
-        public List<ParserError> NonFatalParserErrors { get; }      // TODO: I'm not sure these'll ever even be used/needed. i.e., UNLESS there's some sort of 'warning' or whatever that can happen down within .ParseLines, then this isn't needed. 
+        //public List<ParserError> NonFatalParserErrors { get; }      // TODO: I'm not sure these'll ever even be used/needed. i.e., UNLESS there's some sort of 'warning' or whatever that can happen down within .ParseLines, then this isn't needed. 
         public List<ParserError> FatalParserErrors { get; }
         public List<Line> Lines { get; }
         public List<TokenInstance> Tokens { get; }
@@ -27,7 +27,7 @@
         public BuildFile(string buildFile)
         {
             this.Source = buildFile;
-            this.NonFatalParserErrors = new List<ParserError>();
+            //this.NonFatalParserErrors = new List<ParserError>();
             this.FatalParserErrors = new List<ParserError>();
             this.Lines = new List<Line>();
             this.Tokens = new List<TokenInstance>();
@@ -116,9 +116,26 @@
         }
     }
 
+    public class BuildManifest
+    {
+        public List<Line> Lines { get; }
+
+        public BuildManifest()
+        {
+
+
+            this.Lines = new List<Line>();
+        }
+
+        public void AddLine(Line line)
+        {
+            this.Lines.Add(line);
+        }
+    }
+
     public class CodeFile
     {
-        // represents an individual 'include' (i.e., the guts/contents of a .sql file that is added to the build). 
+        // represents an individual 'include' (i.e., the guts/contents of a .sql file that is added to the build). manifest
         //      can be a .FILE include, a .DIRECTORY (file) include, or the recursive instance of a file in EITHER of those. 
 
         // NOTE: BuildFile's .ParseLines is ... going to need to be something that's pushed out into a 'helper' or 
