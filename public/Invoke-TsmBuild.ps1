@@ -6,13 +6,11 @@
 
 	Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 $global:VerbosePreference = "Continue";
-
 	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net";
 
 
 
 	Get-TsmToken -Name "Doc_Link";
-
 
 
 	#$files = @("D:\Dropbox\Repositories\tsmake\~~spelunking\current.build.sql", "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql);

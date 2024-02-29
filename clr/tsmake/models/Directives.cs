@@ -8,6 +8,10 @@
 
         bool IsValid { get; }
         public string ValidationMessage { get; }
+    }
+
+    public interface IIncluded {
+        public string TranslatedPath { get; }
 
         public void SetTranslatedPath(string translatedPath);
     }
@@ -19,7 +23,6 @@
         public Location Location { get; }
         public bool IsValid { get; protected set; }
         public string ValidationMessage { get; protected set; }
-        public string TranslatedPath { get; private set; }
 
         protected BaseDirective(Line line, Location location)
         {
@@ -28,11 +31,6 @@
             Location = location;
 
             IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
-        }
-
-        public void SetTranslatedPath(string translatedPath)
-        {
-            this.TranslatedPath = translatedPath;
         }
     }
 
@@ -102,10 +100,11 @@
     // REFACTOR: IncludeFileDirective, RootPathDirective, and OutputDirective all have - for all intents and purposes - the SAME underlying functionality IN THE .CTOR
     //      in essence, they all: a) get the directive data/input, b) check to see if it's a valid path and assign it + type if it is, c) throw an exception if not valid path. 
     //      ultimately, in terms of .ctor logic - the ONLY thing that's different is the error message. 
-    public class IncludeFileDirective : BaseDirective
+    public class IncludeFileDirective : BaseDirective, IIncluded
     {
         public string Path { get; }
         public PathType PathType { get; }
+        public string TranslatedPath { get; private set; }
 
         public IncludeFileDirective(Line line, Location location) : base(line, location)
         {
@@ -122,9 +121,14 @@
             else
                 base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive: [INCLUDEFILE].";
         }
+
+        public void SetTranslatedPath(string translatedPath)
+        {
+            this.TranslatedPath = translatedPath;
+        }
     }
 
-    public class IncludeDirectoryDirective : BaseDirective
+    public class IncludeDirectoryDirective : BaseDirective, IIncluded
     {
         public string Path { get; }
         public PathType PathType { get; }
@@ -133,6 +137,7 @@
         public List<string> Exclusions { get; }
         public List<string> Priorities { get; }
         public List<string> UnPriorities { get; }
+        public string TranslatedPath { get; private set; }
 
         public IncludeDirectoryDirective(Line line, Location location) : base(line, location)
         {
@@ -248,6 +253,11 @@
             }
 
             IsValid = true;
+        }
+
+        public void SetTranslatedPath(string translatedPath)
+        {
+            this.TranslatedPath = translatedPath;
         }
     }
 

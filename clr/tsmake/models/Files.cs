@@ -13,12 +13,11 @@
     //              
     public class BuildFile
     {
-        // TODO: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
+        // REFACTOR: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
         public string Source { get; }
-        //public List<ParserError> NonFatalParserErrors { get; }      // TODO: I'm not sure these'll ever even be used/needed. i.e., UNLESS there's some sort of 'warning' or whatever that can happen down within .ParseLines, then this isn't needed. 
         public List<ParserError> FatalParserErrors { get; }
         public List<Line> Lines { get; }
-        public List<TokenInstance> Tokens { get; }
+        public List<Token> Tokens { get; }
         public List<IDirective> Directives { get; }
 
         public RootPathDirective RootDirective { get; private set; }
@@ -30,7 +29,7 @@
             //this.NonFatalParserErrors = new List<ParserError>();
             this.FatalParserErrors = new List<ParserError>();
             this.Lines = new List<Line>();
-            this.Tokens = new List<TokenInstance>();
+            this.Tokens = new List<Token>();
             this.Directives = new List<IDirective>();
 
             this.ParseLines();
@@ -122,8 +121,6 @@
 
         public BuildManifest()
         {
-
-
             this.Lines = new List<Line>();
         }
 
@@ -131,22 +128,73 @@
         {
             this.Lines.Add(line);
         }
+
+        public void AddLines(List<Line> lines)
+        {
+            this.Lines.AddRange(lines);
+        }
     }
 
-    public class CodeFile
+    public interface IIncludeFile
     {
-        // represents an individual 'include' (i.e., the guts/contents of a .sql file that is added to the build). manifest
-        //      can be a .FILE include, a .DIRECTORY (file) include, or the recursive instance of a file in EITHER of those. 
-
-        // NOTE: BuildFile's .ParseLines is ... going to need to be something that's pushed out into a 'helper' or 
-        //  whatever so that ... yup, it can be included here. 
-
+        public List<string> SourceFiles { get; }
     }
 
-    // and. of course... the other problem with 'Directory' is that it's already part of System.IO
-    //public class Directory
-    //{
-    //    // might not want to have this... but, might. 
-    //    //      if i do it's the representation of every file in a DIRECTORY (include) - along with recursive ... includes and so on. 
-    //}
+    public class FileLineage
+    {
+        public Stack<string> Lineage { get; }
+
+        public void AddSourceFile(string sourceFile)
+        {
+            this.Lineage.Push(sourceFile);
+        }
+
+        public FileLineage(string buildFile, string sourceFile)
+        {
+            this.Lineage = new Stack<string>();
+            this.Lineage.Push(buildFile);
+            this.Lineage.Push(sourceFile);
+        }
+    }
+
+    public class IncludedFile : IIncludeFile
+    {
+        public List<string> SourceFiles { get; }
+
+        public IncludedFile(IncludeFileDirective directive)
+        {
+            this.SourceFiles = new List<string> { directive.TranslatedPath };
+        }
+    }
+
+    public class IncludedDirectory : IIncludeFile
+    {
+        public List<string> SourceFiles { get; }
+
+        public IncludedDirectory(IncludeDirectoryDirective directive)
+        {
+            this.SourceFiles = new List<string>();
+
+
+            // path should be valid at this point
+            // meaning that what I should do at this point is: 
+            // enumerate FILEs in the directory. 
+            // EXCLUDE any files that need to be excluded. 
+            // create a List<IncludeFile> (or maybe just strings/paths) for PRIORITIZED files that are/were matched in the main list... 
+            // create a List<X> for UN-PRIORITIZED files that match (in order). 
+            // join/output PRIORITY, others (sort-ordered as defined), UNPRIORITIZED. 
+        }
+    }
+
+    public class IncludeFactory
+    {
+        public static IIncludeFile GetInclude(IDirective directive)
+        {
+            if (directive.DirectiveName == "FILE")
+                return new IncludedFile((IncludeFileDirective)directive);
+
+            return new IncludedDirectory((IncludeDirectoryDirective)directive);
+        }
+    }
+
 }

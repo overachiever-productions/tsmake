@@ -20,13 +20,13 @@
         }
     }
 
-    public class TokenInstance
+    public class Token
     {
         public string Name { get; }
         public string DefaultValue { get; }
         public Location Location { get; }
 
-        public TokenInstance(string tokenValue, Location location)
+        public Token(string tokenValue, Location location)
         {
             if (tokenValue.Contains(":"))
             {

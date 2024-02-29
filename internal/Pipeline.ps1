@@ -201,8 +201,21 @@ function Execute-Pipeline {
 						continue; # skip
 					}
 					{ $_ -in ("FILE", "DIRECTORY") } {
-						# do recursive inclusion... 
-						Write-Host "need to include: $($line.Directive.DirectiveName) => $($line.Directive.TranslatedPath)";
+						$include = [tsmake.models.IncludeFactory]::GetInclude($line.Directive);
+						
+						foreach ($fileToParse in $include.SourceFiles) {
+							Write-Host "sourceFile to (Recursively) Include: $fileToParse";
+							
+							$fileLineage = New-Object tsmake.models.FileLineage(($BuildContext.BuildFile), $fileToParse);
+							$processingResult = [tsmake.models.LineParser]::Instance.ParseLines($fileToParse, $fileLineage);
+							
+							$buildManifest.AddLines($processingResult.Lines);
+							if ($processingResult.Errors.Count -gt 0) {
+								$buildManifest.AddErrors($processingResult.Errors);
+							}
+							
+							#TODO: Should I RETURN if there are any fatal errors? or keep going? 
+						}
 					}
 					{ $_ -in ("CONDITIONAL_X", "CONDITIONAL_Y")	} {
 						$buildManifest.AddLine($line);
@@ -213,16 +226,7 @@ function Execute-Pipeline {
 				$buildManifest.AddLine($line);
 			}
 		}
-		#  otherwise, IF the .ConcretePath truly exists: 
-			# 		$include.SetConcretePath($concretePath)
-			# 			which'll also set some sort of .IsReallyValid = true as well... 
 			
-			# once the above is done... (and assuming that we're not in -EagerFailure = $true (or -StopOnFirstError - i.e., whatever I call it))
-			# 		then go ahead and, for each .IsTrulyValid INCLUDE directive... 
-			# 			start (recursively) COPYING content from $buildFile (replacement name for $buildFile) into NewBuildManifest or ExpandoManifest - whatever I'm going to call it.
-			# 				where RECURSIVELY means ... for each FileManifest or DirectoryManifest that I create ... pull in the contents, look for FILE/DIRECTORY includes in those... and, if found... recurse on down. 
-# 	NOTE: 	FileManifests will be what end up being used for generating IN-FILE documentation. 
-# 		 not sure that HAS TO BE processed here (chronologically/logicallty) 
 # 		BUT: FileManifests will have processed CommentPreferences (i.e., remove top /* 1x header comment */ or /* all header commnets */
 # 			 (where 'removed' means: will NOT have output into the Build/ExpandoManifest ... vs actually deleting/removing any actual text. 
 # 				point being: after loading all FILE includes ... i'll have everything i need (within the collection of FileManifests) to grab/parse/build/output IN-FILE docs. 
@@ -347,6 +351,7 @@ function Execute-Pipeline {
 	};
 	
 	end {
+		# TODO: copy these into a 'history/buffer' object so that callers (i.e., users) can interrogate
 		return $buildResult;
 	};
 }
