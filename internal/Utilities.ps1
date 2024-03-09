@@ -90,28 +90,15 @@ filter Collapse-Arguments {
 	return $Arg2;
 }
 
-filter New-FatalParserError {
-	param (
-		[Parameter(Mandatory)]
-		[tsmake.models.Location]$Location,
-		[Parameter(Mandatory)]
-		[string]$ErrorMessage
-	);
-	
-	return New-ParserError -Severity "Fatal" -Location $Location -ErrorMessage $ErrorMessage;
-}
-
 filter New-ParserError {
 	param (
 		[Parameter(Mandatory)]
-		[tsmake.ErrorSeverity]$Severity,
-		[Parameter(Mandatory)]
 		[tsmake.models.Location]$Location,
 		[Parameter(Mandatory)]
 		[string]$ErrorMessage
 	);
 	
-	return New-Object tsmake.ParserError($Severity, $ErrorMessage, $Location);
+	return New-Object tsmake.ParserError($ErrorMessage, $Location);
 }
 
 filter New-BuildError {

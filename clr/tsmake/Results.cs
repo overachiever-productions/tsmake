@@ -2,37 +2,29 @@
 {
     public interface IProcessingResult
     {
-        public bool HasFatalError { get; }
+        public bool HasErrors { get; }
         public OperationType OperationType { get; } 
         public ProcessingOutcome Outcome { get; }
-        public List<IError> FatalErrors { get; }
-        public List<IError> NonFatalErrors { get; }
+        public List<IError> Errors { get; }
         // .Start and .End times? 
     }
 
     public abstract class BaseProcessingResult : IProcessingResult
     {
-        public bool HasFatalError => this.FatalErrors.Count > 0;
+        public bool HasErrors => this.Errors.Count > 0;
         public OperationType OperationType { get; protected set; }
         public ProcessingOutcome Outcome { get; private set; }
-        public List<IError> FatalErrors { get; }
-        public List<IError> NonFatalErrors { get; }
+        public List<IError> Errors { get; }
 
         protected BaseProcessingResult()
         {
             this.Outcome = ProcessingOutcome.Failure; // default to failed. 
-            this.FatalErrors = new List<IError>();
-            this.NonFatalErrors = new List<IError>();
+            this.Errors = new List<IError>();
         }
 
-        public void AddFatalError(IError error)
+        public void AddError(IError error)
         {
-            this.FatalErrors.Add(error);
-        }
-
-        public void AddNonFatalError(IError error)
-        {
-            this.NonFatalErrors.Add(error);
+            this.Errors.Add(error);
         }
 
         public void SetSucceeded()

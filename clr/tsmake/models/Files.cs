@@ -38,7 +38,7 @@ namespace tsmake.models
                     string errorMessage = $"Duplicate ROOT Directive(s) in Build File: [{source}].";
                     string context = "ROOT directives on found on lines: " + string.Join(",",
                         roots.Select(r => r.Location.LineNumber.ToString()).ToArray());
-                    this.Errors.Add(new ParserError(ErrorSeverity.Fatal, errorMessage, roots[0].Location, context));
+                    this.Errors.Add(new ParserError(errorMessage, roots[0].Location, context));
                     break;
             }
 
@@ -54,7 +54,7 @@ namespace tsmake.models
                     string errorMessage = $"Duplicate OUTPUT Directive(s) in Build File: [{source}].";
                     string context = "OUTPUT directives on found on lines: " + string.Join(",",
                         outputs.Select(o => o.Location.LineNumber.ToString()).ToArray());
-                    this.Errors.Add(new ParserError(ErrorSeverity.Fatal, errorMessage, outputs[0].Location, context));
+                    this.Errors.Add(new ParserError(errorMessage, outputs[0].Location, context));
                     break;       
             }
         }
@@ -98,7 +98,7 @@ namespace tsmake.models
 
             if (!fileManager.FileExists(translatedPath))
             {
-                this.Errors.Add(new ParserError(ErrorSeverity.Fatal, "Include File xxx not found.", directive.Location, "context for where the file include directive was found and stuff... "));;
+                this.Errors.Add(new ParserError("Include File xxx not found.", directive.Location, "context for where the file include directive was found and stuff... "));;
                 this.SourceFiles = new List<string>();
             }
             else 
@@ -132,7 +132,7 @@ namespace tsmake.models
             var translatedPath = this.FileManager.TranslatePath(this.Directive.Path, this.Directive.PathType, workingDirectory, root);
             if (!this.FileManager.DirectoryExists(translatedPath))
             {
-                this.Errors.Add(new ParserError(ErrorSeverity.Fatal, "Include Directory xxx not found.", this.Directive.Location, "context for where the file include directive was found and stuff... ")); ;
+                this.Errors.Add(new ParserError("Include Directory xxx not found.", this.Directive.Location, "context for where the file include directive was found and stuff... ")); ;
                 return;
             }
 

@@ -36,16 +36,10 @@ function Execute-Pipeline {
 		[tsmake.models.BuildFile]$buildFile = New-Object tsmake.models.BuildFile($BuildContext.BuildFile, $fileManager);
 		
 		foreach ($error in $buildFile.Errors) {
-			# TODO: I'm not sure I need to give a fig about error SEVERITY - I think that an error is an error... 
-			if ("FATAL" -eq $error.Severity) {
-				$buildResult.AddFatalError($error);
-			}
-			else {
-				$buildResult.AddNonFatalError($error);
-			}
+			$buildResult.AddError($error);
 		}
 		
-		if ($buildResult.HasFatalError) {
+		if ($buildResult.HasErrors) {
 			return;
 		}
 		
@@ -67,24 +61,24 @@ function Execute-Pipeline {
 					Write-Verbose "		Root Directive specifies Relative root path: [$rootPath].";
 				}
 				"Rooted" {
-					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives."));
+					$buildResult.AddError((New-ParserError -Location ($root.Location) -ErrorMessage "Rooted Paths are NOT allowed for RootPath Directives."));
 				}
 				default {
 					$msg = "Unknown PathType: [$($root.PathType)] specified for RootPath Directive.";
-					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage $msg));
+					$buildResult.AddError((New-ParserError -Location ($root.Location) -ErrorMessage $msg));
 				}
 			}
 			
 			if (Has-Value $rootPath) {
 				if (-not (Test-Path -Path ($rootPath))) {
-					$buildResult.AddFatalError((New-FatalParserError -Location ($root.Location) -ErrorMessage "Directive Specified Root Path: [$rootPath] does NOT exist."));
+					$buildResult.AddError((New-ParserError -Location ($root.Location) -ErrorMessage "Directive Specified Root Path: [$rootPath] does NOT exist."));
 				}				
 				
 				$BuildContext.SetRoot($rootPath);
 				Write-Verbose "			Root Path Explicitly Set to: [$rootPath].";
 			}
 			
-			if ($buildFile.HasFatalError) {
+			if ($buildFile.HasErrors) {
 				return;
 			}
 		}
@@ -116,7 +110,7 @@ function Execute-Pipeline {
 					}
 					default {
 						$msg = "Unknown PathType: [$($root.PathType)] specified for Output Directive.";
-						$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage $msg));
+						$buildResult.AddError((New-BuildError -ErrorMessage $msg));
 					}
 				}
 				
@@ -124,7 +118,7 @@ function Execute-Pipeline {
 					$outputDirectory = Split-Path -Path $outputPath -Parent;
 					
 					if (-not (Test-Path $outputDirectory)) {
-						$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage "Output Directory Specified by Output Directive does NOT exist: [$outputDirectory]."));
+						$buildResult.AddError((New-BuildError -ErrorMessage "Output Directory Specified by Output Directive does NOT exist: [$outputDirectory]."));
 					}
 					
 					if (Test-Path -Path $outputPath) {
@@ -132,7 +126,7 @@ function Execute-Pipeline {
 						
 						# TODO: default behavior is to simply overwrite $outputPath. 
 						# 		but, there can/will be some sort of OPTIONAL preference or switch that'll be the equivalent of -PreventOutputOverwrite
-						# 		and, if when set to $true ... then: $buildResult.AddFatalError((New-RuntimeError -Severity "Fatal" -Location (xxx) -ErrorMessage "file exists - preference it so not overwrite. terminating..."));
+						# 		and, if when set to $true ... then: $buildResult.AddError((New-RuntimeError -Location (xxx) -ErrorMessage "file exists - preference it so not overwrite. terminating..."));
 					}
 					
 					$BuildContext.SetOutput($outputPath);
@@ -145,10 +139,10 @@ function Execute-Pipeline {
 		}
 		
 		if (Is-Empty $BuildContext.Output) {
-			$buildResult.AddFatalError((New-BuildError -Severity "Fatal" -ErrorMessage "Either specify -Output via command-line operations, or make sure to include an ##OUTPUT: directive within .build file."));
+			$buildResult.AddError((New-BuildError -ErrorMessage "Either specify -Output via command-line operations, or make sure to include an ##OUTPUT: directive within .build file."));
 		}
 		
-		if ($buildResult.HasFatalError) {
+		if ($buildResult.HasErrors) {
 			return;
 		}
 
@@ -179,7 +173,7 @@ function Execute-Pipeline {
 #								$buildManifest.AddErrors($processingResult.Errors);
 #							}
 							
-							#TODO: Should I RETURN if there are any fatal errors? or keep going? 
+							#TODO: Should I RETURN if there are any errors? or keep going? 
 						}
 					}
 					{ $_ -in ("CONDITIONAL_X", "CONDITIONAL_Y")	} {
@@ -279,7 +273,7 @@ function Execute-Pipeline {
 #			Write-Host "Token Location: $($t.Location.LineNumber), $($t.Location.ColumnNumber) -> TokenName: $($t.Name)  -> DefaultValue: $($t.DefaultValue)  ";
 #		}
 		
-		# TODO: Presumably, if we get 'here' then... there were no fatal errors or problems that stopped the build... 
+		# TODO: Presumably, if we get 'here' then... there were no errors or problems that stopped the build... 
 		$buildResult.SetSucceeded();  
 	};
 	

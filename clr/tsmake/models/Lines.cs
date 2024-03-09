@@ -279,12 +279,17 @@ namespace tsmake.models
                 }
 
                 output.AddLine(line);
-
-
                 i++;
             }
 
+
+
             // TODO: I'm not sure if these (both) should ALWAYS be done or not... 
+            //if (processStrings)
+            //{
+            //          i.e., look for things like N'CREATE or ALTER X ... ' and N'/* this looks like a comment, but isn''t';
+            //}
+            
             //if (processComments)
             //{
 
