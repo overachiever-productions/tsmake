@@ -17,30 +17,26 @@ public class IncludeFactoryTests
             @"D:\Dropbox\Repositories\tsmake\~~spelunking\Common\Types\extraction_mapping.sql"
         };
 
-        var fileSystem = new Mock<IFileManager>();
-        fileSystem.Setup(fs => fs.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
-            .Returns(listOfFiles);
-        
-        var fileManager = new FileManager(fileSystem.Object);
-
-        var sut = IncludeFactory.GetInclude(directive, fileManager, @"D:\Repositories\some-repo\build", @"D:\Repositories\some-repo");
-    }
-
-    [Test]
-    public void This_Also_Is_Not_A_Test()
-    {
-        var line = new Line("current.build.sql", 90, @"--##File: Common\tables\restore_log.sql");
-        var directive = (IncludeFileDirective)line.Directive;
-
-        var listOfFiles = new List<string>
-        {
-            @"D:\Dropbox\Repositories\tsmake\~~spelunking\Common\Tables\restore_log.sql",
-        };
-
-        var fileSystem = new Mock<IFileManager>();
-        fileSystem.Setup(fs => fs.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(fm => fm.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
             .Returns(listOfFiles);
 
-        var fileManager = new FileManager(fileSystem.Object);
+        var sut = IncludeFactory.GetInclude(directive, fileManager.Object, @"D:\Repositories\some-repo\build", @"D:\Repositories\some-repo");
     }
+
+    //[Test]
+    //public void This_Also_Is_Not_A_Test()
+    //{
+    //    var line = new Line("current.build.sql", 90, @"--##File: Common\tables\restore_log.sql");
+    //    var directive = (IncludeFileDirective)line.Directive;
+
+    //    var listOfFiles = new List<string>
+    //    {
+    //        @"D:\Dropbox\Repositories\tsmake\~~spelunking\Common\Tables\restore_log.sql",
+    //    };
+
+    //    var fileManager = new Mock<IFileManager>();
+    //    fileManager.Setup(fs => fs.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
+    //        .Returns(listOfFiles);
+    //}
 }

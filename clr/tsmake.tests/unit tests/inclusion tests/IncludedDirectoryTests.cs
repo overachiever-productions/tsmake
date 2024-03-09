@@ -18,13 +18,13 @@ public class IncludedDirectoryTests
             @"D:\Dropbox\Repositories\tsmake\~~spelunking\Common\Types\extraction_mapping.sql"
         };
 
-        var fileSystem = new Mock<IFileManager>();
-        fileSystem.Setup(fs => fs.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(fm => fm.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
             .Returns(listOfFiles);
+        fileManager.Setup(fm => fm.DirectoryExists(It.IsAny<string>()))
+            .Returns(true);
 
-        var fileManager = new FileManager(fileSystem.Object);
-
-        var sut = new IncludedDirectory(directive, fileManager, @"D:\Repositories\some-repo\build", @"D:\Repositories\some-repo");
+        var sut = new IncludedDirectory(directive, fileManager.Object, @"D:\Repositories\some-repo\build", @"D:\Repositories\some-repo");
 
         Assert.That(sut.SourceFiles.Count, Is.EqualTo(3));
     }

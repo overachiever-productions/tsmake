@@ -22,11 +22,10 @@ public class BuildFileTests
         };
 
 
-        var fileSystem = new Mock<IFileManager>();
-        fileSystem.Setup(fs => fs.GetFileLines(It.IsAny<string>()))
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(fm => fm.GetFileLines(It.IsAny<string>()))
             .Returns(listOfLines);
 
-        var fileManager = new FileManager(fileSystem.Object);
-        var sut = new BuildFile("build.sql", fileManager);
+        var sut = new BuildFile("build.sql", fileManager.Object);
     }
 }
