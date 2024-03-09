@@ -22,7 +22,7 @@ public class BuildFileTests
         };
 
 
-        var fileSystem = new Mock<IFileSystem>();
+        var fileSystem = new Mock<IFileManager>();
         fileSystem.Setup(fs => fs.GetFileLines(It.IsAny<string>()))
             .Returns(listOfLines);
 

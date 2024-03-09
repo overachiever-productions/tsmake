@@ -11,14 +11,14 @@ namespace tsmake.models
         public RootPathDirective RootDirective { get; private set; }
         public OutputDirective OutputDirective { get; private set; }
 
-        public BuildFile(string buildFile, FileManager fileManager)
+        public BuildFile(string buildFile, IFileManager fileManager)
         {
             this.Errors = new List<IError>();
 
             this.ParseLines(buildFile, fileManager);
         }
 
-        private void ParseLines(string source, FileManager fileManager)
+        private void ParseLines(string source, IFileManager fileManager)
         {
             LinesProcessingResult result = LineProcessor.TransformLines(source, ProcessingType.BuildFile, fileManager, "", "");
 
@@ -91,7 +91,7 @@ namespace tsmake.models
         public List<string> SourceFiles { get; }
         public List<IError> Errors { get; }
 
-        public IncludedFile(IncludeFileDirective directive, FileManager fileManager, string workingDirectory, string root)
+        public IncludedFile(IncludeFileDirective directive, IFileManager fileManager, string workingDirectory, string root)
         {
             this.Errors = new List<IError>();
             string translatedPath = fileManager.TranslatePath(directive.Path, directive.PathType, workingDirectory, root);
@@ -108,12 +108,12 @@ namespace tsmake.models
 
     public class IncludedDirectory : IIncludeFile
     {
-        private FileManager FileManager { get; }
+        private IFileManager FileManager { get; }
         public List<string> SourceFiles { get; }
         public List<IError> Errors { get; }
         public IncludeDirectoryDirective Directive { get; }
 
-        public IncludedDirectory(IncludeDirectoryDirective directive, FileManager manager, string workingDirectory, string root)
+        public IncludedDirectory(IncludeDirectoryDirective directive, IFileManager manager, string workingDirectory, string root)
         {
             this.Errors = new List<IError>();
             this.SourceFiles = new List<string>();
@@ -180,7 +180,7 @@ namespace tsmake.models
 
     public class IncludeFactory
     {
-        public static IIncludeFile GetInclude(IDirective directive, FileManager fileManager, string workingDirectory, string root)
+        public static IIncludeFile GetInclude(IDirective directive, IFileManager fileManager, string workingDirectory, string root)
         {
             if (directive.DirectiveName == "FILE")
                 return new IncludedFile((IncludeFileDirective)directive, fileManager, workingDirectory, root);
@@ -199,7 +199,7 @@ namespace tsmake.models
         // like the output file... but a 'builder'/buffer for the marker-file if used. 
     }
 
-    public interface IFileSystem
+    public interface IFileManager
     {
         public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory);
         public List<string> GetDirectoryFiles(string directory, RecursionOption recursion);
@@ -208,7 +208,7 @@ namespace tsmake.models
         public List<string> GetFileLines(string filePath);
     }
 
-    public class BaseFileSystem : IFileSystem
+    public class BaseFileManager : IFileManager
     {
         public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory)
         {
@@ -255,44 +255,6 @@ namespace tsmake.models
             }
 
             return output;
-        }
-    }
-
-    // REFACTOR: this only exists as a testing stubb... only... it's NOT even needed for that. 
-    //       i could simply require an IFileSystem as a parameter for EVERYTHING that currently requires FileManager ... 
-    //      and bypass this entire object entirely.
-    public class FileManager
-    {
-        public IFileSystem FileSystem { get; }
-
-        public FileManager(IFileSystem fileSystem)
-        {
-            this.FileSystem = fileSystem;
-        }
-
-        public List<string> GetFileLines(string filePath)
-        {
-            return this.FileSystem.GetFileLines(filePath);
-        }
-
-        public List<string> GetDirectoryFiles(string directory, RecursionOption recursion)
-        {
-            return this.FileSystem.GetDirectoryFiles(directory, recursion);
-        }
-
-        public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory)
-        {
-            return this.FileSystem.TranslatePath(path, pathType, workingDirectory, rootDirectory);
-        }
-
-        public bool DirectoryExists(string path)
-        {
-            return this.FileSystem.DirectoryExists(path);
-        }
-
-        public bool FileExists(string path)
-        {
-            return this.FileSystem.FileExists(path);
         }
     }
 }

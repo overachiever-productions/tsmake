@@ -18,7 +18,7 @@ public class IncludedDirectoryTests
             @"D:\Dropbox\Repositories\tsmake\~~spelunking\Common\Types\extraction_mapping.sql"
         };
 
-        var fileSystem = new Mock<IFileSystem>();
+        var fileSystem = new Mock<IFileManager>();
         fileSystem.Setup(fs => fs.GetDirectoryFiles(It.IsAny<string>(), RecursionOption.TopOnly))
             .Returns(listOfFiles);
 

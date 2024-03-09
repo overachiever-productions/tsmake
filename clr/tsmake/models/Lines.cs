@@ -230,7 +230,7 @@ namespace tsmake.models
 
     public class LineProcessor
     {
-        public static LinesProcessingResult TransformLines(string sourceFile, ProcessingType processingType, FileManager fileManager, string workingDirectory, string root)
+        public static LinesProcessingResult TransformLines(string sourceFile, ProcessingType processingType, IFileManager fileManager, string workingDirectory, string root)
         {
             var output = new LinesProcessingResult();
 

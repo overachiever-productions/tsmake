@@ -26,8 +26,7 @@ function Execute-Pipeline {
 		[tsmake.BuildResult]$buildResult = New-Object tsmake.BuildResult($BuildContext.BuildFile, ($BuildContext.Verb));
 		
 		# TODO: move this into the BuildContext (along with any other 'build intrinsics')
-		[tsmake.models.BaseFileSystem]$baseFileSystem = New-Object tsmake.models.BaseFileSystem;
-		[tsmake.models.FileManager]$fileManager = New-Object tsmake.models.FileManager]($baseFileSystem);
+		[tsmake.models.BaseFileManager]$fileManager = New-Object tsmake.models.BaseFileManager;
 	};
 	
 	process {
