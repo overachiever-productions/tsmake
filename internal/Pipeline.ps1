@@ -178,15 +178,11 @@ function Execute-Pipeline {
 							Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
 							
 							$processingResult = [tsmake.models.LineProcessor]::TransformLines($fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
+							$buildManifest.AddLines($processingResult.Lines);
 							
-
-#							
-#							$buildManifest.AddLines($processingResult.Lines);
-#							if ($processingResult.Errors.Count -gt 0) {
-#								$buildManifest.AddErrors($processingResult.Errors);
-#							}
-							
-							#TODO: Should I RETURN if there are any errors? or keep going? 
+							if ($processingResult.Errors.Count -gt 0) {
+								$buildManifest.AddErrors($processingResult.Errors);
+							}
 						}
 					}
 					{ $_ -in ("CONDITIONAL_X", "CONDITIONAL_Y")	} {
@@ -199,6 +195,13 @@ function Execute-Pipeline {
 			}
 		}
 		
+		if ($buildManifest.Errors.Count -gt 0) {
+			$buildResult.AddErrors($buildManifest.Errors);
+		}
+		
+		if ($buildResult.HasErrors) {
+			return;
+		}
 		
 		foreach ($line in $buildManifest.Lines) {
 			#Write-Host "Build Manifest Line: $($line.Content)"

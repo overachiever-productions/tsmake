@@ -27,6 +27,11 @@
             this.Errors.Add(error);
         }
 
+        public void AddErrors(List<IError> errors)
+        {
+            this.Errors.AddRange(errors);
+        }
+
         public void SetSucceeded()
         {
             this.Outcome = ProcessingOutcome.Success;
