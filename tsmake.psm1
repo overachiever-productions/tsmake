@@ -13,7 +13,6 @@ filter Import-Types {
 		"$ScriptRoot\clr\tsmake\Extensions.cs";
 		
 		"$ScriptRoot\clr\tsmake\models\Lines.cs";
-		"$ScriptRoot\clr\tsmake\models\Location.cs";
 		"$ScriptRoot\clr\tsmake\models\Tokens.cs";
 		"$ScriptRoot\clr\tsmake\models\Directives.cs";
 		

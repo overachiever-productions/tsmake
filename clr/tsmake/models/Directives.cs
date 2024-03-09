@@ -11,9 +11,9 @@
     }
 
     public interface IIncluded {
-        public string TranslatedPath { get; }
+        //public string TranslatedPath { get; }
 
-        public void SetTranslatedPath(string translatedPath);
+        //public void SetTranslatedPath(string translatedPath);
     }
 
     public abstract class BaseDirective : IDirective
@@ -34,6 +34,7 @@
         }
     }
 
+    // REFACTOR: RootDirective (instead of RootPATHDirective)
     public class RootPathDirective : BaseDirective
     {
         public string Path { get; }
@@ -55,7 +56,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.FileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
         }
     }
 
@@ -79,7 +80,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.FileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
         }
     }
 
@@ -94,7 +95,7 @@
 
     public class VersionCheckerDirective : BaseDirective
     {
-        public VersionCheckerDirective(string name, Line line, Location location) : base(line, location) { }
+        public VersionCheckerDirective(Line line, Location location) : base(line, location) { }
     }
 
     // REFACTOR: IncludeFileDirective, RootPathDirective, and OutputDirective all have - for all intents and purposes - the SAME underlying functionality IN THE .CTOR
@@ -104,7 +105,6 @@
     {
         public string Path { get; }
         public PathType PathType { get; }
-        public string TranslatedPath { get; private set; }
 
         public IncludeFileDirective(Line line, Location location) : base(line, location)
         {
@@ -121,11 +121,6 @@
             else
                 base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive: [INCLUDEFILE].";
         }
-
-        public void SetTranslatedPath(string translatedPath)
-        {
-            this.TranslatedPath = translatedPath;
-        }
     }
 
     public class IncludeDirectoryDirective : BaseDirective, IIncluded
@@ -137,7 +132,6 @@
         public List<string> Exclusions { get; }
         public List<string> Priorities { get; }
         public List<string> UnPriorities { get; }
-        public string TranslatedPath { get; private set; }
 
         public IncludeDirectoryDirective(Line line, Location location) : base(line, location)
         {
@@ -172,7 +166,7 @@
 
                 if (!components.ContainsKey("PATH"))
                 {
-                    segment = data.Substring(0, parts[0].Index);
+                    segment = data.Substring(0, parts[0].Index).Trim();
                     components.Add("PATH", segment);
                 }
             }
@@ -253,11 +247,6 @@
             }
 
             IsValid = true;
-        }
-
-        public void SetTranslatedPath(string translatedPath)
-        {
-            this.TranslatedPath = translatedPath;
         }
     }
 

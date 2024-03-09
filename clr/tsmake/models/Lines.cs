@@ -1,41 +1,92 @@
-﻿namespace tsmake.models
+﻿using System;
+using System.Runtime.CompilerServices;
+
+namespace tsmake.models
 {
-    public class Line
+    public class Comment
     {
+
+    }
+
+    public class Location
+    {
+        public Stack<string> SourceFiles { get; }
+        public string CurrentFileName { get; }
         public int LineNumber { get; }
-        public string Content { get; }
-        public string Source { get; }
-        public LineType LineType { get; set; }
-        public List<Token> Tokens { get;}
-        //public List<IDirective> Directives { get;}
-        public IDirective Directive { get; private set; }
+        public int ColumnNumber { get; }
 
-        public Line(int number, string content, string source)
+        //public Location OriginalLocation { get; }
+
+        public Location(Stack<string> sourceFiles, int lineNumber, int columnNumber)
         {
-            this.Tokens = new List<Token>();
-            //this.Directives = new List<IDirective>();
+            this.SourceFiles = sourceFiles;
 
-            this.LineNumber = number;
-            this.Content = content;
-            this.Source = source;
-
-            this.ParseLine(this);
+            this.CurrentFileName = sourceFiles.Peek();
+            this.LineNumber = lineNumber;
+            this.ColumnNumber = columnNumber;
         }
 
-        private void ParseLine(Line line)
+        public Location(Location parent, string fileName, int lineNumber, int columnNumber)
+        {
+            // TODO: need to figure out when/where to use this .ctor... 
+        }
+
+        public string GetLocationContext()
+        {
+            //return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber})";
+            return "TODO: need to chain/concat full-source-file lineage thingies in Location.GetLocationContext().";
+        }
+    }
+
+    public class Line
+    {
+        public Stack<string> SourceLocation { get; }
+        public int LineNumber { get; }
+        public string RawContent { get; }
+        public string CodeText { get; private set; }
+        public string CommentText { get; }
+        public LineType LineType { get; private set; }
+        public List<Token> Tokens { get; }
+        public IDirective Directive { get; private set; }
+        public Comment Comment { get; }
+
+        public Line(string sourceFile, int lineNumber, string rawContent)
+        {
+            this.SourceLocation = new Stack<string>();
+            this.SourceLocation.Push(sourceFile);
+
+            this.LineNumber = lineNumber;
+            this.RawContent = rawContent;
+            this.Tokens = new List<Token>();
+
+            this.ParseLine();
+        } 
+
+        public Line(Stack<string> sourceLocation, int lineNumber, string rawContent)
+        {
+            this.SourceLocation = sourceLocation;
+
+            this.LineNumber = lineNumber;
+            this.RawContent = rawContent;
+            this.Tokens = new List<Token>();
+
+            this.ParseLine();
+        }
+
+        private void ParseLine()
         {
             this.LineType = LineType.RawContent;
 
             try
             {
-                if (string.IsNullOrWhiteSpace(line.Content))
+                if (string.IsNullOrWhiteSpace(this.RawContent))
                 {
                     this.LineType |= LineType.WhitespaceOnly;
                     return;
                 }
 
                 var regex = new Regex(@"^\s*--\s*##\s*(?<directive>(\w+)|[::]{1,})\s*", Global.RegexOptions);
-                Match m = regex.Match(line.Content);
+                Match m = regex.Match(this.RawContent);
                 if (m.Success)
                 {
                     this.LineType = LineType.Directive;
@@ -45,94 +96,169 @@
                     string directiveName = directive.Value.ToUpperInvariant();
                     int index = directive.Index;
 
-                    Location location = new Location(line.Source, line.LineNumber, index);
+                    Location location = new Location(this.SourceLocation, this.LineNumber, index);
 
                     IDirective instance = DirectiveFactory.CreateDirective(directiveName, this, location);
                     this.Directive = instance;
 
-                    // TODO: do I return at this point? or can a line have TOKENS in it - even if/when it's a directive? 
-                    //      i.e., just need to figure out how I want to parse various syntax rules. 
-                    //      because EVEN IF I end up using something like tokens in something like, say, the ## FILEMARKER: ... , I COULD just process those WITHOUT full-blown 'token support'.
+                    return;
                 }
 
                 regex = new Regex(@"\{\{##(?<token>[^\}\}]+)\}\}", Global.RegexOptions);
-                m = regex.Match(line.Content);
-                if(m.Success) { 
+                var matches = regex.Matches(this.RawContent);
+                if (matches.Count > 0 && matches[0].Success)
+                {
                     this.LineType |= LineType.TokenizedContent;  // NOTE that currently, this allows for combinations of RawContent | Directives to be 'decorated' with TokenizedContent... 
-                    
-                    foreach (Match x in regex.Matches(line.Content))
+
+                    foreach (Match x in matches)
                     {
                         string tokenData = x.Groups["token"].Value;
-                        int index = line.Content.IndexOf(tokenData, StringComparison.Ordinal) - 4;
-                        Location location = new Location(line.Source, line.LineNumber, index);
+                        int index = this.RawContent.IndexOf(tokenData, StringComparison.Ordinal) - 4;
+                        Location location = new Location(this.SourceLocation, this.LineNumber, index);
 
                         Token i = new Token(tokenData, location);
                         this.Tokens.Add(i);
                     }
                 }
+
+                regex = new Regex(@"(?<comment>/\*.*?\*/)", Global.RegexOptions);
+                matches = regex.Matches(this.RawContent);
+                if (matches.Count > 0 && matches[0].Success)
+                {
+                    this.LineType |= LineType.BlockComment;
+
+                    string codeSansComment = this.RawContent;
+                    int commentsCount = 0;
+                    foreach (Match x in matches)
+                    {
+                        string blockComment = x.Groups["comment"].Value;
+                        codeSansComment = codeSansComment.Replace(blockComment, "", StringComparison.InvariantCultureIgnoreCase);
+                        commentsCount++;
+                    }
+
+                    if (codeSansComment.Contains("/*"))
+                    {
+                        this.LineType |= LineType.MultipleBlockComments;
+                        this.LineType |= LineType.BlockCommentStart;
+                    }
+
+                    if (commentsCount > 1)
+                        this.LineType |= LineType.MultipleBlockComments;
+
+                    if (string.IsNullOrWhiteSpace(codeSansComment))
+                        this.LineType |= LineType.BlockCommentOnly;
+                }
+                else
+                {
+                    if (this.RawContent.Contains("/*", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        // TODO: COUNT how many /* we have ... in case we're somehow nested... 
+                        this.LineType |= LineType.BlockCommentStart;
+
+                    }
+                    if (this.RawContent.Contains("*/", StringComparison.InvariantCultureIgnoreCase))
+                    {
+                        this.LineType |= LineType.BlockCommentEnd;
+                    }
+                }
+
+                regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.RegexOptions);
+                m = regex.Match(this.RawContent);
+                if (m.Success)
+                {
+                    this.LineType |= LineType.SimpleComment;
+                    var comment = m.Groups["comment"].Value;
+
+                    var preComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment));
+                    if (string.IsNullOrWhiteSpace(preComment))
+                        this.LineType |= LineType.SimpleCommentOnly;
+                    else
+                        this.CodeText = preComment;
+                }
             }
             catch (Exception ex)
             {
-                // make sure to throw info about the LINE in question... 
+                // TODO: make sure to throw info about the LINE in question... (i.e., the 'stack' of source details - and the line-number (and column - when possible)
+                // And... don't throw... add to .Errors... 
                 throw ex;
             }
         }
     }
 
-    public class SourceFileProcessingResult
+    public class LinesProcessingResult
     {
         public List<IError> Errors { get; }
+        public List<Token> Tokens { get; set; }
+        public List<IDirective> Directives { get; }
         public List<Line> Lines { get; }
+        public List<Comment> Comments { get; }
 
-        public SourceFileProcessingResult()
+        public void AddErrors(List<IError> errors)
+        {
+            this.Errors.AddRange(errors);
+        }
+
+        public void AddLine(Line added)
+        {
+            this.Lines.Add(added);
+        }
+
+        public void AddLines(List<Line> added)
+        {
+            this.Lines.AddRange(added);
+        }
+
+        public void AddTokens(List<Token> tokens)
+        {
+            this.Tokens.AddRange(tokens);
+        }
+
+        public void AddDirective(IDirective directive)
+        {
+            this.Directives.Add(directive);
+        }
+
+        public LinesProcessingResult()
         {
             this.Errors = new List<IError>();
-            this.Lines = new List<Line>();
+            this.Tokens = new List<Token>();
+            this.Directives = new List<IDirective>();
+            this.Lines= new List<Line>();
+            this.Comments = new List<Comment>();
         }
     }
 
-    // REFACTOR: maybe call this a SourceFileParser?
-    public class LineParser
+    public class LineProcessor
     {
-        private LineParser() { }
-
-        public static LineParser Instance => new LineParser();
-
-        public SourceFileProcessingResult ParseLines(string sourceFile, FileLineage lineage)
+        public static LinesProcessingResult TransformLines(string sourceFile, ProcessingType processingType, FileManager fileManager, string workingDirectory, string root)
         {
-            var buffer = new SourceFileProcessingResult();
-            
-            string current;
-            int i = 1; 
-            using (var streamReader = new StreamReader(sourceFile))
+            var output = new LinesProcessingResult();
+
+            int i = 1;
+            foreach (string current in fileManager.GetFileLines(sourceFile))
             {
-                while ((current = streamReader.ReadLine()) != null)
+                var line = new Line(sourceFile, i, current);
+
+                if (line.LineType.HasFlag(LineType.TokenizedContent))
+                    output.AddTokens(line.Tokens);
+
+                if (line.LineType.HasFlag(LineType.Directive))
                 {
-                    var line = new Line(i, current, sourceFile);
-
-                    // TODO: need to 'push' the full-stack of the lineage object into the the line (object/variable) 
-                    //      so that we've got the FULL / coordinated location of the file (e.g., if .build.sql does a file include, and that file include includes a file... and that's where we're at, the "line" needs to know it's position in the line AND ... that it has 2x parents so that errors can be passed out with some decent context.
-                    
-                    // TODO: either I need to evaluate tokens here - as I'm doing with BuildFile.ParseLines() or... BuildFile.ParseLines() shouldn't care about tokens either. 
-                    //      and, arguably, I think I'm at the point where NEITHER this nor BuildFile.ParseLines should care about tokens. 
-                    //          i think it'll have to be the 'job' of the BuildManifest to care about those and evaluate them. 
-                    //          i.e., I'm no longer going to try and 'eager' evaluate them because ... of the recursive-allowed nature of INCLUDES. 
-
-                    if (line.LineType.HasFlag(LineType.Directive))
+                    if (processingType == ProcessingType.IncludedFile)
                     {
                         if (line.Directive.DirectiveName == "FILE")
                         {
                             // TODO: nestedSourceFiles (and Directories) should handle file/path validation ... 
-                            //  and if their paths aren't valid... 'throw' (lodge/store) a Parser or Build error (depending upon whether the directive is mal-formed/wrong (parser error) or ... whether the file isn't found (runtime/build error).
-                            var nestedSourceFile = new IncludedFile((IncludeFileDirective)line.Directive);
+                            //  and if their paths add a Parser or Build Error...  (depending upon whether the directive is mal-formed/wrong (parser error) or ... whether the file isn't found (runtime/build error).
+                            var nestedSourceFile = new IncludedFile((IncludeFileDirective)line.Directive, fileManager, workingDirectory, root);
 
-                            lineage.AddSourceFile(nestedSourceFile.SourceFiles[0]);
-                            var recursiveResult = LineParser.Instance.ParseLines(nestedSourceFile.SourceFiles[0], lineage);
+                            var recursiveResult = LineProcessor.TransformLines(nestedSourceFile.SourceFiles[0], processingType, fileManager, workingDirectory, root);
 
                             if (recursiveResult.Errors.Count > 0)
-                                buffer.Errors.AddRange(recursiveResult.Errors);
+                                output.AddErrors(recursiveResult.Errors);
 
-                            buffer.Lines.AddRange(recursiveResult.Lines);
+                            output.AddLines(recursiveResult.Lines);
+                            continue;
                         }
                         else
                         {
@@ -148,51 +274,26 @@
                     }
                     else
                     {
-                        buffer.Lines.Add(line);
-
-
-                        // i.e., if this ISN'T a Directive Line... 
-                        // if it's a comment-line... figure out what to do with comments based on: 
-                        //      a) InlineDocumentation setting (i.e., the VERB - are we just building a .sql file, or are we building docs (or both)? 
-                        //              i.e., if DOCS or BOTH then squirrel pertinent regex'd lines into some sort of global
-                        //                  catalog - by file-name
-                        //                  hmmm.. how the EFF do I get the object/sproc/udf/whatever name? 
-                        //      b) comment-strip/remove directives... 
-                        //          remove lines if comment-removal directive stipulates that we should... 
-                        // and... it's entirely possible that I might need to skip/ignore the STRIP process (and even the comments-process above)
+                        output.AddDirective(line.Directive);
                     }
                 }
+
+                output.AddLine(line);
+
+
+                i++;
             }
 
-            var output = new SourceFileProcessingResult();
-            if(buffer.Errors.Count > 0)
-                output.Errors.AddRange(buffer.Errors);
+            // TODO: I'm not sure if these (both) should ALWAYS be done or not... 
+            //if (processComments)
+            //{
 
-            // TODO:
-            //    
+            //}
 
-            bool processComments = false; 
-            if (processComments)
-            {
-                foreach (var line in output.Lines)
-                {
-                    //if (line.IsComment)
-                    //{
-                    //    // if the comment is part of a header and/or is marked as belonging to inline/infile docs... 
-                    //    //  and if we're handling docs... 
-                    //    //      then DocsCatalog.AddSourceFileLine(line, sourceFile/lineageAndOtherMetaData);
+            //if (processObjectOwner)
+            //{
 
-
-                    //    // if fileRemovalPreferences.DictateThatWeShouldNOT_include_this_line
-                    //    //  continue
-                    //    // otherwise, drop out the bottom 
-                    //}
-
-                    output.Lines.Add(line);
-                }
-            }
-            else 
-                output.Lines.AddRange(buffer.Lines);
+            //}
 
             return output;
         }

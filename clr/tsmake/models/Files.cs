@@ -1,116 +1,61 @@
-﻿namespace tsmake.models
-{
+﻿using System.Diagnostics;
 
-    // REFACTOR: may want to a) rename this to 'BuildFile' and b) move it into a folder called 'Files' - along with CodeFile (for an 'include') and such...
-    //      that way I'd have: 
-    //          - a BuildFile to represent ... the build file. 
-    //          - CodeFile(s) to represent - code files that are included via DIRECTORY or FILE 
-    //                  and might even make sense to have a DirectoryManifest
-    //          - a BuildMANIFEST would then be the intermediate stage - i.e., once we'd processed/shredded the BuildFile and included ALL directives... I'd have
-    //                  a Build 'Manifest'... 
-    //                  where the only things left to be processed would be CONDITIONAL directives and Tokens. 
-    //          - finally, a BufferManifest or OutputFile (i.e., 2 different NAMING options for the same things) would be the final 'processor' - that'd be dumped/written to a flat-file/artifact. 
-    //              
+namespace tsmake.models
+{
     public class BuildFile
     {
-        // REFACTOR: I don't think the source needs to be a) public, b) a property.  - i.e., I can make it a field instead. 
-        public string Source { get; }
-        public List<ParserError> FatalParserErrors { get; }
-        public List<Line> Lines { get; }
-        public List<Token> Tokens { get; }
-        public List<IDirective> Directives { get; }
-
+        public List<IError> Errors { get; }
+        public List<Line> Lines { get; private set; }
+        // TODO: MIGHT make sense to add .Directives? 
+        
         public RootPathDirective RootDirective { get; private set; }
         public OutputDirective OutputDirective { get; private set; }
 
-        public BuildFile(string buildFile)
+        public BuildFile(string buildFile, FileManager fileManager)
         {
-            this.Source = buildFile;
-            //this.NonFatalParserErrors = new List<ParserError>();
-            this.FatalParserErrors = new List<ParserError>();
-            this.Lines = new List<Line>();
-            this.Tokens = new List<Token>();
-            this.Directives = new List<IDirective>();
+            this.Errors = new List<IError>();
 
-            this.ParseLines();
+            this.ParseLines(buildFile, fileManager);
         }
 
-        private void ParseLines()
+        private void ParseLines(string source, FileManager fileManager)
         {
-            string current;
-            int i = 1;  // Doh. These are line numbers - and need to start at 1 - not 0. 
-            using (var buildFile = new StreamReader(this.Source))
+            LinesProcessingResult result = LineProcessor.TransformLines(source, ProcessingType.BuildFile, fileManager, "", "");
+
+            this.Errors.AddRange(result.Errors);
+            this.Lines = result.Lines;
+
+            // Bubble-up any Directives that need to be referenced (for simplicity) via BuildFile:
+            var roots = result.Directives.Where(d => d.DirectiveName == "ROOT").ToList();
+            switch (roots.Count)
             {
-                while ((current = buildFile.ReadLine()) != null)
-                {
-                    var line = new Line(i, current, this.Source);
+                case 0:
+                    break;
+                case 1:
+                    this.RootDirective = (RootPathDirective)roots[0];
+                    break;
+                default:
+                    string errorMessage = $"Duplicate ROOT Directive(s) in Build File: [{source}].";
+                    string context = "ROOT directives on found on lines: " + string.Join(",",
+                        roots.Select(r => r.Location.LineNumber.ToString()).ToArray());
+                    this.Errors.Add(new ParserError(ErrorSeverity.Fatal, errorMessage, roots[0].Location, context));
+                    break;
+            }
 
-                    if (line.Tokens.Count > 0)
-                        this.Tokens.AddRange(line.Tokens);
-
-                    if (line.LineType.HasFlag(LineType.Directive))
-                    {
-                        // TODO: there are a few directives we can't duplicate - like: ROOT, OUTPUT, VERSION-CHECKER, etc. 
-                        if (line.Directive.DirectiveName == "ROOT")
-                        {
-                            if (null == this.RootDirective)
-                                this.RootDirective = (RootPathDirective)line.Directive;
-                            else
-                            {
-                                string errorMessage = $"Duplicate ROOT: directive detected in file: [{line.Directive.Line.Source}].";
-                                string context = $"First ROOT: defined on line: [{this.RootDirective.Location.LineNumber}].";
-                                context += Environment.NewLine;
-                                context += "Duplicate ROOT: defined on line: [{line.Directive.Location.LineNumber}].";
-
-                                var parserError = new ParserError(ErrorSeverity.Fatal, errorMessage, line.Directive.Location,  context);
-                                this.FatalParserErrors.Add(parserError);
-                                continue; // don't add to .Directives - just move on to the next directive, etc. 
-                            }
-                        }
-
-                        if (line.Directive.DirectiveName == "OUTPUT")
-                        {
-                            if (null == this.OutputDirective)
-                                this.OutputDirective = (OutputDirective)line.Directive;
-                            else
-                            {
-                                string errorMessage = $"Duplicate OUTPUT: directive detected in file: [{line.Directive.Line.Source}].";
-                                string context = $"First OUTPUT: defined on line: [{this.OutputDirective.Location.LineNumber}].";
-                                context += Environment.NewLine;
-                                context += "Duplicate OUTPUT: defined on line: [{line.Directive.Location.LineNumber}].";
-
-                                var parserError = new ParserError(ErrorSeverity.Fatal, errorMessage, line.Directive.Location, context);
-                                this.FatalParserErrors.Add(parserError);
-                                continue;
-                            }
-                        }
-
-                        this.Directives.Add(line.Directive);
-                    }
-
-                    // NOTE: in terms of comments, there are a few different types: 
-                    //      - tsmake comment (i.e, directive).
-                    //      - line-terminating comment - e.g., -- xxxx 
-                    //          and... this can be at the start of the line (i.e., whole line) or ... part of the way through the line. 
-                    //          so... i'm probably going to want to differentiate between 'SingleLineComment' and 'SingleLineCommentThatIsTheWholeLine' ... 
-                    //          though, obviously, i need better names... 
-                    //      - multi-line comments (style)... which can be of ... multiple types: 
-                    //          - inline - i.e. somewhere within a line is an /* ENTIRE SET OF COMMENTS */, but they're not the entire line. 
-                    //          - starts i.e., /* and then some text (or not) and ... a carriage return. 
-                    //          - midline... i.e., there was a /* somewhere and we haven't yet hit the line with */
-                    //          - terminating ... 
-                    //              and... terminating with text/whitespace after it OR terminating with NOTHING after it?
-
-
-                    // TODO: if ... line.CommentType == CommentType.MultilineStart
-                    //      then... mark that ... somehow that we're 'in' a multi-line comment... 
-                    //          only... in order to do that, I think I need to pass in that ... the line started at 'i' and is still going... 
-                    //          as in... i'd have to push it into the .ctor or the Line() itself so'z I could track the STATE (i.e., we're in a multi-line comment)
-                    //          and that ... it started on (previous)i and.... then, I'd have to do something along the lines of passing in the 'end' of the multi-line comment too.
-
-                    this.Lines.Add(line);
-                    i++;
-                }
+            var outputs = result.Directives.Where(d => d.DirectiveName == "OUTPUT").ToList();
+            switch (outputs.Count)
+            {
+                case 0:
+                    break;
+                case 1:
+                    this.OutputDirective = (OutputDirective)outputs[0];
+                    break;
+                default:
+                    string errorMessage = $"Duplicate OUTPUT Directive(s) in Build File: [{source}].";
+                    string context = "OUTPUT directives on found on lines: " + string.Join(",",
+                        outputs.Select(o => o.Location.LineNumber.ToString()).ToArray());
+                    this.Errors.Add(new ParserError(ErrorSeverity.Fatal, errorMessage, outputs[0].Location, context));
+                    break;       
             }
         }
     }
@@ -138,63 +83,216 @@
     public interface IIncludeFile
     {
         public List<string> SourceFiles { get; }
-    }
-
-    public class FileLineage
-    {
-        public Stack<string> Lineage { get; }
-
-        public void AddSourceFile(string sourceFile)
-        {
-            this.Lineage.Push(sourceFile);
-        }
-
-        public FileLineage(string buildFile, string sourceFile)
-        {
-            this.Lineage = new Stack<string>();
-            this.Lineage.Push(buildFile);
-            this.Lineage.Push(sourceFile);
-        }
+        public List<IError> Errors { get; }
     }
 
     public class IncludedFile : IIncludeFile
     {
         public List<string> SourceFiles { get; }
+        public List<IError> Errors { get; }
 
-        public IncludedFile(IncludeFileDirective directive)
+        public IncludedFile(IncludeFileDirective directive, FileManager fileManager, string workingDirectory, string root)
         {
-            this.SourceFiles = new List<string> { directive.TranslatedPath };
+            this.Errors = new List<IError>();
+            string translatedPath = fileManager.TranslatePath(directive.Path, directive.PathType, workingDirectory, root);
+
+            if (!fileManager.FileExists(translatedPath))
+            {
+                this.Errors.Add(new ParserError(ErrorSeverity.Fatal, "Include File xxx not found.", directive.Location, "context for where the file include directive was found and stuff... "));;
+                this.SourceFiles = new List<string>();
+            }
+            else 
+                this.SourceFiles = new List<string> { translatedPath };
         }
     }
 
     public class IncludedDirectory : IIncludeFile
     {
+        private FileManager FileManager { get; }
         public List<string> SourceFiles { get; }
+        public List<IError> Errors { get; }
+        public IncludeDirectoryDirective Directive { get; }
 
-        public IncludedDirectory(IncludeDirectoryDirective directive)
+        public IncludedDirectory(IncludeDirectoryDirective directive, FileManager manager, string workingDirectory, string root)
         {
+            this.Errors = new List<IError>();
             this.SourceFiles = new List<string>();
+            this.Directive = directive;
 
+            this.FileManager = manager;
+            this.ProcessFiles(workingDirectory, root);
+        }
 
-            // path should be valid at this point
-            // meaning that what I should do at this point is: 
-            // enumerate FILEs in the directory. 
-            // EXCLUDE any files that need to be excluded. 
-            // create a List<IncludeFile> (or maybe just strings/paths) for PRIORITIZED files that are/were matched in the main list... 
-            // create a List<X> for UN-PRIORITIZED files that match (in order). 
-            // join/output PRIORITY, others (sort-ordered as defined), UNPRIORITIZED. 
+        private void ProcessFiles(string workingDirectory, string root)
+        {
+            List<string> priorities = new List<string>();
+            List<string> normal = new List<string>();
+            List<string> unpriorities = new List<string>();
+
+            var translatedPath = this.FileManager.TranslatePath(this.Directive.Path, this.Directive.PathType, workingDirectory, root);
+            if (!this.FileManager.DirectoryExists(translatedPath))
+            {
+                this.Errors.Add(new ParserError(ErrorSeverity.Fatal, "Include Directory xxx not found.", this.Directive.Location, "context for where the file include directive was found and stuff... ")); ;
+                return;
+            }
+
+            List<string> files = this.FileManager.GetDirectoryFiles(translatedPath, RecursionOption.TopOnly);
+
+            foreach (string exclusionPattern in this.Directive.Exclusions)
+            {
+                var matches = files.Where(f => f.Like(exclusionPattern)).ToList();
+                foreach (string match in matches)
+                    files.Remove(match);
+            }
+
+            foreach (string priorityPattern in this.Directive.Priorities)
+            {
+                var matches = files.Where(f => f.Like(priorityPattern)).ToList();
+                foreach (string match in matches)
+                    files.Remove(match);
+
+                priorities.AddRange(matches);
+            }
+
+            foreach (string unPriorityPattern in this.Directive.UnPriorities)
+            {
+                var matches = files.Where(f => f.Like(unPriorityPattern)).ToList();
+                foreach (string match in matches)
+                    files.Remove(match);
+
+                unpriorities.AddRange(matches);
+            }
+
+            // TODO: need to implement options for sorting by create or modify date AND by DESC vs ASC... 
+            //      which means I'm going to need either a silly case statement or some sort of func<> x...(that's loaded by a ... case statement). 
+            //      AND, instead of pulling back MERELY the file-names (strings) of a given file via .GetDirectoryFiles()... i'm going to have to pull back 
+            //      a 'struct' of name, mod-date, create-date so ... that I can sort on those attributes instead. 
+            //  AND, the bummer - of course - is that this is going to make unit tests harder ... cuz ... fakes are going to require 3x entities vs 1x. 
+            if (files.Count > 0)
+                normal = files.OrderBy(f => f).ToList();
+
+            // finally, assemble: 
+            this.SourceFiles.AddRange(priorities);
+            this.SourceFiles.AddRange(normal);
+            this.SourceFiles.AddRange(unpriorities);
         }
     }
 
     public class IncludeFactory
     {
-        public static IIncludeFile GetInclude(IDirective directive)
+        public static IIncludeFile GetInclude(IDirective directive, FileManager fileManager, string workingDirectory, string root)
         {
             if (directive.DirectiveName == "FILE")
-                return new IncludedFile((IncludeFileDirective)directive);
+                return new IncludedFile((IncludeFileDirective)directive, fileManager, workingDirectory, root);
 
-            return new IncludedDirectory((IncludeDirectoryDirective)directive);
+            return new IncludedDirectory((IncludeDirectoryDirective)directive, fileManager, workingDirectory, root);
         }
     }
 
+    public class OutputFileBuilder
+    {
+        // buffer/builder for final content - that'll be written to disk.
+    }
+
+    public class MarkerFile
+    {
+        // like the output file... but a 'builder'/buffer for the marker-file if used. 
+    }
+
+    public interface IFileSystem
+    {
+        public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory);
+        public List<string> GetDirectoryFiles(string directory, RecursionOption recursion);
+        public bool DirectoryExists(string path);
+        public bool FileExists(string path);
+        public List<string> GetFileLines(string filePath);
+    }
+
+    public class BaseFileSystem : IFileSystem
+    {
+        public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory)
+        {
+            switch (pathType)
+            {
+                case PathType.Absolute:
+                    return path;
+                case PathType.Relative:
+                    return workingDirectory.CollapsePath(path);
+                case PathType.Rooted:
+                    return rootDirectory.CollapsePath(path.Replace(@"\\\", ""));
+                default:
+                    return "";
+            }
+        }
+
+        public List<string> GetDirectoryFiles(string directory, RecursionOption recursion)
+        {
+            SearchOption option = SearchOption.TopDirectoryOnly;
+            if (recursion == RecursionOption.Recurse)
+                option = SearchOption.TopDirectoryOnly;
+
+            return Directory.GetFiles(directory, "*", option).ToList();
+        }
+
+        public bool DirectoryExists(string path)
+        {
+            return Directory.Exists(path);
+        }
+
+        public bool FileExists(string path)
+        {
+            return File.Exists(path);
+        }
+
+        public List<string> GetFileLines(string filePath)
+        {
+            List<string> output = new List<string>();
+            string current;
+            using (var streamReader = new StreamReader(filePath))
+            {
+                while ((current = streamReader.ReadLine()) != null)
+                    output.Add(current);
+            }
+
+            return output;
+        }
+    }
+
+    // REFACTOR: this only exists as a testing stubb... only... it's NOT even needed for that. 
+    //       i could simply require an IFileSystem as a parameter for EVERYTHING that currently requires FileManager ... 
+    //      and bypass this entire object entirely.
+    public class FileManager
+    {
+        public IFileSystem FileSystem { get; }
+
+        public FileManager(IFileSystem fileSystem)
+        {
+            this.FileSystem = fileSystem;
+        }
+
+        public List<string> GetFileLines(string filePath)
+        {
+            return this.FileSystem.GetFileLines(filePath);
+        }
+
+        public List<string> GetDirectoryFiles(string directory, RecursionOption recursion)
+        {
+            return this.FileSystem.GetDirectoryFiles(directory, recursion);
+        }
+
+        public string TranslatePath(string path, PathType pathType, string workingDirectory, string rootDirectory)
+        {
+            return this.FileSystem.TranslatePath(path, pathType, workingDirectory, rootDirectory);
+        }
+
+        public bool DirectoryExists(string path)
+        {
+            return this.FileSystem.DirectoryExists(path);
+        }
+
+        public bool FileExists(string path)
+        {
+            return this.FileSystem.FileExists(path);
+        }
+    }
 }

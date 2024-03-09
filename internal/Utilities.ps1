@@ -90,28 +90,6 @@ filter Collapse-Arguments {
 	return $Arg2;
 }
 
-filter Translate-Path {
-	param (
-		[Parameter(Mandatory)]
-		[string]$CurrentPath,
-		[Parameter(Mandatory)]
-		[string]$PathDirective
-	)
-	
-	# TODO: SHOULD I be running Test-Path against $CurrentPath to see if it exists? 
-	
-	$newPath = $CurrentPath;
-	$newDirective = $PathDirective;
-	
-	while ($newDirective.StartsWith('..\')) {
-		$newPath = (Get-Item -Path $newPath).Parent.FullName;
-		$newDirective = $newDirective.Substring(3);
-	}
-	
-	$output = Join-Path -Path $newPath -ChildPath $newDirective;
-	return $output;
-}
-
 filter New-FatalParserError {
 	param (
 		[Parameter(Mandatory)]

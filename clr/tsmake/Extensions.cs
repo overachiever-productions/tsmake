@@ -107,7 +107,7 @@ namespace tsmake
             // TODO: I MAY have a bug with my logic/REGEX where: 1) I've been assuming that directives have XXXX: syntax (where the colon HAS to be immediately after the name)
             //      only... it MAY BE that ... I can have directives in the form of "XXXX      :" and so on... 
             //          i.e., check/test that. 
-            string data = instance.Line.Content.Substring(instance.Location.ColumnNumber + instance.DirectiveName.Length + 1).Trim(); // +1 is for the ":"
+            string data = instance.Line.RawContent.Substring(instance.Location.ColumnNumber + instance.DirectiveName.Length + 1).Trim(); // +1 is for the ":"
 
             if (!removeTsMakeLineComments)
                 return data;
@@ -120,6 +120,32 @@ namespace tsmake
             }
 
             return data;
+        }
+
+        public static string WildcardToRegex(this string pattern)
+        {
+            // TODO: add an option for `_ which'll be the equivalent of LIKE '`_` ESCAPE '`' ... (or, maybe?, just set up the equivalent of ESCAPE '`' ... 
+            return Regex.Escape(pattern).Replace(@"%", ".*").Replace(@"_", ".{1}");
+        }
+
+        public static bool Like(this string input, string pattern)
+        {
+            return Regex.IsMatch(input, pattern.WildcardToRegex(), Global.RegexOptions);
+        }
+
+        public static string CollapsePath(this string path, string directive)
+        {
+            string newPath = path;
+            string newDirective = directive;
+
+            while (newDirective.StartsWith(@"..\"))
+            {
+                newPath = Directory.GetParent(newPath).FullName;
+                newDirective = newDirective.Substring(3);
+            }
+
+            string output = Path.Join(newPath, newDirective);
+            return output;
         }
     }
 }
