@@ -9,7 +9,7 @@ public class LineTests
     public void WhiteSpaceLine_Is_Both_Raw_And_WhiteSpace()
     {
         string emptyLine = "";
-        var sut = new Line(11, emptyLine, "some file.sql");
+        var sut = new Line("some file.sql", 11, emptyLine);
 
         Assert.That(sut.LineType.HasFlag(LineType.RawContent));
         Assert.That(sut.LineType.HasFlag(LineType.WhitespaceOnly));
@@ -20,7 +20,7 @@ public class LineTests
     {
         string directiveLine = @"--##OUTPUT: \\Deployment";
 
-        var sut = new Line(11, directiveLine, "some file.sql");
+        var sut = new Line("some file.sql", 11, directiveLine);
 
         Assert.That(sut.LineType.HasFlag(LineType.Directive));
     }
@@ -30,7 +30,7 @@ public class LineTests
     {
         string directiveLine = @"--##OUTPUT: \\Deployment";
 
-        var sut = new Line(11, directiveLine, "some file.sql");
+        var sut = new Line("some file.sql", 11, directiveLine);
 
         // wth?
         Assert.False(sut.LineType.HasFlag(LineType.WhitespaceOnly));
@@ -41,7 +41,7 @@ public class LineTests
     {
         string directiveLine = @"--##OUTPUT: \\Deployment";
 
-        var sut = new Line(11, directiveLine, "some file.sql");
+        var sut = new Line("some file.sql", 11, directiveLine);
 
         // wth?
         Assert.False(sut.LineType.HasFlag(LineType.RawContent));

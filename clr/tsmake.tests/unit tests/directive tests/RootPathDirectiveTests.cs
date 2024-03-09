@@ -9,9 +9,9 @@ public class RootPathDirectiveTests
     //              i.e., probably need various bits of logic within the tests based on Enviroment.Platform/OS... 
 
     [Test]
-    public void Abosulte_Path_Is_Valid_Root_Directive_Value()
+    public void Absolute_Path_Is_Valid_Root_Directive_Value()
     {
-        var line = new Line(2, @"--##ROOT: D:\Dropbox\Repositories\etc.", "build.sql");
+        var line = new Line("build.sql", 2, @"--##ROOT: D:\Dropbox\Repositories\etc.");
         
         var sut = line.Directive;
 
@@ -21,7 +21,7 @@ public class RootPathDirectiveTests
     [Test]
     public void Relative_Path_Is_Valid_Root_Directive_Value()
     {
-        var line = new Line(2, @"--##ROOT: D:\Dropbox\Repositories\etc.", "build.sql");
+        var line = new Line("build.sql", 2, @"--##ROOT: D:\Dropbox\Repositories\etc.");
 
         var sut = line.Directive;
 

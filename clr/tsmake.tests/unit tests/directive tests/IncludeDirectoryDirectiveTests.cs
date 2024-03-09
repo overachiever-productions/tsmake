@@ -11,7 +11,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Simple_Directory_Directive_Extracts_Directory_Name()
     {
-        var line = new Line(12, "-- ## DIRECTORY: Common ", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: Common ");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -22,7 +22,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Simple_Directory_Directive_Identifies_Directory_Path_Type()
     {
-        var line = new Line(12, "-- ## DIRECTORY: Common ", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: Common ");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -33,7 +33,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_Explicit_Path_Extracts_Directory_Name()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -42,9 +42,19 @@ public class IncludeDirectoryDirectiveTests
     }
 
     [Test]
+    public void Directory_Directive_With_Explicit_Path_Trims_Path_Value()
+    {
+        var line = new Line("current.build.sql", 84, "-- ## DIRECTORY: Common ORDERBY: alpha EXCLUDE: %tables% PRIORITIES: get_engine_version%, %split_string%; get_s4_version%");
+        var sut = (IncludeDirectoryDirective)line.Directive;
+
+        Assert.True(sut.IsValid);
+        Assert.That(sut.Path, Is.EqualTo("Common"));
+    }
+
+    [Test]
     public void Directory_Directive_Without_OrderBy_Orders_Alphabetically_By_Default()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -55,7 +65,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_Sets_Explicit_OrderBy()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -66,7 +76,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_Sets_Explicit_Descending_Direction()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -78,7 +88,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_Single_Exclusion_Captures_Exclusion()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -90,7 +100,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_Multiple_Exclusions_Captures_Exclusions()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -103,7 +113,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_Priorities_Captures_Priorities_In_Order()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -116,7 +126,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_Empty_Priorities_Does_Not_Cause_Problems()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: ;", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: ;");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 
@@ -127,7 +137,7 @@ public class IncludeDirectoryDirectiveTests
     [Test]
     public void Directory_Directive_With_UnPriorities_Captures_Unpriorities_In_Order()
     {
-        var line = new Line(12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized", "build.sql");
+        var line = new Line("build.sql", 12, "-- ## DIRECTORY: PATH: Utilities ORDERBY: CreateDate DESC EXCLUDE: %~~%, %some_file.sql PRIORITIES: %priority_one%, priority_two% ; %second_most_un_priority%, most_un_prioritized");
 
         var sut = (IncludeDirectoryDirective)line.Directive;
 

@@ -10,4 +10,24 @@ public class ExtensionTests
 
         Assert.True(path.IsValidPath());
     }
+
+    [Test]
+    public void CollapsePath_Removes_Parent_Path_When_Directed()
+    {
+        string path = @"C:\Windows\System32\drivers";
+
+        var test = path.CollapsePath(@"..\");
+
+        StringAssert.AreEqualIgnoringCase(@"C:\Windows\System32", test);
+    }
+
+    [Test]
+    public void CollapsePath_Joins_Paths_As_Directed()
+    {
+        string path = @"C:\Windows\System32\drivers";
+
+        var test = path.CollapsePath(@"..\Microsoft");
+
+        StringAssert.AreEqualIgnoringCase(@"C:\Windows\System32\Microsoft", test);
+    }
 }
