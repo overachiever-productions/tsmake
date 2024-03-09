@@ -1,0 +1,68 @@
+﻿<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Configuration>
+	
+	<Controls>
+		<Control>
+			<Name>IError</Name>
+			<CustomControl>
+				<CustomEntries>
+					<CustomEntry>
+						<CustomItem>
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ErrorSummary(8, 98d, $_, 2)</ScriptBlock>
+                            </ExpressionBinding>
+							<NewLine />
+                        </CustomItem>
+                    </CustomEntry>
+                </CustomEntries>
+            </CustomControl>
+        </Control>
+    </Controls>
+	
+	<ViewDefinitions>
+		<View>
+			<Name>BuildResult-Default</Name>
+			<ViewSelectedBy>
+				<TypeName>tsmake.BuildResult</TypeName>
+            </ViewSelectedBy>
+			<CustomControl>
+				<CustomEntries>
+					<CustomEntry>
+						<CustomItem>
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.Dash(1, "HeaderLine", 98d, 1)</ScriptBlock>
+							</ExpressionBinding>
+							<NewLine />
+							<Text>  BUILD RESULT:</Text>
+							<NewLine />
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ColumnHeading(8, '> BUILD-FILE: "' + $_.BuildFile + '"', 90)</ScriptBlock>
+                            </ExpressionBinding>
+							<NewLine />
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.ResultOutcome(8, $_,  '> OUTCOME: {0}' , 90)</ScriptBlock>
+                            </ExpressionBinding>							
+							<NewLine />
+							<ExpressionBinding>
+								<ScriptBlock>$TsmFormatter.Dash(1, "HeaderLine", 98d, 1)</ScriptBlock>
+							</ExpressionBinding>
+							<!-- TODO: only show if there were ... errors (duh) -->
+							<NewLine />
+							<Text> 	ERRORS:</Text>
+							<NewLine />
+							<Frame>
+								<CustomItem>
+									<ExpressionBinding>
+										<ScriptBlock>$_.FatalErrors</ScriptBlock>
+										<EnumerateCollection />
+										<CustomControlName>IError</CustomControlName>
+                            		</ExpressionBinding>
+                                </CustomItem>
+                            </Frame>
+                        </CustomItem>
+                    </CustomEntry>
+                </CustomEntries>
+            </CustomControl>
+        </View>
+    </ViewDefinitions>
+</Configuration>
