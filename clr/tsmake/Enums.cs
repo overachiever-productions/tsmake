@@ -4,7 +4,7 @@
     {
         FourPart,
         Semantic,
-        Organic
+        Custom
     }
 
     public enum PathType
@@ -34,10 +34,11 @@
         WhitespaceOnly = 2,
         TokenizedContent = 4,
         Directive = 8,
+
+// TODO: remove these ... (I've broken them out into their own enums now). 
         SimpleComment = 16, 
         SimpleCommentOnly = 32,
         BlockComment = 64,
-        // TODO: nested block comments
         BlockCommentStart = 128, 
         BlockCommentEnd = 256,
         BlockCommentLine = 512,

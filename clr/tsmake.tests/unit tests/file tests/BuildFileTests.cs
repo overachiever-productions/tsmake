@@ -21,7 +21,6 @@ public class BuildFileTests
             @"/*"
         };
 
-
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(fm => fm.GetFileLines(It.IsAny<string>()))
             .Returns(listOfLines);

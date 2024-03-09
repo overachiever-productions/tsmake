@@ -1,5 +1,17 @@
 ﻿Set-StrictMode -Version 1.0;
 
+<#
+
+	Set-Location "D:\Dropbox\Repositories\tsmake\~~spelunking";
+
+	Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+$global:VerbosePreference = "Continue";
+	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net";
+
+
+#>
+
+
 function Execute-Pipeline {
 	[CmdletBinding()]
 	param (
@@ -163,10 +175,11 @@ function Execute-Pipeline {
 						$include = [tsmake.models.IncludeFactory]::GetInclude($line.Directive, $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 					
 						foreach ($fileToParse in $include.SourceFiles) {
-							Write-Host "For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
+							Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
 							
-#							$fileLineage = New-Object tsmake.models.FileLineage(($BuildContext.BuildFile), $fileToParse);
-#							$processingResult = [tsmake.models.LineParser]::Instance.ParseLines($fileToParse, $fileLineage, $fileManager);
+							$processingResult = [tsmake.models.LineProcessor]::TransformLines($fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
+							
+
 #							
 #							$buildManifest.AddLines($processingResult.Lines);
 #							if ($processingResult.Errors.Count -gt 0) {
@@ -203,9 +216,9 @@ function Execute-Pipeline {
 #			if ($line.IsBlockCommentStart) {
 #				Write-Host "Block-Start: $($line.Content) -> $($line.LineNumber) ($($line.Source))";
 #			}
-			if ($line.HasMultipleBlockComments -and $line.IsBlockCommentStart) {
-				Write-Host "Multi-Block-Start: $($line.Content)";
-			}
+#			if ($line.HasMultipleBlockComments -and $line.IsBlockCommentStart) {
+#				Write-Host "Multi-Block-Start: $($line.Content)";
+#			}
 		}
 		
 		

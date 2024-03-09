@@ -85,7 +85,7 @@ namespace tsmake.models
                     return;
                 }
 
-                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>(\w+)|[::]{1,})\s*", Global.RegexOptions);
+                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>((ROOT|OUTPUT|FILEMARKER|VERSION_CHECKER|DIRECTORY|FILE|COMMENT|:))|[:]{1})\s*", Global.RegexOptions);
                 Match m = regex.Match(this.RawContent);
                 if (m.Success)
                 {

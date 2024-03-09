@@ -44,7 +44,7 @@ function Invoke-TsmBuild {
 		# 		where, down at the end{} part of the func... will add each token into the TokenRegistry if it DOESN'T already exist, and, if it does, will set the value... 
 
 		
-		# TODO: build up an 'Options' object - that'll track options for things like: 
+		# TODO: build up an 'Options' object - which will track options for things like: 
 		# 		- skip/process file-marker, 
 		# 		- remove all /* header comments */ or just the FIRST set. 
 		# 		- StopOnFirstError or whatever I'm going to call that feature/option.

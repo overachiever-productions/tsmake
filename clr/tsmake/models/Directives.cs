@@ -10,12 +10,6 @@
         public string ValidationMessage { get; }
     }
 
-    public interface IIncluded {
-        //public string TranslatedPath { get; }
-
-        //public void SetTranslatedPath(string translatedPath);
-    }
-
     public abstract class BaseDirective : IDirective
     {
         public string DirectiveName { get; protected set; }
@@ -98,10 +92,7 @@
         public VersionCheckerDirective(Line line, Location location) : base(line, location) { }
     }
 
-    // REFACTOR: IncludeFileDirective, RootPathDirective, and OutputDirective all have - for all intents and purposes - the SAME underlying functionality IN THE .CTOR
-    //      in essence, they all: a) get the directive data/input, b) check to see if it's a valid path and assign it + type if it is, c) throw an exception if not valid path. 
-    //      ultimately, in terms of .ctor logic - the ONLY thing that's different is the error message. 
-    public class IncludeFileDirective : BaseDirective, IIncluded
+    public class IncludeFileDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
@@ -119,11 +110,11 @@
                 IsValid = true;
             }
             else
-                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive: [INCLUDEFILE].";
+                base.ValidationMessage = $"Invalid (or missing) File-Path Data for Directive: [FILE].";
         }
     }
 
-    public class IncludeDirectoryDirective : BaseDirective, IIncluded
+    public class IncludeDirectoryDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
@@ -263,7 +254,9 @@
         {
             switch (directiveName)
             {
-                case "::": // or COMMENT... 
+                case ":":  // short-hand/alternative syntax for a comment
+                    return new CommentDirective(line, location);
+                case "COMMENT":
                     return new CommentDirective(line, location);
                 case "ROOT":
                     return new RootPathDirective(line, location);

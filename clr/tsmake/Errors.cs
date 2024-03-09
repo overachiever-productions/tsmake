@@ -1,5 +1,21 @@
 ﻿using tsmake.models;
 
+// TODO: 
+//  Need a FULL refactor of GetErrorText(). 
+//      it's currently an organic mess .... with no real rhyme or reason. 
+//      Instead it should be as follows:
+//      - For ParserErrors: 
+//              I want/need the full location of the problem - i.e., if it's in the buildFile, i want filename, line-number, column-number. 
+//                      but if it's in an INCLUDED file, I want ... build-file, line# => include file line-no (=> on down). 
+//      - For BuilErrors: 
+//              I want the exception/stack trace - or something similar. 
+//      AND
+//          for both of the above (as well as for ExecutionErrors and BuildFileGenerationErrors) I need 2x things: 
+//              a. STRING representations of error info. 
+//              b. some sort of struct/object that people can interrogate to get more context - i.e., for an ERRORRecord (BuildException) that's easy. 
+//                          but for something like a parse-error ... i need a 'struct'/something that has the 'lineage' and other details. 
+
+
 namespace tsmake
 {
     public interface IError

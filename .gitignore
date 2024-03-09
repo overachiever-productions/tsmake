@@ -358,3 +358,4 @@ MigrationBackup/
 /tsmake.psprojs
 /tsmake.TempPoint.psm1
 /tsmake.psproj.psbuild
+/tsmake.msi
