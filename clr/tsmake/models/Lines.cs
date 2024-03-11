@@ -3,11 +3,6 @@ using System.Runtime.CompilerServices;
 
 namespace tsmake.models
 {
-    public class Comment
-    {
-
-    }
-
     public class Location
     {
         public Stack<string> SourceFiles { get; }
@@ -44,11 +39,18 @@ namespace tsmake.models
         public int LineNumber { get; }
         public string RawContent { get; }
         public string CodeText { get; private set; }
-        public string CommentText { get; }
+        // TODO: probably have to make this a List<string> CommentText ??? 
+        public string CommentText { get; private set; }
         public LineType LineType { get; private set; }
+        public CommentType CommentType { get; private set; }
+        public BlockCommentType BlockCommentType { get; private set; }
+        public LineEndCommentType LineEndCommentType { get; private set; }
         public List<Token> Tokens { get; }
         public IDirective Directive { get; private set; }
-        public Comment Comment { get; }
+
+        public bool IsComment => this.LineType.HasFlag(LineType.ContainsComments);
+        public bool IsBlockComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.BlockComment);
+        public bool IsLineEndComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.LineEndComment);
 
         public Line(string sourceFile, int lineNumber, string rawContent)
         {
@@ -76,12 +78,13 @@ namespace tsmake.models
         private void ParseLine()
         {
             this.LineType = LineType.RawContent;
+            this.CommentType = CommentType.None;
 
             try
             {
                 if (string.IsNullOrWhiteSpace(this.RawContent))
                 {
-                    this.LineType |= LineType.WhitespaceOnly;
+                    this.LineType |= LineType.WhiteSpaceOnly;
                     return;
                 }
 
@@ -108,7 +111,7 @@ namespace tsmake.models
                 var matches = regex.Matches(this.RawContent);
                 if (matches.Count > 0 && matches[0].Success)
                 {
-                    this.LineType |= LineType.TokenizedContent;  // NOTE that currently, this allows for combinations of RawContent | Directives to be 'decorated' with TokenizedContent... 
+                    this.LineType |= LineType.ContainsTokens;  // NOTE that currently, this allows for combinations of RawContent | Directives to be 'decorated' with TokenizedContent... 
 
                     foreach (Match x in matches)
                     {
@@ -125,40 +128,79 @@ namespace tsmake.models
                 matches = regex.Matches(this.RawContent);
                 if (matches.Count > 0 && matches[0].Success)
                 {
-                    this.LineType |= LineType.BlockComment;
+                    this.LineType |= LineType.ContainsComments;
+                    this.CommentType = CommentType.BlockComment;
 
-                    string codeSansComment = this.RawContent;
+                    string codeWithoutFullyFormedBlockComments = this.RawContent;
                     int commentsCount = 0;
                     foreach (Match x in matches)
                     {
                         string blockComment = x.Groups["comment"].Value;
-                        codeSansComment = codeSansComment.Replace(blockComment, "", StringComparison.InvariantCultureIgnoreCase);
+                        codeWithoutFullyFormedBlockComments = codeWithoutFullyFormedBlockComments.Replace(blockComment, "", StringComparison.InvariantCultureIgnoreCase);
                         commentsCount++;
                     }
 
-                    if (codeSansComment.Contains("/*"))
+                    if (commentsCount == 1)
                     {
-                        this.LineType |= LineType.MultipleBlockComments;
-                        this.LineType |= LineType.BlockCommentStart;
+                        int lineLength = this.RawContent.TrimEnd().Length;
+                        int commentEnd = matches[0].Groups["comment"].Index + matches[0].Groups["comment"].Length;
+
+                        if (lineLength == commentEnd)
+                        {
+                            if(!string.IsNullOrWhiteSpace(codeWithoutFullyFormedBlockComments))
+                                this.BlockCommentType = BlockCommentType.EolComment;
+                        }
+                        else
+                            this.BlockCommentType = BlockCommentType.MidlineComment;
                     }
 
                     if (commentsCount > 1)
-                        this.LineType |= LineType.MultipleBlockComments;
+                        this.BlockCommentType = BlockCommentType.MultipleSingleLineComments;
 
-                    if (string.IsNullOrWhiteSpace(codeSansComment))
-                        this.LineType |= LineType.BlockCommentOnly;
+                    // Modifiers: 
+                    if (codeWithoutFullyFormedBlockComments == "")
+                        this.BlockCommentType |= BlockCommentType.CommentOnly;
+
+                    if (string.IsNullOrWhiteSpace(codeWithoutFullyFormedBlockComments))
+                        this.BlockCommentType |= BlockCommentType.WhiteSpaceAndComment;
+
+                    if (codeWithoutFullyFormedBlockComments.Contains("/*"))
+                    {
+                        this.BlockCommentType |= BlockCommentType.MultiLineStart;
+                        this.BlockCommentType |= BlockCommentType.MultipleSingleLineComments; // this is now true too... 
+                        this.BlockCommentType |= BlockCommentType.EolComment;  // ditto... this is now true too... 
+
+                        codeWithoutFullyFormedBlockComments = codeWithoutFullyFormedBlockComments.Substring(0, codeWithoutFullyFormedBlockComments.IndexOf("/*"));
+
+                        if(string.IsNullOrWhiteSpace(codeWithoutFullyFormedBlockComments))
+                            this.BlockCommentType |= BlockCommentType.WhiteSpaceAndComment;
+                    }
+
+                    // TODO: assign .CommentText and .CodeText
+                    this.CodeText = codeWithoutFullyFormedBlockComments;
+
                 }
                 else
                 {
                     if (this.RawContent.Contains("/*", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        // TODO: COUNT how many /* we have ... in case we're somehow nested... 
-                        this.LineType |= LineType.BlockCommentStart;
+                        this.LineType |= LineType.ContainsComments;
+                        this.CommentType = CommentType.BlockComment;
 
+                        this.BlockCommentType = BlockCommentType.MultiLineStart;
+                        this.BlockCommentType |= BlockCommentType.EolComment;
+
+                        string codeWithoutPartiallyFormedBlockComment = this.RawContent.Substring(0, this.RawContent.IndexOf("/*"));
+                        if (string.IsNullOrWhiteSpace(codeWithoutPartiallyFormedBlockComment))
+                            this.BlockCommentType |= BlockCommentType.WhiteSpaceAndComment;
                     }
+
                     if (this.RawContent.Contains("*/", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        this.LineType |= LineType.BlockCommentEnd;
+                        this.LineType |= LineType.ContainsComments;
+                        this.CommentType = CommentType.BlockComment;
+
+                        this.BlockCommentType = BlockCommentType.MultilineEnd;
                     }
                 }
 
@@ -166,14 +208,30 @@ namespace tsmake.models
                 m = regex.Match(this.RawContent);
                 if (m.Success)
                 {
-                    this.LineType |= LineType.SimpleComment;
+                    this.LineType |= LineType.ContainsComments;
+
+                    if (this.CommentType == CommentType.None)
+                        this.CommentType = CommentType.LineEndComment;
+                    else
+                        this.CommentType |= CommentType.LineEndComment;
+                    
                     var comment = m.Groups["comment"].Value;
 
-                    var preComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment));
-                    if (string.IsNullOrWhiteSpace(preComment))
-                        this.LineType |= LineType.SimpleCommentOnly;
+                    var textBeforeLineEndComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment));
+
+                    // comment type: 
+                    if (textBeforeLineEndComment == "")
+                        this.LineEndCommentType = LineEndCommentType.FullLineComment;
                     else
-                        this.CodeText = preComment;
+                    {
+                        if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
+                            this.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
+                        else
+                            this.LineEndCommentType = LineEndCommentType.EolComment;
+                    }
+
+                    this.CodeText = textBeforeLineEndComment;
+                    this.CommentText = comment;
                 }
             }
             catch (Exception ex)
@@ -191,7 +249,6 @@ namespace tsmake.models
         public List<Token> Tokens { get; set; }
         public List<IDirective> Directives { get; }
         public List<Line> Lines { get; }
-        public List<Comment> Comments { get; }
 
         public void AddErrors(List<IError> errors)
         {
@@ -224,7 +281,6 @@ namespace tsmake.models
             this.Tokens = new List<Token>();
             this.Directives = new List<IDirective>();
             this.Lines= new List<Line>();
-            this.Comments = new List<Comment>();
         }
     }
 
@@ -239,7 +295,7 @@ namespace tsmake.models
             {
                 var line = new Line(sourceFile, i, current);
 
-                if (line.LineType.HasFlag(LineType.TokenizedContent))
+                if (line.LineType.HasFlag(LineType.ContainsTokens))
                     output.AddTokens(line.Tokens);
 
                 if (line.LineType.HasFlag(LineType.Directive))
@@ -248,27 +304,43 @@ namespace tsmake.models
                     {
                         if (line.Directive.DirectiveName == "FILE")
                         {
-                            // TODO: nestedSourceFiles (and Directories) should handle file/path validation ... 
-                            //  and if their paths add a Parser or Build Error...  (depending upon whether the directive is mal-formed/wrong (parser error) or ... whether the file isn't found (runtime/build error).
                             var nestedSourceFile = new IncludedFile((IncludeFileDirective)line.Directive, fileManager, workingDirectory, root);
+                            if (nestedSourceFile.Errors.Count > 0)
+                                output.Errors.AddRange(nestedSourceFile.Errors);
+                            else
+                            {
+                                var recursiveResult = LineProcessor.TransformLines(nestedSourceFile.SourceFiles[0],
+                                    processingType, fileManager, workingDirectory, root);
 
-                            var recursiveResult = LineProcessor.TransformLines(nestedSourceFile.SourceFiles[0], processingType, fileManager, workingDirectory, root);
+                                if (recursiveResult.Errors.Count > 0)
+                                    output.AddErrors(recursiveResult.Errors);
 
-                            if (recursiveResult.Errors.Count > 0)
-                                output.AddErrors(recursiveResult.Errors);
-
-                            output.AddLines(recursiveResult.Lines);
-                            continue;
+                                output.AddLines(recursiveResult.Lines);
+                                continue;
+                            }
                         }
                         else
                         {
                             if (line.Directive.DirectiveName == "DIRECTORY")
                             {
-                                // TODO: create a new 'Directory' object ... via directives and such... 
-                                // then, for EACH nestedDirectorySourceFile ... 
-                                //      get the processingResult
-                                //      add errors 
-                                //      add lines... 
+                                var nestedDirectory = new IncludedDirectory((IncludeDirectoryDirective)line.Directive, fileManager, workingDirectory, root);
+                                if(nestedDirectory.Errors.Count > 0)
+                                    output.AddErrors(nestedDirectory.Errors);
+                                else
+                                {
+                                    foreach (var nestedSourceFile in nestedDirectory.SourceFiles)
+                                    {
+                                        var recursiveResult = LineProcessor.TransformLines(nestedSourceFile,
+                                            processingType, fileManager, workingDirectory, root);
+
+                                        if(recursiveResult.Errors.Count > 0)
+                                            output.AddErrors(recursiveResult.Errors); 
+
+                                        output.AddLines(recursiveResult.Lines);
+                                    }
+
+                                    continue;
+                                }
                             }
                         }
                     }
@@ -282,23 +354,34 @@ namespace tsmake.models
                 i++;
             }
 
+            if (processingType == ProcessingType.IncludedFile)
+            {
+                foreach (var line in output.Lines)
+                {
+                    // 1. Process 'strings'. 
+                    //      and, to be sure: I don't CARE about strings - except for cases like N'CREATE OR ALTER ... ' and/or N'/* this looks like a comment - but it''s actually CODE'... 
+
+                    // TODO: should I move these into Line() itself - to watch for them (i.e., have them IDENTIFIED before getting here?)
+                    //      I THINK so ... cuz, that'd make the behavior for strings, comments be the same... (and give me a bit of a framework for object names too.)
+                    // strings regex: (\x27)((?!\1).|\1{2})*\1 
+                    //      actually: (?<string>(\x27)((?!\1).|\1{2})*\1) 
 
 
-            // TODO: I'm not sure if these (both) should ALWAYS be done or not... 
-            //if (processStrings)
-            //{
-            //          i.e., look for things like N'CREATE or ALTER X ... ' and N'/* this looks like a comment, but isn''t';
-            //}
-            
-            //if (processComments)
-            //{
 
-            //}
+                    // 2. process comments
+                    //      need to process these for 3x reasons: 
+                    //          a. need to both REMOVE them based on BuildPreferences 
+                    //          b. they can/will contain .DOCUMENTATION 
+                    //          c. /* this might look like a CREATE TABLE ... but it's a comment - so don't confuse/conflate the object name with comments */
 
-            //if (processObjectOwner)
-            //{
+                    // 3. object names. 
+                    //      arguably, if/when we're NOT in the build.sql file (i.e., original file) and IF we're not in a 'string' or /* comment */ (or --comment)... 
+                    //          then ... i could potentially use \xxx\file_name.sql to yield <file_name> as a default/place-holder for the object name. 
+                    //      OTHERWISE, the object name could/would should be "" or any kind of CREATE|ALTER X|Y|Z type of declaration that I care about... 
+                    //          and... i don't know why anyone WOULD do this, but I need to account for STUPID syntax like CREATE OR ALTER<CRLF>FUNC|TABLE|WHATEVER<CRLF>name... and such. 
 
-            //}
+                }
+            }
 
             return output;
         }

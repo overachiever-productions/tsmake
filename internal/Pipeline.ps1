@@ -171,11 +171,11 @@ function Execute-Pipeline {
 						continue; # skip - i.e., don't copy into buildManifest
 					}
 					{ $_ -in ("FILE", "DIRECTORY") } {
-						Write-Host "$($line.Directive.DirectiveName) => Path: $($line.Directive.Path)"
+	#Write-Host "$($line.Directive.DirectiveName) => Path: $($line.Directive.Path)"
 						$include = [tsmake.models.IncludeFactory]::GetInclude($line.Directive, $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 					
 						foreach ($fileToParse in $include.SourceFiles) {
-							Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
+	#Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
 							
 							$processingResult = [tsmake.models.LineProcessor]::TransformLines($fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 							$buildManifest.AddLines($processingResult.Lines);
@@ -204,7 +204,17 @@ function Execute-Pipeline {
 		}
 		
 		foreach ($line in $buildManifest.Lines) {
-			#Write-Host "Build Manifest Line: $($line.Content)"
+			#Write-Host "LINE: $($line.RawContent)"
+			
+#			if ($line.IsComment) {
+#				Write-Host "$($line.LineNumber): $($line.CommentText)";
+#			}
+			
+			if ($line.IsBlockComment) {
+				Write-Host "$($line.LineNumber): $($line.CommentText)";
+			}
+			
+			
 			
 #			if ($line.IsComment -and -not($line.IsCommentOnly)) {
 #				#Write-Host "Comment: $($line.Content)"
