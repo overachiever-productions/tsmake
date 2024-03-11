@@ -33,6 +33,49 @@ namespace tsmake.models
         }
     }
 
+    public interface ILineDecorator
+    {
+        public Stack<string> Stack { get; }
+        public string DecoratorText { get; }
+        public int LineStart { get; }
+        public int ColumnStart { get; }
+        public int LineEnd { get; }
+        public int ColumnEnd { get; }
+    }
+
+    public abstract class BaseLineDecorator : ILineDecorator
+    {
+        public Stack<string> Stack { get; }
+        public string DecoratorText { get; }
+        public int LineStart { get; }
+        public int ColumnStart { get; }
+        public int LineEnd { get; }
+        public int ColumnEnd { get; }
+    }
+
+    public class CodeComment : BaseLineDecorator
+    {
+        // represents either -- comments (till end of line (pretty simple) or /* comments 
+        //          which can span multiple lines and a bunch of other stuff... */ 
+    }
+
+    public class CodeString : BaseLineDecorator
+    {
+        // represents 'string comments - single or multi-line and so on'... 
+    }
+
+    public class ObjectDefinition : BaseLineDecorator
+    {
+        // this should extend the interface with 2x properties: 
+        //  .ObjectName 
+        //  .DefaultName (which is the filename)
+
+        // i THINK this makes sense... but, assume that we've got something like ALTER|CREATE (whitelisted|object|type|here)... 
+        //      at which point... this 'goes' until we hit a GO ... or ... find another ALTER|CREATE further down...
+        //      right? at which point, the .DecoratorText is the ENTIRE friggin object definition. 
+        //          and... by default... i think I should probably set some sort of .DefaultName ... which is the file-name in question.
+    }
+
     public class Line
     {
         public Stack<string> SourceLocation { get; }
