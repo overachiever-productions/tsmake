@@ -2,11 +2,12 @@
 
 <#
 
-	Set-Location "D:\Dropbox\Repositories\tsmake\~~spelunking";
 
 	Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+
+	Set-Location "D:\Dropbox\Repositories\tsmake\~~spelunking";
 $global:VerbosePreference = "Continue";
-	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net";
+	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net" -BuildFile "D:\Dropbox\Repositories\tsmake\~~spelunking\simplified.build.sql";
 
 
 #>
@@ -53,7 +54,7 @@ function Execute-Pipeline {
 		
 		if ($buildResult.HasErrors) {
 			return;
-		}
+		}		
 		
 		# ====================================================================================================
 		# 2. Evaluate + Process Global Directives (ROOT, OUTPUT, FILEMARKER, VERSIONCHECKER, etc.)
@@ -164,6 +165,8 @@ function Execute-Pipeline {
 		Write-Verbose "	Processing FILE and DIRECTORY inclusions.";
 		[tsmake.models.BuildManifest]$buildManifest = New-Object tsmake.models.BuildManifest];
 		
+#Write-Host "BUILD CONTEXT: Root: $($BuildContext.Root)  Working Dir: $($BuildContext.WorkingDirectory)";
+		
 		foreach ($line in $buildFile.Lines) {
 			if (Has-Value $line.Directive) {
 				switch ($line.Directive.DirectiveName) {
@@ -173,15 +176,21 @@ function Execute-Pipeline {
 					{ $_ -in ("FILE", "DIRECTORY") } {
 	#Write-Host "$($line.Directive.DirectiveName) => Path: $($line.Directive.Path)"
 						$include = [tsmake.models.IncludeFactory]::GetInclude($line.Directive, $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
-					
-						foreach ($fileToParse in $include.SourceFiles) {
-	#Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
-							
-							$processingResult = [tsmake.models.LineProcessor]::TransformLines($fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
-							$buildManifest.AddLines($processingResult.Lines);
-							
-							if ($processingResult.Errors.Count -gt 0) {
-								$buildManifest.AddErrors($processingResult.Errors);
+						
+						if ($include.Errors.Count -gt 0) {
+							$buildResult.AddErrors($include.Errors);
+						}
+						else {
+							foreach ($fileToParse in $include.SourceFiles) {
+#	Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
+#		Write-Host "		Location: $($line.Location[0].FileName)"
+								
+								$processingResult = [tsmake.models.LineProcessor]::ProcessLines($line, $fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
+								$buildManifest.AddLines($processingResult.Lines);
+								
+								if ($processingResult.Errors.Count -gt 0) {
+									$buildResult.AddErrors($processingResult.Errors);
+								}
 							}
 						}
 					}
@@ -195,24 +204,21 @@ function Execute-Pipeline {
 			}
 		}
 		
-		if ($buildManifest.Errors.Count -gt 0) {
-			$buildResult.AddErrors($buildManifest.Errors);
-		}
-		
 		if ($buildResult.HasErrors) {
 			return;
 		}
 		
 		foreach ($line in $buildManifest.Lines) {
-			#Write-Host "LINE: $($line.RawContent)"
+#			Write-Host "LINE: $($line.RawContent)";
+#			Write-Host "  $($line.GetLocation())"
 			
-#			if ($line.IsComment) {
-#				Write-Host "$($line.LineNumber): $($line.CommentText)";
-#			}
-			
-			if ($line.IsBlockComment) {
-				Write-Host "$($line.LineNumber): $($line.CommentText)";
+			if ($line.IsComment) {
+				Write-Host "$($line.LineNumber): $($line.GetCommentText())";
 			}
+			
+#			if ($line.IsBlockComment) {
+#				Write-Host "$($line.GetLocation()) - $($line.LineNumber): $($line.GetCommentText())";
+#			}
 			
 			
 			
@@ -234,7 +240,7 @@ function Execute-Pipeline {
 #			}
 		}
 		
-		
+<#		
 		# at this point, I've got ALL lines EXCLUDING: root, output, and other global directives AND any removed/stripped comments are gone as well. 
 		# 		which means I can/should review ALL tokens and throw errors on any non-valid tokens. 
 		# 			i.e., I WAS doing this previously against lines in the $buildManifest... but that's too early. Simply 'move' that logic 'down here'
@@ -285,25 +291,20 @@ function Execute-Pipeline {
 		
 		# 	And then, finally: process tokens.
 		
+#>		
 		
-		
-#		Write-Host "-------------------------------------------------------";
-#		
-#		foreach ($t in $buildFile.Tokens) {
-#			# For validation purposes ... need to go through each of these and: 
-#			#  a) see if it has a default or not. 
-#			#     if it does, check to see if I've got a TokenDefinition that matches and whether it PREVENTS defaults. 
-#			# 	  if it does not... see if I've got a TokenDefinition - and if it has a value. (If not, throw.)
-#			# 		and, actually: don't throw on error. instead, route into a helper func that stores 'parser errors' and ... if -ThrowOnError = $true .. then throw on first (or any) execution
-#			
-#			Write-Host "Token Location: $($t.Location.LineNumber), $($t.Location.ColumnNumber) -> TokenName: $($t.Name)  -> DefaultValue: $($t.DefaultValue)  ";
-#		}
-		
+
 		# TODO: Presumably, if we get 'here' then... there were no errors or problems that stopped the build... 
 		$buildResult.SetSucceeded();  
 	};
 	
 	end {
+		
+		foreach ($e in $buildResult.Errors) {
+			Write-Host "Error: $($e.ErrorMessage)";
+		}
+		
+		
 		# TODO: copy these into a 'history/buffer' object so that callers (i.e., users) can interrogate
 		return $buildResult;
 	};

@@ -1,6 +1,4 @@
-﻿using System.Diagnostics;
-
-namespace tsmake.models
+﻿namespace tsmake.models
 {
     public class BuildFile
     {
@@ -18,9 +16,10 @@ namespace tsmake.models
             this.ParseLines(buildFile, fileManager);
         }
 
-        private void ParseLines(string source, IFileManager fileManager)
+        private void ParseLines(string buildFileSource, IFileManager fileManager)
         {
-            LinesProcessingResult result = LineProcessor.TransformLines(source, ProcessingType.BuildFile, fileManager, "", "");
+            Stack<Location> empty = new Stack<Location>();
+            LinesProcessingResult result = LineProcessor.ProcessLines(null, buildFileSource, ProcessingType.BuildFile, fileManager, "", "");
 
             this.Errors.AddRange(result.Errors);
             this.Lines = result.Lines;
@@ -35,7 +34,7 @@ namespace tsmake.models
                     this.RootDirective = (RootPathDirective)roots[0];
                     break;
                 default:
-                    string errorMessage = $"Duplicate ROOT Directive(s) in Build File: [{source}].";
+                    string errorMessage = $"Duplicate ROOT Directive(s) in Build File: [{buildFileSource}].";
                     string context = "ROOT directives on found on lines: " + string.Join(",",
                         roots.Select(r => r.Location.LineNumber.ToString()).ToArray());
                     this.Errors.Add(new ParserError(errorMessage, roots[0].Location, context));
@@ -51,7 +50,7 @@ namespace tsmake.models
                     this.OutputDirective = (OutputDirective)outputs[0];
                     break;
                 default:
-                    string errorMessage = $"Duplicate OUTPUT Directive(s) in Build File: [{source}].";
+                    string errorMessage = $"Duplicate OUTPUT Directive(s) in Build File: [{buildFileSource}].";
                     string context = "OUTPUT directives on found on lines: " + string.Join(",",
                         outputs.Select(o => o.Location.LineNumber.ToString()).ToArray());
                     this.Errors.Add(new ParserError(errorMessage, outputs[0].Location, context));
@@ -98,7 +97,7 @@ namespace tsmake.models
 
             if (!fileManager.FileExists(translatedPath))
             {
-                this.Errors.Add(new ParserError("Include File xxx not found.", directive.Location, "context for where the file include directive was found and stuff... "));;
+                this.Errors.Add(new ParserError($"Include File: [{translatedPath}] not found.", directive.Location, "context for where the file include directive was found and stuff... "));;
                 this.SourceFiles = new List<string>();
             }
             else 

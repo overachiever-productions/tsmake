@@ -50,7 +50,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.FileName}, line: {location.LineNumber}.";
         }
     }
 
@@ -74,7 +74,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.FileName}, line: {location.LineNumber}.";
         }
     }
 

@@ -1,42 +1,31 @@
-﻿using System;
-using System.Runtime.CompilerServices;
+﻿using System.Diagnostics;
 
 namespace tsmake.models
 {
     public class Location
     {
-        public Stack<string> SourceFiles { get; }
-        public string CurrentFileName { get; }
+        public string FileName { get; }
         public int LineNumber { get; }
         public int ColumnNumber { get; }
 
-        //public Location OriginalLocation { get; }
-
-        public Location(Stack<string> sourceFiles, int lineNumber, int columnNumber)
+        public Location(string fileName, int lineNumber, int columnNumber = 0)
         {
-            this.SourceFiles = sourceFiles;
-
-            this.CurrentFileName = sourceFiles.Peek();
+            this.FileName = fileName;
             this.LineNumber = lineNumber;
             this.ColumnNumber = columnNumber;
         }
 
-        public Location(Location parent, string fileName, int lineNumber, int columnNumber)
-        {
-            // TODO: need to figure out when/where to use this .ctor... 
-        }
-
-        public string GetLocationContext()
-        {
-            //return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber})";
-            return "TODO: need to chain/concat full-source-file lineage thingies in Location.GetLocationContext().";
-        }
+        //public string GetLocationContext()
+        //{
+        //    //return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber})";
+        //    return "TODO: need to chain/concat full-source-file lineage thingies in Location.GetLocationContext().";
+        //}
     }
 
     public interface ILineDecorator
     {
-        public Stack<string> Stack { get; }
-        public string DecoratorText { get; }
+        public Stack<Location> Location { get; }
+        public string Text { get; }
         public int LineStart { get; }
         public int ColumnStart { get; }
         public int LineEnd { get; }
@@ -45,45 +34,74 @@ namespace tsmake.models
 
     public abstract class BaseLineDecorator : ILineDecorator
     {
-        public Stack<string> Stack { get; }
-        public string DecoratorText { get; }
+        public Stack<Location> Location { get; }
+        public string Text { get; }
         public int LineStart { get; }
         public int ColumnStart { get; }
         public int LineEnd { get; }
         public int ColumnEnd { get; }
+
+        protected BaseLineDecorator(Stack<Location> location, int lineStart, int columnStart)
+        {
+            this.Location = location;
+            this.LineStart = lineStart;
+            this.ColumnStart = columnStart;
+        }
+
+        protected BaseLineDecorator(Stack<Location> location, string text, int lineStart, int columnStart, int lineEnd, int columnEnd)
+        {
+            this.Location = location;
+            this.Text = text;
+            this.LineStart = lineStart;
+            this.ColumnStart = columnStart;
+            this.LineEnd = lineEnd;
+            this.ColumnEnd = columnEnd;
+        }
+
+        protected void Close(string text, int lineEnd, int columnEnd)
+        {
+
+        }
     }
 
+    // represents either -- comments (till end of line (pretty simple) or /* comments 
+    //          which can span multiple lines and a bunch of other stuff... */ 
     public class CodeComment : BaseLineDecorator
     {
-        // represents either -- comments (till end of line (pretty simple) or /* comments 
-        //          which can span multiple lines and a bunch of other stuff... */ 
+        public CodeComment(Stack<Location> location, int lineStart, int lineEnd) : base(location, lineStart, lineEnd) { }
+        public CodeComment(Stack<Location> location, string commentText, int lineStart, int columnStart, int lineEnd, int columnEnd)
+            : base(location, commentText, lineStart, columnStart, lineEnd, columnEnd) { }
+
+        public void CloseMultiLineComment(string fullCommentText, int lineEnd, int columnEnd)
+        {
+            base.Close(fullCommentText, lineEnd, columnEnd);
+        }
     }
 
-    public class CodeString : BaseLineDecorator
-    {
-        // represents 'string comments - single or multi-line and so on'... 
-    }
+    //public class CodeString : BaseLineDecorator
+    //{
+    //    // represents 'string comments - single or multi-line and so on'... 
+    //}
 
-    public class ObjectDefinition : BaseLineDecorator
-    {
-        // this should extend the interface with 2x properties: 
-        //  .ObjectName 
-        //  .DefaultName (which is the filename)
+    //public class ObjectDefinition : BaseLineDecorator
+    //{
+    //    // this should extend the interface with 2x properties: 
+    //    //  .ObjectName 
+    //    //  .DefaultName (which is the filename)
 
-        // i THINK this makes sense... but, assume that we've got something like ALTER|CREATE (whitelisted|object|type|here)... 
-        //      at which point... this 'goes' until we hit a GO ... or ... find another ALTER|CREATE further down...
-        //      right? at which point, the .DecoratorText is the ENTIRE friggin object definition. 
-        //          and... by default... i think I should probably set some sort of .DefaultName ... which is the file-name in question.
-    }
+    //    // i THINK this makes sense... but, assume that we've got something like ALTER|CREATE (whitelisted|object|type|here)... 
+    //    //      at which point... this 'goes' until we hit a GO ... or ... find another ALTER|CREATE further down...
+    //    //      right? at which point, the .DecoratorText is the ENTIRE friggin object definition. 
+    //    //          and... by default... i think I should probably set some sort of .DefaultName ... which is the file-name in question.
+    //}
 
     public class Line
     {
-        public Stack<string> SourceLocation { get; }
+        public Stack<Location> Location { get; private set; }
         public int LineNumber { get; }
         public string RawContent { get; }
-        public string CodeText { get; private set; }
-        // TODO: probably have to make this a List<string> CommentText ??? 
-        public string CommentText { get; private set; }
+        public string CodeOnlyText { get; private set; }
+        public List<CodeComment> CodeComments { get; private set; }
         public LineType LineType { get; private set; }
         public CommentType CommentType { get; private set; }
         public BlockCommentType BlockCommentType { get; private set; }
@@ -95,21 +113,64 @@ namespace tsmake.models
         public bool IsBlockComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.BlockComment);
         public bool IsLineEndComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.LineEndComment);
 
+        public string GetCommentText()
+        {
+            if(!this.IsComment)
+                return string.Empty;
+            if (this.CodeComments.Count == 1)
+            {
+                return this.CodeComments[0].Text;
+            }
+            else
+            {
+                return "compound comments go here... ";
+            }
+        }
+
+        public string GetLocation(string indent = "\t", bool increaseIndent = true)
+        {
+            if (this.Location.Count == 1)
+            {
+                return this.Location.Peek().FileName + ", " + this.Location.Peek().LineNumber;
+            }
+
+            var sb = new StringBuilder();
+            var locationClone = this.Location.Clone();
+            var currentIndent = indent;
+            if (increaseIndent) currentIndent = "";
+            while (locationClone.Count > 0)
+            {
+                var location = locationClone.Pop();
+                sb.AppendLine($"{currentIndent}{location.FileName} , {location.LineNumber}");
+                if (increaseIndent)
+                    currentIndent += indent;
+            }
+
+            return sb.ToString();
+        }
+
         public Line(string sourceFile, int lineNumber, string rawContent)
         {
-            this.SourceLocation = new Stack<string>();
-            this.SourceLocation.Push(sourceFile);
+            this.Location = new Stack<Location>();
+
+            Location current = new Location(sourceFile, lineNumber);
+            this.Location.Push(current);
 
             this.LineNumber = lineNumber;
             this.RawContent = rawContent;
             this.Tokens = new List<Token>();
 
             this.ParseLine();
-        } 
+        }
 
-        public Line(Stack<string> sourceLocation, int lineNumber, string rawContent)
+        public Line(Line parent, string sourceFile, int lineNumber, string rawContent)
         {
-            this.SourceLocation = sourceLocation;
+            this.Location = new Stack<Location>();
+            var stackClone = parent.Location.Clone();
+            while (stackClone.Count > 0)
+                this.Location.Push(stackClone.Pop());
+
+            this.Location.Push(new Location(sourceFile, lineNumber));
 
             this.LineNumber = lineNumber;
             this.RawContent = rawContent;
@@ -120,6 +181,7 @@ namespace tsmake.models
 
         private void ParseLine()
         {
+            this.CodeComments = new List<CodeComment>();
             this.LineType = LineType.RawContent;
             this.CommentType = CommentType.None;
 
@@ -142,7 +204,8 @@ namespace tsmake.models
                     string directiveName = directive.Value.ToUpperInvariant();
                     int index = directive.Index;
 
-                    Location location = new Location(this.SourceLocation, this.LineNumber, index);
+                    // TODO: verify that this makes sense... 
+                    Location location = new Location(this.Location.Peek().FileName, this.LineNumber, index);
 
                     IDirective instance = DirectiveFactory.CreateDirective(directiveName, this, location);
                     this.Directive = instance;
@@ -160,7 +223,7 @@ namespace tsmake.models
                     {
                         string tokenData = x.Groups["token"].Value;
                         int index = this.RawContent.IndexOf(tokenData, StringComparison.Ordinal) - 4;
-                        Location location = new Location(this.SourceLocation, this.LineNumber, index);
+                        Location location = new Location(this.Location.Peek().FileName, this.LineNumber, index);
 
                         Token i = new Token(tokenData, location);
                         this.Tokens.Add(i);
@@ -179,6 +242,11 @@ namespace tsmake.models
                     foreach (Match x in matches)
                     {
                         string blockComment = x.Groups["comment"].Value;
+                        int start = x.Groups["comment"].Index;
+                        int length = x.Groups["comment"].Length;
+
+                        this.CodeComments.Add(new CodeComment(this.Location, blockComment, this.LineNumber, start, this.LineNumber, start + length));
+
                         codeWithoutFullyFormedBlockComments = codeWithoutFullyFormedBlockComments.Replace(blockComment, "", StringComparison.InvariantCultureIgnoreCase);
                         commentsCount++;
                     }
@@ -219,8 +287,8 @@ namespace tsmake.models
                             this.BlockCommentType |= BlockCommentType.WhiteSpaceAndComment;
                     }
 
-                    // TODO: assign .CommentText and .CodeText
-                    this.CodeText = codeWithoutFullyFormedBlockComments;
+                    // TODO: assign .CommentText and .CodeOnlyText
+                    this.CodeOnlyText = codeWithoutFullyFormedBlockComments;
 
                 }
                 else
@@ -273,8 +341,8 @@ namespace tsmake.models
                             this.LineEndCommentType = LineEndCommentType.EolComment;
                     }
 
-                    this.CodeText = textBeforeLineEndComment;
-                    this.CommentText = comment;
+                    this.CodeOnlyText = textBeforeLineEndComment;
+                    this.CodeComments.Add(new CodeComment(this.Location, comment, this.LineNumber, m.Index, this.LineNumber, this.RawContent.Length));
                 }
             }
             catch (Exception ex)
@@ -329,14 +397,14 @@ namespace tsmake.models
 
     public class LineProcessor
     {
-        public static LinesProcessingResult TransformLines(string sourceFile, ProcessingType processingType, IFileManager fileManager, string workingDirectory, string root)
+        public static LinesProcessingResult ProcessLines(Line parent, string currentSourceFile, ProcessingType processingType, IFileManager fileManager, string workingDirectory, string root)
         {
             var output = new LinesProcessingResult();
 
             int i = 1;
-            foreach (string current in fileManager.GetFileLines(sourceFile))
+            foreach (string current in fileManager.GetFileLines(currentSourceFile))
             {
-                var line = new Line(sourceFile, i, current);
+                var line = (parent == null) ? new Line(currentSourceFile, i, current) : new Line(parent, currentSourceFile, i, current);
 
                 if (line.LineType.HasFlag(LineType.ContainsTokens))
                     output.AddTokens(line.Tokens);
@@ -347,13 +415,13 @@ namespace tsmake.models
                     {
                         if (line.Directive.DirectiveName == "FILE")
                         {
-                            var nestedSourceFile = new IncludedFile((IncludeFileDirective)line.Directive, fileManager, workingDirectory, root);
-                            if (nestedSourceFile.Errors.Count > 0)
-                                output.Errors.AddRange(nestedSourceFile.Errors);
+                            var nestedFile = new IncludedFile((IncludeFileDirective)line.Directive, fileManager, workingDirectory, root);
+                            if (nestedFile.Errors.Count > 0)
+                                output.Errors.AddRange(nestedFile.Errors);
                             else
                             {
-                                var recursiveResult = LineProcessor.TransformLines(nestedSourceFile.SourceFiles[0],
-                                    processingType, fileManager, workingDirectory, root);
+                                var nestedSourceFile = nestedFile.SourceFiles[0];
+                                var recursiveResult = LineProcessor.ProcessLines(line, nestedSourceFile, processingType, fileManager, workingDirectory, root);
 
                                 if (recursiveResult.Errors.Count > 0)
                                     output.AddErrors(recursiveResult.Errors);
@@ -373,8 +441,7 @@ namespace tsmake.models
                                 {
                                     foreach (var nestedSourceFile in nestedDirectory.SourceFiles)
                                     {
-                                        var recursiveResult = LineProcessor.TransformLines(nestedSourceFile,
-                                            processingType, fileManager, workingDirectory, root);
+                                        var recursiveResult = LineProcessor.ProcessLines(line, nestedSourceFile, processingType, fileManager, workingDirectory, root);
 
                                         if(recursiveResult.Errors.Count > 0)
                                             output.AddErrors(recursiveResult.Errors); 
@@ -401,6 +468,16 @@ namespace tsmake.models
             {
                 foreach (var line in output.Lines)
                 {
+                    // NOTE: For determining if comments are inside of 'single ticks (strings)' and whether object-names are within /* comments */ or 'ticks'... 
+                    //      I don't have to get super pedantic about where potential-outer-strings MIGHT start and whether the start/end 'wraps' the thing i'm looking for. 
+                    // instead, if I have ALL string text - for example - and find that --comments or /* comments */ exist on/in the same line (or lines) as 'string data'... 
+                    //      i just need to do something like foreach(s in this.line's.text-string) { if string.contains(comment) this.commentIsInString = true; } 
+                    //      etc... 
+
+
+
+
+
                     // 1. Process 'strings'. 
                     //      and, to be sure: I don't CARE about strings - except for cases like N'CREATE OR ALTER ... ' and/or N'/* this looks like a comment - but it''s actually CODE'... 
 

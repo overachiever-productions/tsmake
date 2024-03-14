@@ -49,8 +49,9 @@ namespace tsmake
         {
             this.Location = location;
 
-            if (string.IsNullOrEmpty(base.Context))
-                base.Context = this.Location.GetLocationContext();
+            // TODO: figure out what to do here... 
+            //if (string.IsNullOrEmpty(base.Context))
+            //    base.Context = this.Location.GetLocationContext();
         }
 
         public override string GetErrorText()

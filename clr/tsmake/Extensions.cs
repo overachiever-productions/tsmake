@@ -147,5 +147,14 @@ namespace tsmake
             string output = Path.Join(newPath, newDirective);
             return output;
         }
+
+        public static Stack<T> Clone<T>(this Stack<T> original)
+        {
+            // nice: https://stackoverflow.com/a/45200965/11191
+            var arr = new T[original.Count];
+            original.CopyTo(arr, 0);
+            Array.Reverse(arr);
+            return new Stack<T>(arr);
+        }
     }
 }

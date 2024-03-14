@@ -105,7 +105,7 @@ public class LineTests
 
         var sut = new Line("build.sql", 66, codeLine);
 
-        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", sut.CodeText);
+        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", sut.CodeOnlyText);
     }
 
     [Test]
@@ -118,7 +118,7 @@ public class LineTests
 
         var sut = new Line("build.sql", 66, codeLine);
 
-        StringAssert.AreEqualIgnoringCase(@"-- this is a simple comment ", sut.CommentText);
+        StringAssert.AreEqualIgnoringCase(@"-- this is a simple comment ", sut.GetCommentText());
     }
 
     [Test]
