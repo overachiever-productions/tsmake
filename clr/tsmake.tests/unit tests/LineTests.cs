@@ -105,196 +105,68 @@ public class LineTests
 
         var sut = new Line("build.sql", 66, codeLine);
 
-        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", sut.CodeOnlyText);
+        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", sut.GetCodeOnlyText());
     }
 
     [Test]
-    public void Simple_Comment_Captures_Comment_Text()
+    public void Simple_Comment_Captures_Comment_Text_And_Position_Details()
     {
-        // TODO: I'm not 100% sure I want this to capture/preserve the RAW comment - I MIGHT want the comment text WITHOUT -- ... 
-        //      then again, I might not... 
-
         var codeLine = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
 
         var sut = new Line("build.sql", 66, codeLine);
 
         StringAssert.AreEqualIgnoringCase(@"-- this is a simple comment ", sut.GetCommentText());
+        Assert.That(sut.CodeComments.Count, Is.EqualTo(1));
+
+        Assert.That(sut.CodeComments[0].LineStart, Is.EqualTo(66));
+        Assert.That(sut.CodeComments[0].ColumnStart, Is.EqualTo(62));
+
+        Assert.That(sut.CodeComments[0].LineEnd, Is.EqualTo(66));
+        Assert.That(sut.CodeComments[0].ColumnEnd, Is.EqualTo(89));
+
     }
 
     [Test]
-    public void Simple_BlockComment_Is_Marked_As_BlockComment()
+    public void Line_Without_String_Data_Is_Not_Identified_As_Having_String_Data()
     {
-        var codeline = @"DECLARE @version sysname;  /* this is a simple block comment */    ";
+        var codeline = @"	IF @IncludeBlockingSessions = 1 BEGIN ";
 
-        var sut = new Line("build.sql", 70, codeline);
+        var sut = new Line("build.sql", 346, codeline);
 
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
+        Assert.False(sut.LineType.HasFlag(LineType.ContainsStrings));
     }
 
     [Test]
-    public void Simple_BlockComment_At_End_Of_Line_Is_Marked_Eol()
+    public void Line_With_Simple_String_Data_Is_Correctly_Flagged_As_Having_String_Data()
     {
-        var codeline = @"DECLARE @version sysname;  /* this is a simple block comment */    ";
+        var codeLine = @"		SET @topSQL = REPLACE(@topSQL, N'{blockersUNION} ', @blockersUNION);";
 
-        var sut = new Line("build.sql", 70, codeline);
+        var sut = new Line("build.sql", 556, codeLine);
 
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
+        Assert.That(sut.LineType.HasFlag(LineType.ContainsStrings));
     }
 
     [Test]
-    public void Simple_Midline_BlockComment_Is_Marked_As_MidLine()
+    public void Line_With_Simple_String_Data_Correctly_Captures_String_Data()
     {
-        var codeline = @"	        @server = /* sample line with midline comment */ N'PARTNER', ";
+        var codeLine = @"		SET @topSQL = REPLACE(@topSQL, N'{blockersUNION} ', @blockersUNION);";
 
-        var sut = new Line("build.sql", 406, codeline);
+        var sut = new Line("build.sql", 556, codeLine);
 
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
+        StringAssert.AreEqualIgnoringCase(@"N'{blockersUNION} '", sut.CodeStrings[0].Text);
     }
 
     [Test]
-    public void Multiple_BlockComments_On_Single_Line_Are_Marked_Correctly()
+    public void Line_With_Multiple_Strings_Correctly_Captures_All_Full_Strings()
     {
-        var codeline = @"	        @server = /* sample line with */ N'PARTNER',   /* multiple block comments */";
+        var codeLine = @"		+ CASE WHEN (SELECT dbo.[get_engine_version]()) > 10.5 THEN N'TRY_CAST' ELSE N'CAST' END + N'(q.[query_plan] AS xml) [statement_plan]' ";
 
-        var sut = new Line("build.sql", 406, codeline);
+        var sut = new Line("build.sql", 556, codeLine);
 
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
+        Assert.That(sut.LineType.HasFlag(LineType.ContainsStrings));
+        Assert.That(sut.StringType.HasFlag(StringType.SingleLine));
 
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultipleSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-    }
-
-    [Test]
-    public void Simple_BlockComment_With_Comment_And_Whitespace_Only_Is_Marked_Correctly()
-    {
-        var codeline = @"       /* TODO: fix the stuff down below.... */    "; // 2x tabs in the front of this line. 
-
-        var sut = new Line("build.sql", 502, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.WhiteSpaceAndComment));
-    }
-
-    [Test]
-    public void Multiple_BlockComments_And_Whitespace_Only_On_Single_Line_Is_Marked_Correctly()
-    {
-        var codeline = @"/* this too has multiple */  /* block comments - but it's only */ /* whitespace otherwise */";
-
-        var sut = new Line("build.sql", 552, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultipleSingleLineComments));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.WhiteSpaceAndComment));
-    }
-
-    [Test]
-    public void Simple_BlockComment_Start_Only_Is_Correctly_Identified()
-    {
-        var codeline = @"	INSERT INTO dbo.version_history (version_number, [description], deployed)  /* this is the START of a block-comment ... ";
-
-        var sut = new Line("build.sql", 445, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineStart));
-    }
-
-    [Test]
-    public void Simple_BlockComment_Start_Is_Also_Flagged_As_Eol_Comment()
-    {
-        var codeline = @"	INSERT INTO dbo.version_history (version_number, [description], deployed)  /* this is the START of a block-comment ... ";
-
-        var sut = new Line("build.sql", 445, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
-    }
-
-    [Test]
-    public void BlockComment_Start_On_Line_With_Complete_BlockComments_Is_Marked_Correctly()
-    {
-        var codeline = @"/* this is a block comment sample */ SELECT @@SERVERNAME /* Where ";
-
-        var sut = new Line("build.sql", 423, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        // TODO: this is true ... but ... confusing and ... I'm not sure it matters ... 
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MidlineComment));
-        
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultipleSingleLineComments));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineStart));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.EolComment));
-    }
-
-    [Test]
-    public void Whitespace_Only_BlockComment_Start_Is_Marked_Start_And_Whitespace_Only()
-    {
-        var codeline = @"   /* white space and block-comment starts are a thing too... ";
-
-        var sut = new Line("build.sql", 431, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultipleSingleLineComments));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineStart));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.WhiteSpaceAndComment));
-    }
-
-    [Test]
-    public void Multiple_Whitespace_And_Block_Comments_Only_Plus_Start_Are_Marked_Correctly()
-    {
-        var codeline = @"  /* it's also possible */ /* for multiple block-comments to ";
-
-        var sut = new Line("build.sql", 431, codeline);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.BlockComment));
-
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.NestedSingleLineComments));
-        Assert.False(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineNested));
-
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultipleSingleLineComments));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.MultiLineStart));
-        Assert.That(sut.BlockCommentType.HasFlag(BlockCommentType.WhiteSpaceAndComment));
+        Assert.That(sut.CodeStrings.Count, Is.EqualTo(3));
+        StringAssert.AreEqualIgnoringCase(@"N'TRY_CAST'", sut.CodeStrings[0].Text);
     }
 }

@@ -13,6 +13,6 @@ namespace tsmake
 {
     public static class Global
     {
-        public static RegexOptions RegexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
+        public static RegexOptions SingleLineOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
     }
 }

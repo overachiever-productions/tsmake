@@ -185,7 +185,7 @@ function Execute-Pipeline {
 #	Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
 #		Write-Host "		Location: $($line.Location[0].FileName)"
 								
-								$processingResult = [tsmake.models.LineProcessor]::ProcessLines($line, $fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
+								$processingResult = [tsmake.models.FileProcessor]::ProcessFileLines($line, $fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 								$buildManifest.AddLines($processingResult.Lines);
 								
 								if ($processingResult.Errors.Count -gt 0) {

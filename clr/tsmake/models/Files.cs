@@ -19,7 +19,7 @@
         private void ParseLines(string buildFileSource, IFileManager fileManager)
         {
             Stack<Location> empty = new Stack<Location>();
-            LinesProcessingResult result = LineProcessor.ProcessLines(null, buildFileSource, ProcessingType.BuildFile, fileManager, "", "");
+            FileProcessingResult result = FileProcessor.ProcessFileLines(null, buildFileSource, ProcessingType.BuildFile, fileManager, "", "");
 
             this.Errors.AddRange(result.Errors);
             this.Lines = result.Lines;
@@ -205,6 +205,7 @@
         public bool DirectoryExists(string path);
         public bool FileExists(string path);
         public List<string> GetFileLines(string filePath);
+        public string GetFileContent(string filePath);
     }
 
     public class BaseFileManager : IFileManager
@@ -254,6 +255,11 @@
             }
 
             return output;
+        }
+
+        public string GetFileContent(string filePath)
+        {
+            return File.ReadAllText(filePath);
         }
     }
 }

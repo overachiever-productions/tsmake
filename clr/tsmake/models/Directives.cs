@@ -135,7 +135,7 @@
 
             Dictionary<string, string> components = new Dictionary<string, string>();
 
-            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.RegexOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
+            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.SingleLineOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
             int count = parts.Length;
             if (count > 0)
             {

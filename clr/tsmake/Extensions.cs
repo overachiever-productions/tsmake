@@ -16,7 +16,7 @@ namespace tsmake
                 return PathType.Rooted;
             
             // Absolute - Local File
-            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.RegexOptions))
+            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineOptions))
                 return PathType.Absolute;
 
             // Absolute - UNC Share
@@ -31,7 +31,7 @@ namespace tsmake
             // NOTE:  This func attempts to white-list known valid patterns - anything else is going to drop-out as FALSE.
 
             // Absolute Path - local machine.
-            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.RegexOptions))
+            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineOptions))
             {
                 if(FileOrDirectoryExists(input))
                     return true;
@@ -94,7 +94,7 @@ namespace tsmake
             // See: https://stackoverflow.com/a/31976060/11191 
 
             // TODO: need to key this against current OS (i.e., Environment.Platform/etc.)
-            if (Regex.IsMatch(path, @"(\<|\>|""|\||\?|\*)+", Global.RegexOptions))
+            if (Regex.IsMatch(path, @"(\<|\>|""|\||\?|\*)+", Global.SingleLineOptions))
                 return true;
 
             // ARGUABLY, could/should look for additional problems like: NULL byte, ASCII 0 - 31, reserved filenames (windows), and other rules
@@ -130,7 +130,7 @@ namespace tsmake
 
         public static bool Like(this string input, string pattern)
         {
-            return Regex.IsMatch(input, pattern.WildcardToRegex(), Global.RegexOptions);
+            return Regex.IsMatch(input, pattern.WildcardToRegex(), Global.SingleLineOptions);
         }
 
         public static string CollapsePath(this string path, string directive)

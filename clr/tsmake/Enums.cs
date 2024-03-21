@@ -30,7 +30,6 @@
     [Flags]
     public enum LineType
     {
-        None = 0, 
         RawContent = 1, 
         WhiteSpaceOnly = 2,
         ContainsTokens = 4, 
@@ -42,9 +41,9 @@
     [Flags]
     public enum CommentType
     {
-        None = 0, 
-        LineEndComment = 1, 
-        BlockComment = 2
+        None = 1, 
+        LineEndComment = 2, 
+        BlockComment = 4
     }
 
     [Flags]
@@ -58,26 +57,31 @@
     [Flags]
     public enum BlockCommentType
     {
-        CommentOnly = 1, 
-        WhiteSpaceAndComment = 2,
-        EolComment = 4,
-        MidlineComment = 8, 
-        MultipleSingleLineComments = 16, 
-        NestedSingleLineComments = 32,   // NOT sure I care about these - i.e., as long as they're something I can strip/remove/ignore as needed ... then ... who cares if they exist. 
-        MultiLineStart = 64,
-        MultilineLine = 128, 
-        MultilineEnd = 256,
-        MultiLineNested = 512           // might also NOT care about this ... only, what happens if i'm in the middle of .ismultiLine and find a new /* ... then... i think that'd 'bump' this enum up, right? 
+        SingleLine = 1,
+        MultiLineStart = 2,
+        MultilineLine = 4, 
+        MultilineEnd = 8,
+        CommentOnly = 16        // i.e., nothing other than just a comment (usually for multi-line comments - but could be /* single line too */
     }
 
     [Flags]
-    public enum MultiLineType
+    public enum StringType
     {
-        None = 0,
-        MultiLineStart = 1, 
-        MultiLineLine = 2,
-        MultiLineEnd = 4
+        SingleLine = 1,
+        MultiLine = 2,
+        MultiLineStart = 4,
+        MultiLineLine = 8,
+        MultiLineEnd = 16
     }
+
+    //[Flags]
+    //public enum MultiLineType
+    //{
+    //    None = 0,
+    //    MultiLineStart = 1, 
+    //    MultiLineLine = 2,
+    //    MultiLineEnd = 4
+    //}
 
     public enum ProcessingType
     {
