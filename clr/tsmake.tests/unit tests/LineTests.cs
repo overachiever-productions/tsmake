@@ -123,7 +123,6 @@ public class LineTests
 
         Assert.That(sut.CodeComments[0].LineEnd, Is.EqualTo(66));
         Assert.That(sut.CodeComments[0].ColumnEnd, Is.EqualTo(89));
-
     }
 
     [Test]
@@ -134,39 +133,5 @@ public class LineTests
         var sut = new Line("build.sql", 346, codeline);
 
         Assert.False(sut.LineType.HasFlag(LineType.ContainsStrings));
-    }
-
-    [Test]
-    public void Line_With_Simple_String_Data_Is_Correctly_Flagged_As_Having_String_Data()
-    {
-        var codeLine = @"		SET @topSQL = REPLACE(@topSQL, N'{blockersUNION} ', @blockersUNION);";
-
-        var sut = new Line("build.sql", 556, codeLine);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsStrings));
-    }
-
-    [Test]
-    public void Line_With_Simple_String_Data_Correctly_Captures_String_Data()
-    {
-        var codeLine = @"		SET @topSQL = REPLACE(@topSQL, N'{blockersUNION} ', @blockersUNION);";
-
-        var sut = new Line("build.sql", 556, codeLine);
-
-        StringAssert.AreEqualIgnoringCase(@"N'{blockersUNION} '", sut.CodeStrings[0].Text);
-    }
-
-    [Test]
-    public void Line_With_Multiple_Strings_Correctly_Captures_All_Full_Strings()
-    {
-        var codeLine = @"		+ CASE WHEN (SELECT dbo.[get_engine_version]()) > 10.5 THEN N'TRY_CAST' ELSE N'CAST' END + N'(q.[query_plan] AS xml) [statement_plan]' ";
-
-        var sut = new Line("build.sql", 556, codeLine);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsStrings));
-        Assert.That(sut.StringType.HasFlag(StringType.SingleLine));
-
-        Assert.That(sut.CodeStrings.Count, Is.EqualTo(3));
-        StringAssert.AreEqualIgnoringCase(@"N'TRY_CAST'", sut.CodeStrings[0].Text);
     }
 }

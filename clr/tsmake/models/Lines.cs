@@ -1,4 +1,6 @@
-﻿namespace tsmake.models
+﻿using System.Text.RegularExpressions;
+
+namespace tsmake.models
 {
     public class Position
     {
@@ -146,15 +148,16 @@
         public LineType LineType { get; internal set; }
         public CommentType CommentType { get; internal set; }
         public BlockCommentType BlockCommentType { get; internal set; }
+
+        // REFACTOR: Do I REALLY need this? The only way that I could see 'needing' it would be IF a line was 100% a --comment (starting at position 0) ... and should, as such, be excluded. BUT, I think i could 'tell' this other ways.
         public LineEndCommentType LineEndCommentType { get; private set; }
-        public StringType StringType { get; private set; }
+        public StringType StringType { get; internal set; }
         public List<Token> Tokens { get; }
         public IDirective Directive { get; private set; }
 
         public bool HasComment => this.LineType.HasFlag(LineType.ContainsComments);
         public bool HasBlockComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.BlockComment);
         public bool HasLineEndComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.LineEndComment);
-
 
         // REFACTOR: see comments in BuildFileTests.EndOfLine_Comments_And_Block_Comments_Can_Live_Together()
         //      I'm PRETTY sure that I can't end up using THIS method (.GetCodeOnlyText() is great/fine)... because of how
@@ -468,9 +471,70 @@
             }
 
             string fileBody = fileManager.GetFileContent(currentSourceFile);
-            
-            var regex = new Regex(@"(?<comment>/\*.*?\*/)", Global.SingleLineOptions);
+
+            var regex = new Regex(@"(?<string>N?(\x27)((?!\1).|\1{2})*\1)", Global.SingleLineOptions);
             var matches = regex.Matches(fileBody);
+            foreach (Match match in matches)
+            {
+                int index = match.Index;
+                int length = match.Length;
+                string stringText = match.Groups["string"].Value;
+
+                Position startPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, index);
+                Position endPosition;
+
+                Line startLine = output.Lines[startPosition.LineNumber - 1];
+                var codeString = new CodeString(stringText, startPosition.LineNumber, startPosition.ColumnNumber);
+
+                if (Regex.IsMatch(stringText, @"\r\n|\r|\n", Global.SingleLineOptions))
+                {
+                    int matchEnd = index + length - 1;
+                    endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
+
+                    startLine.LineType |= LineType.ContainsStrings;
+                    startLine.StringType = StringType.MultiLine;
+                    startLine.StringType |= StringType.MultiLineStart;
+                    startLine.CodeStrings.Add(codeString);
+
+                    // See logic notes for /* comments */ (about 'off by 1 - but really not' types of details / etc.)
+                    for (int x = startLine.LineNumber; x <= endPosition.LineNumber - 2; x++)
+                    {
+                        Line currentLine = output.Lines[x];
+                        currentLine.LineType |= LineType.ContainsStrings;
+                        currentLine.StringType = StringType.MultiLine;
+                        currentLine.StringType |= StringType.MultiLineLine;
+
+                        currentLine.CodeStrings.Add(codeString);
+                    }
+
+                    if (startPosition.LineNumber != endPosition.LineNumber)
+                    {
+                        Line endLine = output.Lines[endPosition.LineNumber - 1];
+                        endLine.LineType |= LineType.ContainsStrings;
+                        endLine.StringType = StringType.MultiLine;
+                        endLine.StringType |= StringType.MultiLineEnd;
+
+                        endLine.CodeStrings.Add(codeString);
+                    }
+                }
+                else
+                {
+                    endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
+
+                    startLine.LineType |= LineType.ContainsStrings;
+                    startLine.StringType = StringType.SingleLine;
+
+                    startLine.CodeStrings.Add(codeString);
+                }
+
+                codeString.SetEndPosition(endPosition);
+                codeString.SetLocation(startLine.Location, startPosition.ColumnNumber);
+
+                output.AddCodeString(codeString);
+            }
+
+            regex = new Regex(@"(?<comment>/\*.*?\*/)", Global.SingleLineOptions);
+            matches = regex.Matches(fileBody);
             foreach (Match match in matches)
             {
                 int index = match.Index;
@@ -499,7 +563,7 @@
 
                     startLine.CodeComments.Add(codeComment);
 
-                    // LOGIC: Don't want to use startLine.LineNumber - 1 (that's the START) - i.e., the 'off by one' here bumps us to next line. 
+                    // LOGIC: Don't want to use startLine2.LineNumber - 1 (that's the START) - i.e., the 'off by one' here bumps us to next line. 
                     //          Ditto on endPosition.LineNumber. Don't want that to be -1 (that'd be zero-based index of endPosition). We want
                     //          the line BEFORE that (i.e., -2)
                     for (int x = startLine.LineNumber; x <= endPosition.LineNumber - 2; x++)
@@ -553,20 +617,6 @@
 
                 // push a copy of each comment into the collection of comments by file/processing-result as well:
                 output.AddCodeComment(codeComment);
-            }
-
-            regex = new Regex(@"(?<string>N?(\x27)((?!\1).|\1{2})*\1)", Global.SingleLineOptions);
-            matches = regex.Matches(fileBody);
-            foreach (Match match in matches)
-            {
-                int index = match.Index;
-                int length = match.Length;
-                string value = match.Groups["string"].Value;
-
-                Position startPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, index);
-                Position endPosition;
-
-                Line startLine = output.Lines[startPosition.LineNumber - 1];
             }
 
             return output;

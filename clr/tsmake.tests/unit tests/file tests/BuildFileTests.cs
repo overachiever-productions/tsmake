@@ -7,6 +7,7 @@ namespace tsmake.tests.unit_tests.file_tests;
 [TestFixture]
 public class BuildFileTests
 {
+    #region Calibration and Debugging Strings
     public const string DEBUGGING_LINES = @"12345678
 CDEF
 0#$%^
@@ -22,7 +23,19 @@ SELECT @@VERSION; ";
 8
 /* comment starts on 9,0 
 and spans to 10,x */";
+    #endregion
 
+    #region Strings (uhhhh) Strings
+    public const string SIMPLE_CODESTRING_STRING = @"SELECT 'This is not unicode' [non-unicode]; ";
+
+    public const string SIMPLE_UNICODE_CODESTRING_STRING = @"SELECT N'This is unicode' [unicode]; ";
+
+    public const string GOBS_OF_CODESTRINGS_IN_A_SINGLE_LINE = @"SELECT
+    CAST(1 AS bit) [is_exception],
+    N'EXCEPTION::> ErrorNumber: ' + CAST(x.exception.value(N'(@error_number)', N'int') AS sysname) + N', LineNumber: ' + CAST(x.exception.value(N'(@error_line)', N'int') AS sysname) + N', Severity: ' + CAST(x.exception.value(N'(@severity)', N'int') AS sysname) + N', Message: ' + x.exception.value(N'.', N'nvarchar(max)') [content]; ";
+    #endregion
+
+    #region Comment Strings
     public const string SINGLE_LINE_BLOCK_COMMENT = @"SELECT 'the first line has T-SQL'; 
 /* But, line 2 has a comment */     ";
 
@@ -62,7 +75,9 @@ SELECT 'and so is this' [final]; ";
 SELECT 'this is line 2' [second line] /* and here is a single-line comment */ 
 SELECT 'this is line 3' [third line] /* multi-line comment
 that spans down to here */ SELECT 'line 4' [4th line]; -- also a comment";
+    #endregion
 
+    #region Build and Include File Strings
     public const string BASIC_BUILD_FILE = @"-- ## ROOT: ..\ ##:: 
 -- ## OUTPUT: \\\my_project.sql
 -- ## :: This is a build file only (i.e., it stores upgrade/install directives + place-holders for code to drop into admindb, etc.)
@@ -87,24 +102,7 @@ DECLARE @somethingVersion sysname;";
     public const string ULTRA_SIMPLE_INCLUDE_FILE = @"Nested File - Line 1
  Nested File - Line 2
  Nested File - Line 3";
-
-    [Test]
-    public void Basic_Build_File_Yields_Correct_Number_of_Code_Lines()
-    {
-        var buildFile = BASIC_BUILD_FILE;
-        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
-
-        var fileManager = new Mock<IFileManager>();
-        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
-            .Returns(buildFile);
-
-        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
-            .Returns(fileLines);
-
-        var sut = new BuildFile("build.sql", fileManager.Object);
-
-        Assert.That(sut.Lines.Count, Is.EqualTo(12));
-    }
+    #endregion
 
     [Test]
     public void Calibrate_Line_Numbers_And_Column_Positions_Against_Simple_Use_Case()
@@ -158,6 +156,116 @@ DECLARE @somethingVersion sysname;";
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"*/", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(10));
         Assert.That(position.ColumnNumber, Is.EqualTo(18));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Simple_Non_Unicode_CodeString()
+    {
+        var fileBody = SIMPLE_CODESTRING_STRING;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(1));
+
+        var codeString = result.CodeStrings[0];
+        StringAssert.AreEqualIgnoringCase(@"'This is not unicode'", codeString.Text);
+
+        Assert.That(result.Lines.Count, Is.EqualTo(1));
+        var line1 = result.Lines[0];
+        Assert.That(line1.LineType.HasFlag(LineType.ContainsStrings));
+        Assert.False(line1.LineType.HasFlag(LineType.ContainsComments));
+
+        StringAssert.AreEqualIgnoringCase(@"'This is not unicode'", line1.CodeStrings[0].Text);
+        Assert.That(line1.CodeStrings[0].ColumnStart, Is.EqualTo(7));
+        Assert.That(line1.CodeStrings[0].ColumnEnd, Is.EqualTo(27));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Simple_Unicode_CodeString()
+    {
+        var fileBody = SIMPLE_UNICODE_CODESTRING_STRING;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(1));
+
+        var codeString = result.CodeStrings[0];
+        StringAssert.AreEqualIgnoringCase(@"N'This is unicode'", codeString.Text);
+
+        Assert.That(result.Lines.Count, Is.EqualTo(1));
+        var line1 = result.Lines[0];
+        Assert.That(line1.LineType.HasFlag(LineType.ContainsStrings));
+        Assert.False(line1.LineType.HasFlag(LineType.ContainsComments));
+
+        StringAssert.AreEqualIgnoringCase(@"N'This is unicode'", line1.CodeStrings[0].Text);
+        Assert.That(line1.CodeStrings[0].ColumnStart, Is.EqualTo(7));
+        Assert.That(line1.CodeStrings[0].ColumnEnd, Is.EqualTo(24));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Multiple_Single_Line_CodeStrings()
+    {
+        var fileBody = GOBS_OF_CODESTRINGS_IN_A_SINGLE_LINE;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(12));
+
+        var codeString = result.CodeStrings[0];
+        StringAssert.AreEqualIgnoringCase(@"N'EXCEPTION::> ErrorNumber: '", codeString.Text);
+        Assert.That(codeString.LineStart, Is.EqualTo(3));
+        Assert.That(codeString.ColumnStart, Is.EqualTo(4));
+        Assert.That(codeString.ColumnEnd, Is.EqualTo(32));
+
+        codeString = result.CodeStrings[11];
+        StringAssert.AreEqualIgnoringCase(@"N'nvarchar(max)'", codeString.Text);
+        Assert.That(codeString.LineStart, Is.EqualTo(3));
+        Assert.That(codeString.ColumnStart, Is.EqualTo(304));
+        Assert.That(codeString.ColumnEnd, Is.EqualTo(319));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Single_Multi_Line_CodeString()
+    {
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Complex_CodeStrings_Against_Multiple_Lines()
+    {
+
     }
 
     [Test]
@@ -608,6 +716,24 @@ DECLARE @somethingVersion sysname;";
         //      only, again, not sure it really matters. As I don't think I can use .GetCommentText() for anything truly critical. 
         StringAssert.AreEqualIgnoringCase("-- also a comment/* multi-line comment\r\nthat spans down to here */", line4.GetCommentText());
         StringAssert.AreEqualIgnoringCase(@" SELECT 'line 4' [4th line]; ", line4.GetCodeOnlyText());
+    }
+
+    [Test]
+    public void Basic_Build_File_Yields_Correct_Number_of_Code_Lines()
+    {
+        var buildFile = BASIC_BUILD_FILE;
+        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(buildFile);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var sut = new BuildFile("build.sql", fileManager.Object);
+
+        Assert.That(sut.Lines.Count, Is.EqualTo(12));
     }
 
     [Test]
