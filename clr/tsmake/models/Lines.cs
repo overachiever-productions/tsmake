@@ -1,6 +1,4 @@
-﻿using System.Text.RegularExpressions;
-
-namespace tsmake.models
+﻿namespace tsmake.models
 {
     public class Position
     {
@@ -33,32 +31,30 @@ namespace tsmake.models
             this.LineNumber = lineNumber;
             this.ColumnNumber = columnNumber;
         }
-
-        //public string GetLocationContext()
-        //{
-        //    //return $"Location: [{this.FileName}]({this.LineNumber}, {this.ColumnNumber})";
-        //    return "TODO: need to chain/concat full-source-file lineage thingies in Location.GetLocationContext().";
-        //}
     }
 
     public interface ILineDecorator
     {
         public Stack<Location> Location { get; }
         public string Text { get; }
+        public string CurrentLineText { get; }
         public int LineStart { get; }
         public int ColumnStart { get; }
         public int LineEnd { get; }
         public int ColumnEnd { get; }
+        public Guid Identifier { get; }
     }
 
     public abstract class BaseLineDecorator : ILineDecorator
     {
         public Stack<Location> Location { get; private set; }
         public string Text { get; }
+        public string CurrentLineText { get; private set; }
         public int LineStart { get; }
         public int ColumnStart { get; }
         public int LineEnd { get; private set; }
         public int ColumnEnd { get; private set; }
+        public Guid Identifier { get; }
 
         protected BaseLineDecorator(string text, int lineStart, int columnStart)
         {
@@ -66,6 +62,7 @@ namespace tsmake.models
             this.LineStart = lineStart;
             this.ColumnStart = columnStart;
 
+            this.Identifier = Guid.NewGuid();
             this.Location = new Stack<Location>();
         }
 
@@ -73,6 +70,11 @@ namespace tsmake.models
         {
             LineEnd = lineEnd;
             ColumnEnd = columnEnd;
+        }
+
+        public void SetCurrentLineText(string currentLineText)
+        {
+            this.CurrentLineText = currentLineText;
         }
 
         public void SetLocation(Stack<Location> location, int startPosition)
@@ -92,37 +94,66 @@ namespace tsmake.models
             this.LineEnd = endPosition.LineNumber;
             this.ColumnEnd = endPosition.ColumnNumber;
         }
+
+        public override bool Equals(object other)
+        {
+            if(other == null) return false;
+
+            var otherDecorator = (BaseLineDecorator)other;
+            if (otherDecorator.Identifier == this.Identifier)
+                return true;
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.Identifier.GetHashCode();
+        }
     }
-
-    // represents either -- comments (till end of line (pretty simple) or /* comments 
-    //          which can span multiple lines and a bunch of other stuff... */ 
-    //public class CodeComment : BaseLineDecorator
-    //{
-    //    public CodeComment(Stack<Location> location, int lineStart, int lineEnd) : base(location, lineStart, lineEnd) { }
-    //    public CodeComment(Stack<Location> location, string commentText, int lineStart, int columnStart, int lineEnd, int columnEnd)
-    //        : base(location, commentText, lineStart, columnStart, lineEnd, columnEnd) { }
-
-    //    public void CloseMultiLineComment(string fullCommentText, int lineEnd, int columnEnd)
-    //    {
-    //        base.Close(fullCommentText, lineEnd, columnEnd);
-    //    }
-    //}
 
     public class CodeComment : BaseLineDecorator
     {
+        public bool CommentIsInString { get; private set; }
+        public bool IsHeaderComment { get; private set; }
+        public CommentType CommentType { get; internal set; }
+        public BlockCommentType BlockCommentType { get; internal set; }
+        // I don't think I need this: 
+        //public LineEndCommentType LineEndCommentType { get; internal set; }
+
         public CodeComment(string text, int lineStart, int columnStart) : base(text, lineStart, columnStart) { }
 
         public CodeComment(string text, int lineStart, int columnStart, int lineEnd, int columnEnd) : base(text,
-            lineStart, columnStart, lineEnd, columnEnd) { }
+            lineStart, columnStart, lineEnd, columnEnd)
+        {
+            this.CommentIsInString = false;
+            this.IsHeaderComment = false;  
+        }
+
+        public CodeComment AsCopy()
+        {
+            return (CodeComment)this.MemberwiseClone();
+        }
+
+        public void MarkCommentAsInString()
+        {
+            this.CommentIsInString = true;
+        }
+
+        public void SetAsHeaderComment()
+        {
+            this.IsHeaderComment = true;
+        }
     }
 
     public class CodeString : BaseLineDecorator
     {
         public CodeString(string text, int lineStart, int columnStart) : base(text, lineStart, columnStart) { }
 
-        //public CodeString(string text, int lineStart, int columnStart, int lineEnd, int columnEnd) : base(text,
-        //    lineStart, columnStart, lineEnd, columnEnd)
-        //{ }
+        public CodeString AsCopy()
+        {
+            return (CodeString)this.MemberwiseClone();
+        }
     }
 
     //public class ObjectDefinition : BaseLineDecorator
@@ -139,25 +170,29 @@ namespace tsmake.models
 
     public class Line
     {
-        public Stack<Location> Location { get; private set; }
         public int LineNumber { get; }
+        public Stack<Location> Location { get; private set; }
         public string RawContent { get; }
-        //public string CodeOnlyText { get; private set; }
         public List<CodeComment> CodeComments { get; private set; }
         public List<CodeString> CodeStrings { get; private set; }
-        public LineType LineType { get; internal set; }
-        public CommentType CommentType { get; internal set; }
-        public BlockCommentType BlockCommentType { get; internal set; }
-
+        
+        //public LineType LineType { get; internal set; }
+        //public CommentType CommentType { get; internal set; }
+        //public BlockCommentType BlockCommentType { get; internal set; }
         // REFACTOR: Do I REALLY need this? The only way that I could see 'needing' it would be IF a line was 100% a --comment (starting at position 0) ... and should, as such, be excluded. BUT, I think i could 'tell' this other ways.
-        public LineEndCommentType LineEndCommentType { get; private set; }
-        public StringType StringType { get; internal set; }
+        //public LineEndCommentType LineEndCommentType { get; internal set; }
+        //public StringType StringType { get; internal set; }
+        
         public List<Token> Tokens { get; }
         public IDirective Directive { get; private set; }
 
         public bool HasComment => this.LineType.HasFlag(LineType.ContainsComments);
         public bool HasBlockComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.BlockComment);
         public bool HasLineEndComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.LineEndComment);
+        public bool IsHeaderComment => this.CodeComments.Any(x => x.IsHeaderComment);
+        public bool IsStringNotComment => this.CodeComments.All(x => x.CommentIsInString);
+
+        public bool HasString => this.LineType.HasFlag(LineType.ContainsStrings);
 
         // REFACTOR: see comments in BuildFileTests.EndOfLine_Comments_And_Block_Comments_Can_Live_Together()
         //      I'm PRETTY sure that I can't end up using THIS method (.GetCodeOnlyText() is great/fine)... because of how
@@ -182,6 +217,7 @@ namespace tsmake.models
             if (!this.HasComment)
                 return this.RawContent;
 
+            // TODO: if comment.CommentIsInString ... then don't replace - output... 
             string output = this.RawContent;
             foreach (var comment in this.CodeComments)
             {
@@ -259,7 +295,7 @@ namespace tsmake.models
             this.CodeStrings = new List<CodeString>();
 
             this.LineType = LineType.RawContent;
-            this.CommentType = CommentType.None;
+            //this.CommentType = CommentType.None;
 
             try
             {
@@ -305,32 +341,31 @@ namespace tsmake.models
                     }
                 }
 
-                regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.SingleLineOptions);
-                m = regex.Match(this.RawContent);
-                if (m.Success)
-                {
-                    this.LineType |= LineType.ContainsComments;
-                    this.CommentType = CommentType.LineEndComment;
+                //regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.SingleLineOptions);
+                //m = regex.Match(this.RawContent);
+                //if (m.Success)
+                //{
+                //    this.LineType |= LineType.ContainsComments;
+                //    this.CommentType = CommentType.LineEndComment;
                     
-                    var comment = m.Groups["comment"].Value;
-                    var textBeforeLineEndComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment, StringComparison.InvariantCultureIgnoreCase));
+                //    var comment = m.Groups["comment"].Value;
+                //    var textBeforeLineEndComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment, StringComparison.InvariantCultureIgnoreCase));
 
-                    // additional comment type details: 
-                    if (textBeforeLineEndComment == "")
-                        this.LineEndCommentType = LineEndCommentType.FullLineComment;
-                    else
-                    {
-                        if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
-                            this.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
-                        else
-                            this.LineEndCommentType = LineEndCommentType.EolComment;
-                    }
+                //    if (textBeforeLineEndComment == "")
+                //        this.LineEndCommentType = LineEndCommentType.FullLineComment;
+                //    else
+                //    {
+                //        if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
+                //            this.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
+                //        else
+                //            this.LineEndCommentType = LineEndCommentType.EolComment;
+                //    }
 
-                    var codeComment = new CodeComment(m.Value, this.LineNumber, m.Index, this.LineNumber, (m.Index + m.Length - 1));
-                    codeComment.SetLocation(this.Location, m.Index);
+                //    var codeComment = new CodeComment(m.Value, this.LineNumber, m.Index, this.LineNumber, (m.Index + m.Length - 1));
+                //    codeComment.SetLocation(this.Location, m.Index);
 
-                    this.CodeComments.Add(codeComment);
-                }
+                //    this.CodeComments.Add(codeComment);
+                //}
             }
             catch (Exception ex)
             {
@@ -490,21 +525,31 @@ namespace tsmake.models
                 {
                     int matchEnd = index + length - 1;
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
+                    codeString.SetEndPosition(endPosition);
 
                     startLine.LineType |= LineType.ContainsStrings;
                     startLine.StringType = StringType.MultiLine;
                     startLine.StringType |= StringType.MultiLineStart;
-                    startLine.CodeStrings.Add(codeString);
+
+                    string[] stringTextLines = Regex.Split(stringText, @"\r\n|\r|\n", Global.SingleLineOptions);
+                    string currentStringTextLine = stringTextLines[0];
+                    codeString.SetCurrentLineText(currentStringTextLine);
+
+                    startLine.CodeStrings.Add(codeString.AsCopy());
 
                     // See logic notes for /* comments */ (about 'off by 1 - but really not' types of details / etc.)
                     for (int x = startLine.LineNumber; x <= endPosition.LineNumber - 2; x++)
                     {
                         Line currentLine = output.Lines[x];
+
                         currentLine.LineType |= LineType.ContainsStrings;
                         currentLine.StringType = StringType.MultiLine;
                         currentLine.StringType |= StringType.MultiLineLine;
+                        
+                        currentStringTextLine = stringTextLines[(x - startLine.LineNumber + 1)];
+                        codeString.SetCurrentLineText(currentStringTextLine);
 
-                        currentLine.CodeStrings.Add(codeString);
+                        currentLine.CodeStrings.Add(codeString.AsCopy());
                     }
 
                     if (startPosition.LineNumber != endPosition.LineNumber)
@@ -514,20 +559,24 @@ namespace tsmake.models
                         endLine.StringType = StringType.MultiLine;
                         endLine.StringType |= StringType.MultiLineEnd;
 
-                        endLine.CodeStrings.Add(codeString);
+                        currentStringTextLine = stringTextLines[stringTextLines.Length - 1];
+                        codeString.SetCurrentLineText(currentStringTextLine);
+
+                        endLine.CodeStrings.Add(codeString.AsCopy());
                     }
                 }
                 else
                 {
                     endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
+                    codeString.SetEndPosition(endPosition);
 
                     startLine.LineType |= LineType.ContainsStrings;
                     startLine.StringType = StringType.SingleLine;
 
-                    startLine.CodeStrings.Add(codeString);
+                    codeString.SetCurrentLineText(stringText);
+                    startLine.CodeStrings.Add(codeString.AsCopy());
                 }
 
-                codeString.SetEndPosition(endPosition);
                 codeString.SetLocation(startLine.Location, startPosition.ColumnNumber);
 
                 output.AddCodeString(codeString);
@@ -551,9 +600,11 @@ namespace tsmake.models
                 {
                     int matchEnd = index + length - 1;
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
+                    codeComment.SetEndPosition(endPosition);
 
                     startLine.LineType |= LineType.ContainsComments;
                     
+                    // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
                     if(startLine.CommentType == CommentType.None) 
                         startLine.CommentType = CommentType.BlockComment;
                     else 
@@ -561,7 +612,11 @@ namespace tsmake.models
                         
                     startLine.BlockCommentType |= BlockCommentType.MultiLineStart;
 
-                    startLine.CodeComments.Add(codeComment);
+                    string[] commentTextLines = Regex.Split(commentText, @"\r\n|\r|\n", Global.SingleLineOptions);
+                    string currentCommentTextLine = commentTextLines[0];
+                    codeComment.SetCurrentLineText(currentCommentTextLine);
+
+                    startLine.CodeComments.Add(codeComment.AsCopy());
 
                     // LOGIC: Don't want to use startLine2.LineNumber - 1 (that's the START) - i.e., the 'off by one' here bumps us to next line. 
                     //          Ditto on endPosition.LineNumber. Don't want that to be -1 (that'd be zero-based index of endPosition). We want
@@ -572,6 +627,7 @@ namespace tsmake.models
                         
                         currentLine.LineType |= LineType.ContainsComments;
 
+                        // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
                         if (currentLine.CommentType == CommentType.None)
                             currentLine.CommentType = CommentType.BlockComment;
                         else
@@ -580,7 +636,9 @@ namespace tsmake.models
                         currentLine.BlockCommentType |= BlockCommentType.MultilineLine;
                         currentLine.BlockCommentType |= BlockCommentType.CommentOnly;
 
-                        currentLine.CodeComments.Add(codeComment);
+                        currentCommentTextLine = commentTextLines[(x - startLine.LineNumber + 1)];
+                        codeComment.SetCurrentLineText(currentCommentTextLine);
+                        currentLine.CodeComments.Add(codeComment.AsCopy());
                     }
 
                     if (startPosition.LineNumber != endPosition.LineNumber)
@@ -588,35 +646,183 @@ namespace tsmake.models
                         Line endLine = output.Lines[endPosition.LineNumber - 1];
                         endLine.LineType |= LineType.ContainsComments;
 
+                        // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
                         if (endLine.CommentType == CommentType.None)
                             endLine.CommentType = CommentType.BlockComment;
                         else
                             endLine.CommentType |= CommentType.BlockComment;
 
                         endLine.BlockCommentType |= BlockCommentType.MultilineEnd;
-                        endLine.CodeComments.Add(codeComment);
+
+                        currentCommentTextLine = commentTextLines[commentTextLines.Length - 1];
+                        codeComment.SetCurrentLineText(currentCommentTextLine);
+                        endLine.CodeComments.Add(codeComment.AsCopy());
                     }
                 }
                 else
                 {
                     endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
+                    codeComment.SetEndPosition(endPosition);
 
                     startLine.LineType |= LineType.ContainsComments;
 
+                    // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
                     if (startLine.CommentType == CommentType.None)
                         startLine.CommentType = CommentType.BlockComment;
                     else
                         startLine.CommentType |= CommentType.BlockComment;
 
                     startLine.BlockCommentType |= BlockCommentType.SingleLine;
-                    startLine.CodeComments.Add(codeComment);
+                    
+                    codeComment.SetCurrentLineText(commentText);
+                    startLine.CodeComments.Add(codeComment.AsCopy());
                 }
 
-                codeComment.SetEndPosition(endPosition);
                 codeComment.SetLocation(startLine.Location, startPosition.ColumnNumber);
 
                 // push a copy of each comment into the collection of comments by file/processing-result as well:
                 output.AddCodeComment(codeComment);
+            }
+
+            // Now that strings/comments have been identified:
+            // 0. line-end comments,  1. look for overlap of 'strings and /* comments or --comments */', 2. identify header comments, 3. object names
+
+            bool isHeaderComment = true;
+            List<CodeComment> lineCommentsToRemove = new List<CodeComment>();
+            foreach (var line in output.Lines)
+            {
+                regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.SingleLineOptions);
+                var m = regex.Match(line.RawContent);
+                if (m.Success)
+                {
+                    var comment = m.Groups["comment"].Value;
+
+                    bool eolCommentIsInString = false;
+                    if (line.HasString)
+                    {
+                        var trimmedToEndOfStringComment = comment;
+                        if(comment.Contains("'"))
+                            trimmedToEndOfStringComment = comment.Substring(0, comment.LastIndexOf("'"));
+                        if (line.CodeStrings.Any(x => x.CurrentLineText.Contains(trimmedToEndOfStringComment)))
+                            eolCommentIsInString = true;
+                    }
+
+                    bool eolCommentIsInBlockComment = false;
+                    if (line.HasBlockComment)
+                    {
+                        var trimmedToEndOfCommentBlockComment = comment;
+                        if(comment.Contains("*/"))
+                            trimmedToEndOfCommentBlockComment = comment.Substring(0, comment.LastIndexOf("*/"));
+                        if (line.CodeComments.Any(x => x.CurrentLineText.Contains(trimmedToEndOfCommentBlockComment)))
+                            eolCommentIsInBlockComment = true;
+                    }
+
+                    if (eolCommentIsInString == false && eolCommentIsInBlockComment == false)
+                    {
+                        line.LineType |= LineType.ContainsComments;
+
+                        if (line.CommentType == CommentType.None)
+                            line.CommentType = CommentType.LineEndComment;
+                        else
+                            line.CommentType |= CommentType.LineEndComment;
+
+                        var textBeforeLineEndComment = line.RawContent.Substring(0,
+                            line.RawContent.IndexOf(comment, StringComparison.InvariantCultureIgnoreCase));
+
+                        if (textBeforeLineEndComment == "")
+                            line.LineEndCommentType = LineEndCommentType.FullLineComment;
+                        else
+                        {
+                            if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
+                                line.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
+                            else
+                                line.LineEndCommentType = LineEndCommentType.EolComment;
+                        }
+
+                        var codeComment = new CodeComment(m.Value, line.LineNumber, m.Index, line.LineNumber,
+                            (m.Index + m.Length - 1));
+                        codeComment.SetLocation(line.Location, m.Index);
+                        codeComment.SetCurrentLineText(comment);
+
+                        line.CodeComments.Add(codeComment);
+                        output.Comments.Add(codeComment);
+                    }
+                }
+
+                // FEATURECREEP: I can either check for line.HasComment or line.HasBlockComment - to establish whether this is a header-comment. 
+                //      as in: I think that the determination here MIGHT make sense to make a PREFERENCE. And if so, then just determine whether var isPotentialHeaderComment is true/false based upon whether we're looking for ONLY /* comments */ or --comments and /* comments */
+                //      for now, I'm hard-coding as checking for BlockComments only... 
+                if (line.HasBlockComment)
+                {
+                    if(isHeaderComment)
+                        line.CodeComments[0].SetAsHeaderComment();
+                }
+                else
+                    isHeaderComment = false;
+
+                // check for 'STRINGS that are --comments or /*comments*/'... 
+                if (line.HasString)
+                {
+                    if (line.HasComment)
+                    {
+                        foreach (var comment in line.CodeComments)
+                        {
+                            if (line.CodeStrings.Any(x => x.CurrentLineText.Contains(comment.CurrentLineText)))
+                            {
+                                // REFACTOR: .MarkCommentAsInString() is ... useless. I can remove it once tests are in place to verify that nothing breaks.
+                                comment.MarkCommentAsInString();
+                                lineCommentsToRemove.Add(comment);
+
+                                //if (comment.LineStart != comment.LineEnd)
+                                //{
+                                //    // it's multi-line and ... need to remove it from each line. 
+                                //    for (int n = comment.LineStart; n < comment.LineEnd; n++)
+                                //    {
+                                //        var targetLine = output.Lines[n];
+
+                                //    }
+                                //}
+                                //else
+                                //    line.CodeComments.Remove(comment);
+
+                                output.Comments.Remove(comment);
+                            }
+                        }
+                    }
+                }
+            }
+
+            // CAN'T remove these from the previous loop - because of the whole "collection was modified" error/thingy. 
+            foreach (var commentToRemove in lineCommentsToRemove)
+            {
+                if (commentToRemove.LineStart != commentToRemove.LineEnd)
+                {
+                    for (int n = commentToRemove.LineStart; n < commentToRemove.LineEnd; n++)
+                    {
+                        var targetLine = output.Lines[n - 1];
+                        targetLine.CodeComments.Remove(commentToRemove);
+
+                        if (targetLine.CodeComments.Count < 1)
+                        {
+                            targetLine.LineType &= LineType.ContainsComments;
+                            
+                            // TODO: and set .CommentType to .None 
+                            // and set .BlockCommentType to .None 
+                            // and set .EolCommentType to .None 
+                        }
+                    }
+                }
+                else
+                {
+                    var targetLine = output.Lines[commentToRemove.LineStart - 1];
+                    targetLine.CodeComments.Remove(commentToRemove);
+
+                    if (targetLine.CodeComments.Count < 1)
+                    {
+                        targetLine.LineType &= LineType.ContainsComments;
+                        // todo... same as above... 
+                    }
+                }
             }
 
             return output;

@@ -158,14 +158,12 @@ function Execute-Pipeline {
 		if ($buildResult.HasErrors) {
 			return;
 		}
-
+		
 		# ====================================================================================================
 		# 3. Process File Inclusions:
 		# ====================================================================================================		
 		Write-Verbose "	Processing FILE and DIRECTORY inclusions.";
 		[tsmake.models.BuildManifest]$buildManifest = New-Object tsmake.models.BuildManifest];
-		
-#Write-Host "BUILD CONTEXT: Root: $($BuildContext.Root)  Working Dir: $($BuildContext.WorkingDirectory)";
 		
 		foreach ($line in $buildFile.Lines) {
 			if (Has-Value $line.Directive) {
@@ -174,7 +172,6 @@ function Execute-Pipeline {
 						continue; # skip - i.e., don't copy into buildManifest
 					}
 					{ $_ -in ("FILE", "DIRECTORY") } {
-	#Write-Host "$($line.Directive.DirectiveName) => Path: $($line.Directive.Path)"
 						$include = [tsmake.models.IncludeFactory]::GetInclude($line.Directive, $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 						
 						if ($include.Errors.Count -gt 0) {
@@ -182,9 +179,6 @@ function Execute-Pipeline {
 						}
 						else {
 							foreach ($fileToParse in $include.SourceFiles) {
-#	Write-Host "	For Directive: $($line.Directive.DirectiveName) (Path: [$($line.Directive.Path)]) => SourceFile to (Recursively) Include: $fileToParse";
-#		Write-Host "		Location: $($line.Location[0].FileName)"
-								
 								$processingResult = [tsmake.models.FileProcessor]::ProcessFileLines($line, $fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
 								$buildManifest.AddLines($processingResult.Lines);
 								
@@ -209,36 +203,30 @@ function Execute-Pipeline {
 		}
 		
 		foreach ($line in $buildManifest.Lines) {
-#			Write-Host "LINE: $($line.RawContent)";
-#			Write-Host "  $($line.GetLocation())"
 			
-			if ($line.IsComment) {
-				Write-Host "$($line.LineNumber): $($line.GetCommentText())";
+			$writeLine = $false;
+			
+			if ($line.HasComment -and $line.HasString) {
+				$writeLine = $true;
 			}
 			
-#			if ($line.IsBlockComment) {
-#				Write-Host "$($line.GetLocation()) - $($line.LineNumber): $($line.GetCommentText())";
-#			}
+			# Poor Man's Summary/Detail of each line:
+			if ($writeLine) {
+				Write-Host "$($line.LineNumber) => $($line.RawContent)";
+				Write-Host "	HasStrings? ($($line.HasString)) HasComments? ($($line.HasComment)) CommentType ($($line.CommentType))";
+				Write-Host "		IsHeaderComment? ($($line.IsHeaderComment))  IsStringNotComment? ($($line.IsStringNotComment))";
+				#Write-Host "		Comment[0].Text => $($line.CodeComments[0].Text)"
+				$ii = 0;
+				foreach ($comment in $line.CodeComments) {
+					Write-Host "			-> Comment[$($ii)]: $($comment.Text)"
+					$ii = $ii + 1;
+				}
+				Write-Host "	$($line.GetLocation())";
+				Write-Host "";
+			}
 			
-			
-			
-#			if ($line.IsComment -and -not($line.IsCommentOnly)) {
-#				#Write-Host "Comment: $($line.Content)"
-#				Write-Host "CommentFree: $($line.CommentFreeContent)";
-#			}
-#			if ($line.IsBlockComment) {
-#				Write-Host "BlockComment: $($line.Content)";
-#			}
-#			if ($line.HasMultipleBlockComments) {
-#				Write-Host "Multi-block: $($line.Content)";
-#			}
-#			if ($line.IsBlockCommentStart) {
-#				Write-Host "Block-Start: $($line.Content) -> $($line.LineNumber) ($($line.Source))";
-#			}
-#			if ($line.HasMultipleBlockComments -and $line.IsBlockCommentStart) {
-#				Write-Host "Multi-Block-Start: $($line.Content)";
-#			}
 		}
+		
 		
 <#		
 		# at this point, I've got ALL lines EXCLUDING: root, output, and other global directives AND any removed/stripped comments are gone as well. 

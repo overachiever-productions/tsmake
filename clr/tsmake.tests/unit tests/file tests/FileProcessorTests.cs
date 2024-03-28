@@ -1,11 +1,10 @@
-﻿using tsmake.models;
+﻿using tsmake;
+using tsmake.models;
 
 namespace tsmake.tests.unit_tests.file_tests;
 
-// REFACTOR: this isn't just buildFile tests ... in fact, these are almost ALL 
-
 [TestFixture]
-public class BuildFileTests
+public class FileProcessorTests
 {
     #region Calibration and Debugging Strings
     public const string DEBUGGING_LINES = @"12345678
@@ -23,9 +22,19 @@ SELECT @@VERSION; ";
 8
 /* comment starts on 9,0 
 and spans to 10,x */";
+
+    public const string SIMPLE_EOL_COMMENT_AS_STRING_CONTENT = @"DECLARE @text nvarchar(MAX) = N'-- this is a comment (in a string)  ';";
+
+    public const string COMMENTS_AS_STRING_CONTENT = @"SELECT N'This is just a normal string - no comments' [OUTPUT1];
+DECLARE @sql nvarchar(MAX) = N'/* ----------------------------------------------
+-- This looks like a ''line-end'' comment, but it's actually part of a block-comment. 
+-------------------------------------*/ 
+-- this is a real line-end comment. 
+/* this is a real 
+block comment */";
     #endregion
 
-    #region Strings (uhhhh) Strings
+    #region Strings
     public const string SIMPLE_CODESTRING_STRING = @"SELECT 'This is not unicode' [non-unicode]; ";
 
     public const string SIMPLE_UNICODE_CODESTRING_STRING = @"SELECT N'This is unicode' [unicode]; ";
@@ -33,9 +42,22 @@ and spans to 10,x */";
     public const string GOBS_OF_CODESTRINGS_IN_A_SINGLE_LINE = @"SELECT
     CAST(1 AS bit) [is_exception],
     N'EXCEPTION::> ErrorNumber: ' + CAST(x.exception.value(N'(@error_number)', N'int') AS sysname) + N', LineNumber: ' + CAST(x.exception.value(N'(@error_line)', N'int') AS sysname) + N', Severity: ' + CAST(x.exception.value(N'(@severity)', N'int') AS sysname) + N', Message: ' + x.exception.value(N'.', N'nvarchar(max)') [content]; ";
+
+    public const string MULTIPLE_MULTILINE_STRINGS = @"SELECT N'PRINT N''This is a 
+multi 
+multiline 
+ string''' [thing_one], N'PRINT N''And so 
+is this''' [thing_two];";
+
+    public const string SINGLE_MULTILINE_STRING = @"SELECT 24 [non-string];
+SELECT N'This string wraps 
+down 
+to 
+multiple
+lines' [mult_line_string];";
     #endregion
 
-    #region Comment Strings
+    #region Comments
     public const string SINGLE_LINE_BLOCK_COMMENT = @"SELECT 'the first line has T-SQL'; 
 /* But, line 2 has a comment */     ";
 
@@ -159,7 +181,208 @@ DECLARE @somethingVersion sysname;";
     }
 
     [Test]
-    public void ProcessLines_Captures_Simple_Non_Unicode_CodeString()
+    public void Calibrate_Simple_Comment_is_Marked_As_Line_End_Comment()
+    {
+        var fileBody = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var line1 = result.Lines[0];
+
+        Assert.That(line1.LineType.HasFlag(LineType.ContainsComments));
+        Assert.That(line1.CommentType.HasFlag(CommentType.LineEndComment));
+        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", line1.GetCodeOnlyText());
+        StringAssert.AreEqualIgnoringCase(@"-- this is a simple comment ", line1.CodeComments[0].CurrentLineText);
+    }
+
+    [Test]
+    public void Calibrate_Multi_Line_Comment_Start_And_End_Positions()
+    {
+        // also not quite a test - but more of a sanity check and/or for debugging. 
+        var fileBody = MINIMAL_MULTI_LINE_COMMENT;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var comment = result.Comments[0];
+
+        Assert.That(comment.LineStart, Is.EqualTo(1));
+        Assert.That(comment.ColumnStart, Is.EqualTo(0));
+
+        Assert.That(comment.LineEnd, Is.EqualTo(3));
+        Assert.That(comment.ColumnEnd, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void Calibrate_Start_And_End_Positions_For_Single_Line_Block_Comment()
+    {
+        var fileBody = SINGLE_LINE_BLOCK_COMMENT;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var comment = result.Comments[0];
+
+        Assert.That(comment.LineStart, Is.EqualTo(2));
+        Assert.That(comment.ColumnStart, Is.EqualTo(0));
+
+        Assert.That(comment.LineEnd, Is.EqualTo(2));
+        Assert.That(comment.ColumnEnd, Is.EqualTo(30));
+    }
+
+    [Test]
+    public void Calibrate_LineEnd_Comment_Inside_String_Is_Ignored()
+    {
+        var fileBody = SIMPLE_EOL_COMMENT_AS_STRING_CONTENT;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Lines.Count, Is.EqualTo(1));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(1));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void Calibrate_MultiLine_Comments_Nested_As_MultiLine_String_Data()
+    {
+        var fileBody = COMMENTS_AS_STRING_CONTENT;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Lines.Count, Is.EqualTo(7));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(2));
+        Assert.That(result.Comments.Count, Is.EqualTo(2));
+
+        var line1 = result.Lines[0];
+        StringAssert.AreEqualIgnoringCase(@"SELECT N'This is just a normal string - no comments' [OUTPUT1];", line1.RawContent);
+        Assert.False(line1.HasBlockComment);
+        Assert.That(line1.HasString);
+
+        var line2 = result.Lines[1];
+        StringAssert.AreEqualIgnoringCase(@"DECLARE @sql nvarchar(MAX) = N'/* ----------------------------------------------", line2.RawContent);
+        //Assert.That(line2.HasString);
+        Assert.False(line2.HasComment);
+
+        var line3 = result.Lines[2];
+        
+        var line4 = result.Lines[3];
+        
+        var line5 = result.Lines[4];
+        
+        var line6 = result.Lines[5];
+        
+        var line7 = result.Lines[6];
+
+    }
+
+    [Test]
+    public void ProcessLines_Correctly_Identifies_WhiteSpace_And_LineEnd_Comment()
+    {
+        var fileBody = @"  -- This is a comment - but there was whitespace in front of it.";
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var line1 = result.Lines[0];
+
+        Assert.That(line1.LineType.HasFlag(LineType.ContainsComments));
+        Assert.That(line1.CommentType.HasFlag(CommentType.LineEndComment));
+        Assert.That(line1.LineEndCommentType.HasFlag(LineEndCommentType.WhiteSpaceAndComment));
+    }
+
+    [Test]
+    public void Process_Lines_Correctly_Identifies_LineEnd_Comment_With_No_Code_Text()
+    {
+        var fileBody = @"-----------------------------------";
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var line1 = result.Lines[0];
+
+        Assert.That(line1.LineType.HasFlag(LineType.ContainsComments));
+        Assert.That(line1.CommentType.HasFlag(CommentType.LineEndComment));
+        Assert.That(line1.LineEndCommentType.HasFlag(LineEndCommentType.FullLineComment));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Simple_CodeString()
     {
         var fileBody = SIMPLE_CODESTRING_STRING;
         var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
@@ -260,19 +483,7 @@ DECLARE @somethingVersion sysname;";
     [Test]
     public void ProcessLines_Captures_Single_Multi_Line_CodeString()
     {
-    }
-
-    [Test]
-    public void ProcessLines_Captures_Complex_CodeStrings_Against_Multiple_Lines()
-    {
-
-    }
-
-    [Test]
-    public void Calibrate_Multi_Line_Comment_Start_And_End_Positions()
-    {
-        // also not quite a test - but more of a sanity check and/or for debugging. 
-        var fileBody = MINIMAL_MULTI_LINE_COMMENT;
+        var fileBody = SINGLE_MULTILINE_STRING;
         var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
@@ -286,43 +497,40 @@ DECLARE @somethingVersion sysname;";
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Errors.Count, Is.EqualTo(0));
-        Assert.That(result.Comments.Count, Is.EqualTo(1));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+        Assert.That(result.Lines.Count, Is.EqualTo(6));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(1));
 
-        var comment = result.Comments[0];
+        var codeString = result.CodeStrings[0];
+        StringAssert.AreEqualIgnoringCase("N'This string wraps \r\ndown \r\nto \r\nmultiple\r\nlines'", codeString.Text);
+        Assert.That(codeString.LineStart, Is.EqualTo(2));
+        Assert.That(codeString.ColumnStart, Is.EqualTo(7));
+        Assert.That(codeString.LineEnd, Is.EqualTo(6));
+        Assert.That(codeString.ColumnEnd, Is.EqualTo(5));
 
-        Assert.That(comment.LineStart, Is.EqualTo(1));
-        Assert.That(comment.ColumnStart, Is.EqualTo(0));
+        var line1 = result.Lines[0];
+        Assert.That(line1.CodeStrings.Count, Is.EqualTo(0));
+        Assert.That(line1.CodeComments.Count, Is.EqualTo(0));
 
-        Assert.That(comment.LineEnd, Is.EqualTo(3));
-        Assert.That(comment.ColumnEnd, Is.EqualTo(1));
-    }
+        var line2 = result.Lines[1];
+        Assert.That(line2.CodeStrings.Count, Is.EqualTo(1));
+        Assert.That(line2.CodeComments.Count, Is.EqualTo(0));
+        StringAssert.AreEqualIgnoringCase("N'This string wraps \r\ndown \r\nto \r\nmultiple\r\nlines'", line2.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("N'This string wraps ", line2.CodeStrings[0].CurrentLineText);
 
-    [Test]
-    public void Calibrate_Start_And_End_Positions_For_Single_Line_Block_Comment()
-    {
-        var fileBody = SINGLE_LINE_BLOCK_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var line3 = result.Lines[2];
+        Assert.That(line3.CodeStrings.Count, Is.EqualTo(1));
+        Assert.That(line3.CodeComments.Count, Is.EqualTo(0));
+        StringAssert.AreEqualIgnoringCase("N'This string wraps \r\ndown \r\nto \r\nmultiple\r\nlines'", line3.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("down ", line3.CodeStrings[0].CurrentLineText);
 
-        var fileManager = new Mock<IFileManager>();
-        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
-            .Returns(fileBody);
+        var line4 = result.Lines[3];
+        Assert.That(line4.CodeStrings.Count, Is.EqualTo(1));
+        Assert.That(line4.CodeComments.Count, Is.EqualTo(0));
+        StringAssert.AreEqualIgnoringCase("N'This string wraps \r\ndown \r\nto \r\nmultiple\r\nlines'", line4.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("to ", line4.CodeStrings[0].CurrentLineText);
 
-        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
-            .Returns(fileLines);
-
-        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
-
-        Assert.That(result, Is.Not.Null);
-        Assert.That(result.Errors.Count, Is.EqualTo(0));
-        Assert.That(result.Comments.Count, Is.EqualTo(1));
-
-        var comment = result.Comments[0];
-
-        Assert.That(comment.LineStart, Is.EqualTo(2));
-        Assert.That(comment.ColumnStart, Is.EqualTo(0));
-
-        Assert.That(comment.LineEnd, Is.EqualTo(2));
-        Assert.That(comment.ColumnEnd, Is.EqualTo(30));
+        var line6 = result.Lines[5];
     }
 
     [Test]
@@ -345,7 +553,7 @@ DECLARE @somethingVersion sysname;";
         Assert.That(result.Comments.Count, Is.EqualTo(1));
 
         var comment = result.Comments[0];
-        
+
         Assert.That(comment.LineStart, Is.EqualTo(2));
         Assert.That(comment.ColumnStart, Is.EqualTo(0));
 
@@ -357,9 +565,9 @@ DECLARE @somethingVersion sysname;";
     }
 
     [Test]
-    public void ProcessLines_Captures_Simple_Multi_Line_Comment_Text()
+    public void ProcessLines_Captures_Multiple_Multi_Line_Strings()
     {
-        var fileBody = BASIC_MULTI_LINE_COMMENT;
+        var fileBody = MULTIPLE_MULTILINE_STRINGS;
         var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
@@ -373,12 +581,49 @@ DECLARE @somethingVersion sysname;";
 
         Assert.That(result, Is.Not.Null);
         Assert.That(result.Errors.Count, Is.EqualTo(0));
-        Assert.That(result.Comments.Count, Is.EqualTo(1));
+        Assert.That(result.Comments.Count, Is.EqualTo(0));
+        Assert.That(result.Lines.Count, Is.EqualTo(5));
+        Assert.That(result.CodeStrings.Count, Is.EqualTo(2));
 
-        var comment = result.Comments[0];
+        var codeString = result.CodeStrings[0];
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a \r\nmulti \r\nmultiline \r\n string'''", codeString.Text);
+        Assert.That(codeString.LineStart, Is.EqualTo(1));
+        Assert.That(codeString.ColumnStart, Is.EqualTo(7));
+        Assert.That(codeString.LineEnd, Is.EqualTo(4));
+        Assert.That(codeString.ColumnEnd, Is.EqualTo(9));
 
-        StringAssert.StartsWith(@"/* This is a simple comment.", comment.Text);
-        StringAssert.EndsWith(@"        that spans multiple lines */", comment.Text);
+        var codeString2 = result.CodeStrings[1];
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''And so \r\nis this'''", codeString2.Text);
+        Assert.That(codeString2.LineStart, Is.EqualTo(4));
+        Assert.That(codeString2.ColumnStart, Is.EqualTo(24));
+        Assert.That(codeString2.LineEnd, Is.EqualTo(5));
+
+        var line1 = result.Lines[0];
+        Assert.That(line1.CodeStrings.Count, Is.EqualTo(1));
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a \r\nmulti \r\nmultiline \r\n string'''", line1.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a ", line1.CodeStrings[0].CurrentLineText);
+
+        var line2 = result.Lines[1];
+        Assert.That(line2.CodeStrings.Count, Is.EqualTo(1));
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a \r\nmulti \r\nmultiline \r\n string'''", line2.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("multi ", line2.CodeStrings[0].CurrentLineText);
+
+        var line3 = result.Lines[2];
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a \r\nmulti \r\nmultiline \r\n string'''", line3.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("multiline ", line3.CodeStrings[0].CurrentLineText);
+
+        var line4 = result.Lines[3];
+        Assert.That(line4.CodeStrings.Count, Is.EqualTo(2));
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''This is a \r\nmulti \r\nmultiline \r\n string'''", line4.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase(" string'''", line4.CodeStrings[0].CurrentLineText);
+
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''And so \r\nis this'''", line4.CodeStrings[1].Text);
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''And so ", line4.CodeStrings[1].CurrentLineText);
+
+        var line5 = result.Lines[4];
+        Assert.That(line5.CodeStrings.Count, Is.EqualTo(1));
+        StringAssert.AreEqualIgnoringCase("N'PRINT N''And so \r\nis this'''", line5.CodeStrings[0].Text);
+        StringAssert.AreEqualIgnoringCase("is this'''", line5.CodeStrings[0].CurrentLineText);
     }
 
     [Test]
@@ -407,6 +652,31 @@ DECLARE @somethingVersion sysname;";
         Assert.That(comment.Location.Peek().LineNumber, Is.EqualTo(2));
 
         Assert.That(comment.Location.Peek().ColumnNumber, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void ProcessLines_Captures_Simple_Multi_Line_Comment_Text()
+    {
+        var fileBody = BASIC_MULTI_LINE_COMMENT;
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(fileBody);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var result = FileProcessor.ProcessFileLines(null, "build.sql", ProcessingType.BuildFile, fileManager.Object, "NA", "");
+
+        Assert.That(result, Is.Not.Null);
+        Assert.That(result.Errors.Count, Is.EqualTo(0));
+        Assert.That(result.Comments.Count, Is.EqualTo(1));
+
+        var comment = result.Comments[0];
+
+        StringAssert.StartsWith(@"/* This is a simple comment.", comment.Text);
+        StringAssert.EndsWith(@"        that spans multiple lines */", comment.Text);
     }
 
     [Test]
@@ -599,6 +869,7 @@ DECLARE @somethingVersion sysname;";
 
         Assert.That(middleLine.CodeComments.Count, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase("/* start \r\nof a new \r\ncomment */", middleLine.CodeComments[0].Text);
+        StringAssert.AreEqualIgnoringCase("of a new ", middleLine.CodeComments[0].CurrentLineText);
         StringAssert.AreEqualIgnoringCase(@"", middleLine.GetCodeOnlyText());
 
         var lineEnd = result.Lines[3];
@@ -614,6 +885,7 @@ DECLARE @somethingVersion sysname;";
 
         Assert.That(lineEnd.CodeComments.Count, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase("/* start \r\nof a new \r\ncomment */", lineEnd.CodeComments[0].Text);
+        StringAssert.AreEqualIgnoringCase("comment */", lineEnd.CodeComments[0].CurrentLineText);
         StringAssert.AreEqualIgnoringCase(@" SELECT 'This is more text' [output]; ", lineEnd.GetCodeOnlyText());
 
         var finalLine = result.Lines[4];
@@ -643,15 +915,12 @@ DECLARE @somethingVersion sysname;";
         Assert.That(result.Lines.Count, Is.EqualTo(4));
         Assert.That(result.Comments.Count, Is.EqualTo(4));
 
-        StringAssert.AreEqualIgnoringCase(@"-- and it has a line-end comment", result.Comments[0].Text);
-
-        // TODO: Hmmm... this is 'right'. End-of-Line comments are always added first - then multi-line comments. 
-        //          short of interleaving line-processing and file-processing... that's how things are going to be. 
-        //          SO. the 'todo' here is to ... document that this is how things behave. 
-        //              and... i don't think this'll actually, ever, be a real problem. 
-        StringAssert.AreEqualIgnoringCase(@"-- also a comment", result.Comments[1].Text);
-        StringAssert.AreEqualIgnoringCase(@"/* and here is a single-line comment */", result.Comments[2].Text);
-        StringAssert.AreEqualIgnoringCase("/* multi-line comment\r\nthat spans down to here */", result.Comments[3].Text);
+        // TODO: Need to document that /* block comments are grabbed/processed first */ and that -- line end comments are done AFTER that. 
+        //          And, I don't THINK this'll be anything that ANYONE but me cares about - i.e., this should ONLY be a 'nuance' of the code/logic. 
+        StringAssert.AreEqualIgnoringCase(@"/* and here is a single-line comment */", result.Comments[0].Text);
+        StringAssert.AreEqualIgnoringCase("/* multi-line comment\r\nthat spans down to here */", result.Comments[1].Text);
+        StringAssert.AreEqualIgnoringCase(@"-- and it has a line-end comment", result.Comments[2].Text);
+        StringAssert.AreEqualIgnoringCase(@"-- also a comment", result.Comments[3].Text);
 
         // Now check comments per each line: 
         var line1 = result.Lines[0];
@@ -712,28 +981,11 @@ DECLARE @somethingVersion sysname;";
         Assert.That(line4.CodeComments.Count, Is.EqualTo(2));
         StringAssert.AreEqualIgnoringCase(@"that spans down to here */ SELECT 'line 4' [4th line]; -- also a comment", line4.RawContent);
 
-        // TODO: this is also showing similar 'problems' to the above... 
-        //      only, again, not sure it really matters. As I don't think I can use .GetCommentText() for anything truly critical. 
-        StringAssert.AreEqualIgnoringCase("-- also a comment/* multi-line comment\r\nthat spans down to here */", line4.GetCommentText());
+        // TODO: This is similar to the 'internal nuance' mentioned above. I'm not sure it's a bit deal. 
+        //      But, There IS an 'oddity' in how /* block comments */ and done first, then -- end of line comments. 
+        //          also, .GetCommentText() is ... deprecated. it just doesn't make sense. 
+        StringAssert.AreEqualIgnoringCase("/* multi-line comment\r\nthat spans down to here */-- also a comment", line4.GetCommentText());
         StringAssert.AreEqualIgnoringCase(@" SELECT 'line 4' [4th line]; ", line4.GetCodeOnlyText());
-    }
-
-    [Test]
-    public void Basic_Build_File_Yields_Correct_Number_of_Code_Lines()
-    {
-        var buildFile = BASIC_BUILD_FILE;
-        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
-
-        var fileManager = new Mock<IFileManager>();
-        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
-            .Returns(buildFile);
-
-        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
-            .Returns(fileLines);
-
-        var sut = new BuildFile("build.sql", fileManager.Object);
-
-        Assert.That(sut.Lines.Count, Is.EqualTo(12));
     }
 
     [Test]
@@ -764,6 +1016,24 @@ DECLARE @somethingVersion sysname;";
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"OUTPUT:", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(2));
         Assert.That(position.ColumnNumber, Is.EqualTo(6));
+    }
+
+    [Test]
+    public void Basic_Build_File_Yields_Correct_Number_of_Code_Lines()
+    {
+        var buildFile = BASIC_BUILD_FILE;
+        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+
+        var fileManager = new Mock<IFileManager>();
+        fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
+            .Returns(buildFile);
+
+        fileManager.Setup(x => x.GetFileLines(It.IsAny<string>()))
+            .Returns(fileLines);
+
+        var sut = new BuildFile("build.sql", fileManager.Object);
+
+        Assert.That(sut.Lines.Count, Is.EqualTo(12));
     }
 
     [Test]

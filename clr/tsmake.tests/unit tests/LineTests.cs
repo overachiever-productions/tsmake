@@ -64,68 +64,6 @@ public class LineTests
     }
 
     [Test]
-    public void Simple_Comment_Is_Marked_As_LineEnd_Comment()
-    {
-        var codeLine = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
-
-        var sut = new Line("build.sql", 66, codeLine);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.LineEndComment));
-    }
-
-    [Test]
-    public void Simple_Comment_That_Is_WhiteSpace_And_Comment_Only_Is_Correctly_Marked()
-    {
-        var codeLine = @"  -- This is a comment - but there was whitespace in front of it.";
-
-        var sut = new Line("build.sql", 876, codeLine);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.LineEndComment));
-        Assert.That(sut.LineEndCommentType.HasFlag(LineEndCommentType.WhiteSpaceAndComment));
-    }
-
-    [Test]
-    public void Simple_Comment_With_No_WhiteSpace_Is_Marked_As_FullLineComment()
-    {
-        var dashedLine = @"-----------------------------------";
-
-        var sut = new Line("build.sql", 112, dashedLine);
-
-        Assert.That(sut.LineType.HasFlag(LineType.ContainsComments));
-        Assert.That(sut.CommentType.HasFlag(CommentType.LineEndComment));
-        Assert.That(sut.LineEndCommentType.HasFlag(LineEndCommentType.FullLineComment));
-    }
-
-    [Test]
-    public void Simple_Comment_Captures_Code_Text_Before_Comment()
-    {
-        var codeLine = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
-
-        var sut = new Line("build.sql", 66, codeLine);
-
-        StringAssert.AreEqualIgnoringCase(@"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' ", sut.GetCodeOnlyText());
-    }
-
-    [Test]
-    public void Simple_Comment_Captures_Comment_Text_And_Position_Details()
-    {
-        var codeLine = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
-
-        var sut = new Line("build.sql", 66, codeLine);
-
-        StringAssert.AreEqualIgnoringCase(@"-- this is a simple comment ", sut.GetCommentText());
-        Assert.That(sut.CodeComments.Count, Is.EqualTo(1));
-
-        Assert.That(sut.CodeComments[0].LineStart, Is.EqualTo(66));
-        Assert.That(sut.CodeComments[0].ColumnStart, Is.EqualTo(62));
-
-        Assert.That(sut.CodeComments[0].LineEnd, Is.EqualTo(66));
-        Assert.That(sut.CodeComments[0].ColumnEnd, Is.EqualTo(89));
-    }
-
-    [Test]
     public void Line_Without_String_Data_Is_Not_Identified_As_Having_String_Data()
     {
         var codeline = @"	IF @IncludeBlockingSessions = 1 BEGIN ";
