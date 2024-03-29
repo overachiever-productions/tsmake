@@ -24,15 +24,17 @@
     {
         public string Name { get; }
         public string DefaultValue { get; }
+
+        // TODO: this needs to be a Stack<Location>
         public Location Location { get; }
 
         public Token(string tokenValue, Location location)
         {
-            if (tokenValue.Contains(":"))
+            if (tokenValue.Contains(":", StringComparison.InvariantCultureIgnoreCase))
             {
-                var parts = tokenValue.Split(':');
+                var parts = tokenValue.Split(':', StringSplitOptions.None);
                 this.Name = parts[0].ToUpperInvariant();
-                this.DefaultValue = parts[1];
+                this.DefaultValue = tokenValue.Substring((this.Name.Length) + 1);
             }
             else
             {
@@ -40,6 +42,31 @@
             }
 
             this.Location = location;
+        }
+
+        public override bool Equals(object other)
+        {
+            if (other == null) return false;
+
+            var otherToken = (Token)other;
+            if (otherToken.ToString() == this.ToString())
+                return true;
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            var defaultValue = "<EMPTY>";
+            if(this.DefaultValue != null)
+                defaultValue = this.DefaultValue;
+
+            return $"NAME:\"{this.Name}\";DEFAULT:\"{defaultValue}\" => {this.Location.FileName}({this.Location.LineNumber},{this.Location.ColumnNumber})";
         }
     }
 
@@ -49,7 +76,10 @@
 
         public TokenDefinition GetTokenDefinition(string tokenName)
         {
-            return this.DefinedTokens[tokenName];
+            if(this.DefinedTokens.ContainsKey(tokenName))
+                return this.DefinedTokens[tokenName];
+
+            return null;
         }
 
         public static TokenRegistry Instance => new TokenRegistry();

@@ -95,6 +95,11 @@
             this.ColumnEnd = endPosition.ColumnNumber;
         }
 
+        public string GetLocation(string indent = "\t", bool increaseIndent = true)
+        {
+            return this.Location.GetLocation(indent, increaseIndent);
+        }
+
         public override bool Equals(object other)
         {
             if(other == null) return false;
@@ -117,9 +122,6 @@
         public bool CommentIsInString { get; private set; }
         public bool IsHeaderComment { get; private set; }
         public CommentType CommentType { get; internal set; }
-        public BlockCommentType BlockCommentType { get; internal set; }
-        // I don't think I need this: 
-        //public LineEndCommentType LineEndCommentType { get; internal set; }
 
         public CodeComment(string text, int lineStart, int columnStart) : base(text, lineStart, columnStart) { }
 
@@ -135,6 +137,10 @@
             return (CodeComment)this.MemberwiseClone();
         }
 
+        // TODO:
+        // REFACTOR: 
+        //  Not sure I even need this (in fact, pretty sure it's immaterial/not-used - and that removing it + a couple minor tweaks 
+        //      SHOULD make no difference to all unit tests).
         public void MarkCommentAsInString()
         {
             this.CommentIsInString = true;
@@ -175,41 +181,59 @@
         public string RawContent { get; }
         public List<CodeComment> CodeComments { get; private set; }
         public List<CodeString> CodeStrings { get; private set; }
-        
-        //public LineType LineType { get; internal set; }
-        //public CommentType CommentType { get; internal set; }
-        //public BlockCommentType BlockCommentType { get; internal set; }
-        // REFACTOR: Do I REALLY need this? The only way that I could see 'needing' it would be IF a line was 100% a --comment (starting at position 0) ... and should, as such, be excluded. BUT, I think i could 'tell' this other ways.
-        //public LineEndCommentType LineEndCommentType { get; internal set; }
-        //public StringType StringType { get; internal set; }
-        
         public List<Token> Tokens { get; }
         public IDirective Directive { get; private set; }
 
-        public bool HasComment => this.LineType.HasFlag(LineType.ContainsComments);
-        public bool HasBlockComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.BlockComment);
-        public bool HasLineEndComment => this.LineType.HasFlag(LineType.ContainsComments) & this.CommentType.HasFlag(CommentType.LineEndComment);
+        public bool HasTokens
+        {
+            get
+            {
+                return this.Tokens.Count > 0;
+            }
+        }
+
+        public bool IsDirective
+        {
+            get
+            {
+                return this.Directive != null;
+            }
+        }
+
+        public bool HasComment
+        {
+            get
+            {
+                return this.CodeComments.Count(x => x.CommentIsInString == false) > 0;
+            }
+        }
+
+        public bool HasBlockComment
+        {
+            get
+            {
+                return this.CodeComments.Count(x => x.CommentType.HasFlag(CommentType.BlockComment)) > 0;
+            }
+        }
+
+        public bool HasLineEndComment
+        {
+            get
+            {
+                return this.CodeComments.Count(x => x.CommentType.HasFlag(CommentType.LineEndComment)) > 0;
+            }
+        }
+
         public bool IsHeaderComment => this.CodeComments.Any(x => x.IsHeaderComment);
+
         public bool IsStringNotComment => this.CodeComments.All(x => x.CommentIsInString);
 
-        public bool HasString => this.LineType.HasFlag(LineType.ContainsStrings);
-
-        // REFACTOR: see comments in BuildFileTests.EndOfLine_Comments_And_Block_Comments_Can_Live_Together()
-        //      I'm PRETTY sure that I can't end up using THIS method (.GetCodeOnlyText() is great/fine)... because of how
-        //          -- comments and /* comments */ interact with each other (and/or because of how I'm handling them).
-        public string GetCommentText()
+        public bool HasString
         {
-            if(!this.HasComment)
-                return string.Empty;
-
-            if (this.CodeComments.Count == 1)
-                return this.CodeComments[0].Text;
-
-            string output = "";
-            foreach (CodeComment comment in this.CodeComments)
-                output += comment.Text;
-
-            return output;
+            get
+            {
+                return this.CodeStrings.Count > 0;
+            }
         }
 
         public string GetCodeOnlyText()
@@ -239,24 +263,7 @@
 
         public string GetLocation(string indent = "\t", bool increaseIndent = true)
         {
-            if (this.Location.Count == 1)
-            {
-                return this.Location.Peek().FileName + ", " + this.Location.Peek().LineNumber;
-            }
-
-            var sb = new StringBuilder();
-            var locationClone = this.Location.Clone();
-            var currentIndent = indent;
-            if (increaseIndent) currentIndent = "";
-            while (locationClone.Count > 0)
-            {
-                var location = locationClone.Pop();
-                sb.AppendLine($"{currentIndent}{location.FileName} , {location.LineNumber}");
-                if (increaseIndent)
-                    currentIndent += indent;
-            }
-
-            return sb.ToString();
+            return this.Location.GetLocation(indent, increaseIndent);
         }
 
         public Line(string sourceFile, int lineNumber, string rawContent)
@@ -294,14 +301,10 @@
             this.CodeComments = new List<CodeComment>();
             this.CodeStrings = new List<CodeString>();
 
-            this.LineType = LineType.RawContent;
-            //this.CommentType = CommentType.None;
-
             try
             {
                 if (string.IsNullOrWhiteSpace(this.RawContent))
                 {
-                    this.LineType |= LineType.WhiteSpaceOnly;
                     return;
                 }
 
@@ -309,8 +312,6 @@
                 Match m = regex.Match(this.RawContent);
                 if (m.Success)
                 {
-                    this.LineType = LineType.Directive;
-
                     var directive = m.Groups["directive"];
 
                     string directiveName = directive.Value.ToUpperInvariant();
@@ -328,8 +329,6 @@
                 var matches = regex.Matches(this.RawContent);
                 if (matches.Count > 0 && matches[0].Success)
                 {
-                    this.LineType |= LineType.ContainsTokens;  // NOTE that currently, this allows for combinations of RawContent | Directives to be 'decorated' with TokenizedContent... 
-
                     foreach (Match x in matches)
                     {
                         string tokenData = x.Groups["token"].Value;
@@ -340,32 +339,6 @@
                         this.Tokens.Add(i);
                     }
                 }
-
-                //regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.SingleLineOptions);
-                //m = regex.Match(this.RawContent);
-                //if (m.Success)
-                //{
-                //    this.LineType |= LineType.ContainsComments;
-                //    this.CommentType = CommentType.LineEndComment;
-                    
-                //    var comment = m.Groups["comment"].Value;
-                //    var textBeforeLineEndComment = this.RawContent.Substring(0, this.RawContent.IndexOf(comment, StringComparison.InvariantCultureIgnoreCase));
-
-                //    if (textBeforeLineEndComment == "")
-                //        this.LineEndCommentType = LineEndCommentType.FullLineComment;
-                //    else
-                //    {
-                //        if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
-                //            this.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
-                //        else
-                //            this.LineEndCommentType = LineEndCommentType.EolComment;
-                //    }
-
-                //    var codeComment = new CodeComment(m.Value, this.LineNumber, m.Index, this.LineNumber, (m.Index + m.Length - 1));
-                //    codeComment.SetLocation(this.Location, m.Index);
-
-                //    this.CodeComments.Add(codeComment);
-                //}
             }
             catch (Exception ex)
             {
@@ -444,10 +417,10 @@
             {
                 var line = (parent == null) ? new Line(currentSourceFile, i, current) : new Line(parent, currentSourceFile, i, current);
 
-                if (line.LineType.HasFlag(LineType.ContainsTokens))
+                if (line.HasTokens)
                     output.AddTokens(line.Tokens);
 
-                if (line.LineType.HasFlag(LineType.Directive))
+                if (line.IsDirective)
                 {
                     if (processingType == ProcessingType.IncludedFile)
                     {
@@ -498,7 +471,7 @@
                     }
                 }
 
-                if (line.LineType.HasFlag(LineType.ContainsComments))
+                if (line.HasComment)
                     output.Comments.Add(line.CodeComments[0]); // there 'can only be one' cuz these are end-of-line-comments only/ever. 
 
                 output.AddLine(line);
@@ -527,10 +500,6 @@
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
                     codeString.SetEndPosition(endPosition);
 
-                    startLine.LineType |= LineType.ContainsStrings;
-                    startLine.StringType = StringType.MultiLine;
-                    startLine.StringType |= StringType.MultiLineStart;
-
                     string[] stringTextLines = Regex.Split(stringText, @"\r\n|\r|\n", Global.SingleLineOptions);
                     string currentStringTextLine = stringTextLines[0];
                     codeString.SetCurrentLineText(currentStringTextLine);
@@ -541,10 +510,6 @@
                     for (int x = startLine.LineNumber; x <= endPosition.LineNumber - 2; x++)
                     {
                         Line currentLine = output.Lines[x];
-
-                        currentLine.LineType |= LineType.ContainsStrings;
-                        currentLine.StringType = StringType.MultiLine;
-                        currentLine.StringType |= StringType.MultiLineLine;
                         
                         currentStringTextLine = stringTextLines[(x - startLine.LineNumber + 1)];
                         codeString.SetCurrentLineText(currentStringTextLine);
@@ -555,9 +520,6 @@
                     if (startPosition.LineNumber != endPosition.LineNumber)
                     {
                         Line endLine = output.Lines[endPosition.LineNumber - 1];
-                        endLine.LineType |= LineType.ContainsStrings;
-                        endLine.StringType = StringType.MultiLine;
-                        endLine.StringType |= StringType.MultiLineEnd;
 
                         currentStringTextLine = stringTextLines[stringTextLines.Length - 1];
                         codeString.SetCurrentLineText(currentStringTextLine);
@@ -570,15 +532,11 @@
                     endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
                     codeString.SetEndPosition(endPosition);
 
-                    startLine.LineType |= LineType.ContainsStrings;
-                    startLine.StringType = StringType.SingleLine;
-
                     codeString.SetCurrentLineText(stringText);
                     startLine.CodeStrings.Add(codeString.AsCopy());
                 }
 
                 codeString.SetLocation(startLine.Location, startPosition.ColumnNumber);
-
                 output.AddCodeString(codeString);
             }
 
@@ -595,22 +553,13 @@
 
                 Line startLine = output.Lines[startPosition.LineNumber - 1];
                 var codeComment = new CodeComment(commentText, startPosition.LineNumber, startPosition.ColumnNumber);
+                codeComment.CommentType = CommentType.BlockComment;
 
                 if (Regex.IsMatch(commentText, @"\r\n|\r|\n", Global.SingleLineOptions))
                 {
                     int matchEnd = index + length - 1;
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
                     codeComment.SetEndPosition(endPosition);
-
-                    startLine.LineType |= LineType.ContainsComments;
-                    
-                    // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
-                    if(startLine.CommentType == CommentType.None) 
-                        startLine.CommentType = CommentType.BlockComment;
-                    else 
-                        startLine.CommentType |= CommentType.BlockComment;
-                        
-                    startLine.BlockCommentType |= BlockCommentType.MultiLineStart;
 
                     string[] commentTextLines = Regex.Split(commentText, @"\r\n|\r|\n", Global.SingleLineOptions);
                     string currentCommentTextLine = commentTextLines[0];
@@ -625,17 +574,6 @@
                     {
                         Line currentLine = output.Lines[x];
                         
-                        currentLine.LineType |= LineType.ContainsComments;
-
-                        // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
-                        if (currentLine.CommentType == CommentType.None)
-                            currentLine.CommentType = CommentType.BlockComment;
-                        else
-                            currentLine.CommentType |= CommentType.BlockComment;
-                        
-                        currentLine.BlockCommentType |= BlockCommentType.MultilineLine;
-                        currentLine.BlockCommentType |= BlockCommentType.CommentOnly;
-
                         currentCommentTextLine = commentTextLines[(x - startLine.LineNumber + 1)];
                         codeComment.SetCurrentLineText(currentCommentTextLine);
                         currentLine.CodeComments.Add(codeComment.AsCopy());
@@ -644,15 +582,6 @@
                     if (startPosition.LineNumber != endPosition.LineNumber)
                     {
                         Line endLine = output.Lines[endPosition.LineNumber - 1];
-                        endLine.LineType |= LineType.ContainsComments;
-
-                        // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
-                        if (endLine.CommentType == CommentType.None)
-                            endLine.CommentType = CommentType.BlockComment;
-                        else
-                            endLine.CommentType |= CommentType.BlockComment;
-
-                        endLine.BlockCommentType |= BlockCommentType.MultilineEnd;
 
                         currentCommentTextLine = commentTextLines[commentTextLines.Length - 1];
                         codeComment.SetCurrentLineText(currentCommentTextLine);
@@ -663,30 +592,17 @@
                 {
                     endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
                     codeComment.SetEndPosition(endPosition);
-
-                    startLine.LineType |= LineType.ContainsComments;
-
-                    // REFACTOR: used to have to 'check' this when --comments were processed BEFORE /* comments */
-                    if (startLine.CommentType == CommentType.None)
-                        startLine.CommentType = CommentType.BlockComment;
-                    else
-                        startLine.CommentType |= CommentType.BlockComment;
-
-                    startLine.BlockCommentType |= BlockCommentType.SingleLine;
                     
                     codeComment.SetCurrentLineText(commentText);
                     startLine.CodeComments.Add(codeComment.AsCopy());
                 }
 
                 codeComment.SetLocation(startLine.Location, startPosition.ColumnNumber);
-
-                // push a copy of each comment into the collection of comments by file/processing-result as well:
                 output.AddCodeComment(codeComment);
             }
 
             // Now that strings/comments have been identified:
             // 0. line-end comments,  1. look for overlap of 'strings and /* comments or --comments */', 2. identify header comments, 3. object names
-
             bool isHeaderComment = true;
             List<CodeComment> lineCommentsToRemove = new List<CodeComment>();
             foreach (var line in output.Lines)
@@ -719,28 +635,11 @@
 
                     if (eolCommentIsInString == false && eolCommentIsInBlockComment == false)
                     {
-                        line.LineType |= LineType.ContainsComments;
-
-                        if (line.CommentType == CommentType.None)
-                            line.CommentType = CommentType.LineEndComment;
-                        else
-                            line.CommentType |= CommentType.LineEndComment;
-
                         var textBeforeLineEndComment = line.RawContent.Substring(0,
                             line.RawContent.IndexOf(comment, StringComparison.InvariantCultureIgnoreCase));
 
-                        if (textBeforeLineEndComment == "")
-                            line.LineEndCommentType = LineEndCommentType.FullLineComment;
-                        else
-                        {
-                            if (string.IsNullOrWhiteSpace(textBeforeLineEndComment))
-                                line.LineEndCommentType = LineEndCommentType.WhiteSpaceAndComment;
-                            else
-                                line.LineEndCommentType = LineEndCommentType.EolComment;
-                        }
-
-                        var codeComment = new CodeComment(m.Value, line.LineNumber, m.Index, line.LineNumber,
-                            (m.Index + m.Length - 1));
+                        var codeComment = new CodeComment(m.Value, line.LineNumber, m.Index, line.LineNumber, (m.Index + m.Length - 1));
+                        codeComment.CommentType |= CommentType.LineEndComment;
                         codeComment.SetLocation(line.Location, m.Index);
                         codeComment.SetCurrentLineText(comment);
 
@@ -760,7 +659,7 @@
                 else
                     isHeaderComment = false;
 
-                // check for 'STRINGS that are --comments or /*comments*/'... 
+                // check for --comments or /*comments*/' that are 'within strings only':
                 if (line.HasString)
                 {
                     if (line.HasComment)
@@ -769,23 +668,10 @@
                         {
                             if (line.CodeStrings.Any(x => x.CurrentLineText.Contains(comment.CurrentLineText)))
                             {
-                                // REFACTOR: .MarkCommentAsInString() is ... useless. I can remove it once tests are in place to verify that nothing breaks.
                                 comment.MarkCommentAsInString();
-                                lineCommentsToRemove.Add(comment);
-
-                                //if (comment.LineStart != comment.LineEnd)
-                                //{
-                                //    // it's multi-line and ... need to remove it from each line. 
-                                //    for (int n = comment.LineStart; n < comment.LineEnd; n++)
-                                //    {
-                                //        var targetLine = output.Lines[n];
-
-                                //    }
-                                //}
-                                //else
-                                //    line.CodeComments.Remove(comment);
-
                                 output.Comments.Remove(comment);
+
+                                lineCommentsToRemove.Add(comment);
                             }
                         }
                     }
@@ -797,31 +683,16 @@
             {
                 if (commentToRemove.LineStart != commentToRemove.LineEnd)
                 {
-                    for (int n = commentToRemove.LineStart; n < commentToRemove.LineEnd; n++)
+                    for (int n = commentToRemove.LineStart; n <= commentToRemove.LineEnd; n++)
                     {
                         var targetLine = output.Lines[n - 1];
                         targetLine.CodeComments.Remove(commentToRemove);
-
-                        if (targetLine.CodeComments.Count < 1)
-                        {
-                            targetLine.LineType &= LineType.ContainsComments;
-                            
-                            // TODO: and set .CommentType to .None 
-                            // and set .BlockCommentType to .None 
-                            // and set .EolCommentType to .None 
-                        }
                     }
                 }
                 else
                 {
                     var targetLine = output.Lines[commentToRemove.LineStart - 1];
                     targetLine.CodeComments.Remove(commentToRemove);
-
-                    if (targetLine.CodeComments.Count < 1)
-                    {
-                        targetLine.LineType &= LineType.ContainsComments;
-                        // todo... same as above... 
-                    }
                 }
             }
 

@@ -4,8 +4,9 @@
     {
         public List<IError> Errors { get; }
         public List<Line> Lines { get; private set; }
-        // TODO: MIGHT make sense to add .Directives? 
-        
+        public List<IDirective> Directives { get; private set; }
+        public List<Token> Tokens { get; private set; }
+
         public RootPathDirective RootDirective { get; private set; }
         public OutputDirective OutputDirective { get; private set; }
 
@@ -23,6 +24,7 @@
 
             this.Errors.AddRange(result.Errors);
             this.Lines = result.Lines;
+            this.Directives = result.Directives;
 
             // Bubble-up any Directives that need to be referenced (for simplicity) via BuildFile:
             var roots = result.Directives.Where(d => d.DirectiveName == "ROOT").ToList();
@@ -62,20 +64,81 @@
     public class BuildManifest
     {
         public List<Line> Lines { get; }
+        public List<IError> Errors { get; }
+        public List<Token> Tokens { get; set; }
+        public List<IDirective> Directives { get; }
+        public List<CodeComment> Comments { get; private set; }
+        public List<CodeString> CodeStrings { get; private set; }
 
-        public BuildManifest()
+        public BuildManifest(BuildFile buildFile)
         {
             this.Lines = new List<Line>();
+            this.Errors = new List<IError>(); 
+
+            this.Tokens = new List<Token>();
+            this.Directives = new List<IDirective>();
+            this.Directives.AddRange(buildFile.Directives);
+            this.Comments = new List<CodeComment>();
+            this.CodeStrings = new List<CodeString>();
         }
 
         public void AddLine(Line line)
         {
             this.Lines.Add(line);
+
+            if (line.Directive != null)
+            {
+                if(!this.Directives.Contains(line.Directive))
+                    this.Directives.Add(line.Directive);
+            }
+
+            foreach (var token in line.Tokens)
+            {
+                if(!this.Tokens.Contains(token))
+                    this.Tokens.Add(token);
+            }
+            
+            foreach (var comment in line.CodeComments)
+            {
+                if(!this.Comments.Contains(comment))
+                    this.Comments.Add(comment);
+            }
+
+            foreach (var codeString in line.CodeStrings)
+            {
+                if(!this.CodeStrings.Contains(codeString))
+                    this.CodeStrings.Add(codeString);
+            }
         }
 
-        public void AddLines(List<Line> lines)
+        public void AddLines(FileProcessingResult result)
         {
-            this.Lines.AddRange(lines);
+            foreach(var line in result.Lines)
+                this.AddLine(line);
+
+            foreach (var directive in result.Directives)
+            {
+                if(!this.Directives.Contains(directive))
+                    this.Directives.Add(directive);
+            }
+
+            foreach (var token in result.Tokens)
+            {
+                if (!this.Tokens.Contains(token))
+                    this.Tokens.Add(token);
+            }
+
+            foreach (var comment in result.Comments)
+            {
+                if (!this.Comments.Contains(comment))
+                    this.Comments.Add(comment);
+            }
+
+            foreach (var codeString in result.CodeStrings)
+            {
+                if (!this.CodeStrings.Contains(codeString))
+                    this.CodeStrings.Add(codeString);
+            }
         }
     }
 

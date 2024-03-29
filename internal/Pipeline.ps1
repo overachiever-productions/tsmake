@@ -7,7 +7,7 @@
 
 	Set-Location "D:\Dropbox\Repositories\tsmake\~~spelunking";
 $global:VerbosePreference = "Continue";
-	Invoke-TsmBuild -Tokens "Doc_Link:https://www.overachiever.net" -BuildFile "D:\Dropbox\Repositories\tsmake\~~spelunking\simplified.build.sql";
+	Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\~~spelunking\simplified.build.sql" -Tokens "Doc_Link:https://www.overachiever.net", "VERSION:11.2";
 
 
 #>
@@ -163,7 +163,7 @@ function Execute-Pipeline {
 		# 3. Process File Inclusions:
 		# ====================================================================================================		
 		Write-Verbose "	Processing FILE and DIRECTORY inclusions.";
-		[tsmake.models.BuildManifest]$buildManifest = New-Object tsmake.models.BuildManifest];
+		[tsmake.models.BuildManifest]$buildManifest = New-Object tsmake.models.BuildManifest($buildFile);
 		
 		foreach ($line in $buildFile.Lines) {
 			if (Has-Value $line.Directive) {
@@ -180,11 +180,12 @@ function Execute-Pipeline {
 						else {
 							foreach ($fileToParse in $include.SourceFiles) {
 								$processingResult = [tsmake.models.FileProcessor]::ProcessFileLines($line, $fileToParse, "IncludedFile", $fileManager, $BuildContext.WorkingDirectory, $BuildContext.Root);
-								$buildManifest.AddLines($processingResult.Lines);
 								
 								if ($processingResult.Errors.Count -gt 0) {
 									$buildResult.AddErrors($processingResult.Errors);
 								}
+								
+								$buildManifest.AddLines($processingResult);
 							}
 						}
 					}
@@ -201,6 +202,121 @@ function Execute-Pipeline {
 		if ($buildResult.HasErrors) {
 			return;
 		}
+		
+		# ====================================================================================================
+		# 4: Validate Tokens:
+		# ====================================================================================================		
+		Write-Verbose "	Validating Tokens...";
+		foreach ($token in $buildManifest.Tokens) {
+			
+			# Poor man's formatting: 
+#			Write-Host "Token Name: $($tokenName)"
+#			Write-Host "	Has Default: ($((Has-Value $token.DefaultValue))) => $($token.DefaultValue)"
+#			Write-Host "  DEFINITION: "
+#			Write-Host "	Definition: ($($tokenDefinition.Name)) -> DefaultBuildValue: ($($tokenDefinition.DefaultBuildValue))  -> AllowInlineDefaults: ($($tokenDefinition.AllowInlineDefaults)) -> AllowBlanks: ($($tokenDefinition.AllowBlanks))"
+			
+			[string]$tokenName = $token.Name;
+			$tokenDefinition = $global:tsmTokenRegistry.GetTokenDefinition($tokenName);
+			
+			if (Has-Value $token.DefaultValue) {
+				if (Has-Value $tokenDefinition) {
+					if ($false -eq $tokenDefinition.AllowInlineDefaults) {
+						Write-Verbose "		Token $($token.Name) has a default value of $($token.DefaultValue) and token DEFINITION prevents default values.";
+						$buildResult.AddError((New-ParserError -ErrorMessage "Token $($token.Name) has a default value of $($token.DefaultValue) and token DEFINITION prevents default values." -Location ($token.Location) ));
+					}
+				}
+			}
+			else {
+				if (Has-Value $tokenDefinition) {
+					if ((Has-Value $tokenDefinition.DefaultBuildValue) -or (Has-Value $tokenDefinition.SpecifiedBuildValue)) {
+						Write-Verbose "			Token: [$($token.Name)] has a Specified or Default-Build Value Specified.";
+					}
+					else {
+						if ($tokenDefinition.AllowBlanks) {
+							Write-Verbose "			Token: [$($token.Name)] has a definition that allows BLANK values.";
+						}
+						else {
+							Write-Verbose "			Token: [$($token.Name)] has no inline default/value, no specified value via Input or Config, and does NOT allow blank values.";
+							$buildResult.AddError((New-ParserError -ErrorMessage "Token: [$($token.Name)] has no inline default/value, no specified value via Input or Config, and does NOT allow blank values." -Location ($token.Location)));
+						}
+					}
+				}
+				else {
+					Write-Verbose "		Undefined Token: $($token.Name) at <location goes here>."; # tokens can't be undefined, right?
+					$buildResult.AddError((New-ParserError -ErrorMessage "Undefined Token: [$($token.Name)]." -Location ($token.Location)));
+				}
+			}
+		}
+		
+		if ($buildResult.HasErrors) {
+			return;
+		}
+		
+		# ====================================================================================================
+		# 5: Conditional Processing:
+		# ====================================================================================================			
+		# I can skip this for initial prototypes... but, here is where I should be handling stuff like that - in terms of workflow. 
+		#  	and... i think I really just want to validate that everything is in place here (at this step) and handle the actual outputs? down below in step #7, right?
+		
+		
+		# ====================================================================================================
+		# 6: Comment Extraction / Inline Documentation Processing:
+		# ====================================================================================================	
+		# depending upon -Verb and other settings/etc. ... extract any .DOCUMENTATION and ... write it out to wherever it should be going - along with, eventually, formatters and the likes. 
+		
+		
+		# ====================================================================================================
+		# 7: Output + Comment Removal Processing: 
+		# ====================================================================================================	
+		# NOTE: here's where I also need to replace {{##TOKENS}}
+		# basically, stream what's 'left' to disk - as a target/output/artifact file - stripping and removing comments along the way if/as directed by comment-removal preferences. 
+		
+		# ====================================================================================================
+		# 8. Optional File Marker
+		# ====================================================================================================	
+		
+		# Dump a file marker if/as directed. 
+		return;
+#		foreach ($token in $buildManifest.Tokens) {
+#			Write-Host "TOKEN: $($token.Name) => Default:[$($token.DefaultValue)] ";
+#			Write-Host "	At: $($token.Location.FileName)($($token.Location.LineNumber),$($token.Location.ColumnNumber)) ";
+#			Write-Host "";
+#		}
+#		
+#		Write-Host "";
+#		Write-Host "--------------------------------------------------------------------------";
+#		
+		# TODO: there's something effed-up with directives... they're just not getting into this thing like they should be. 
+		foreach ($directive in $buildManifest.Directives) {
+			Write-Host "DIRECTIVE: $($directive.DirectiveName)";
+			Write-Host "	At: $($directive.Location.FileName)($($directive.Location.LineNumber),$($directive.Location.ColumnNumber))"
+		}
+		
+		Write-Host "";
+		Write-Host "--------------------------------------------------------------------------";
+		
+		# TODO: WTH??? there's a problem with $codeString.GetLocation() ... which boggles the mind cuz... CodeStrings and CodeComments both derive from BaseLineDecorator and ... .GetLocation() works for Comments. 
+		# 		ah... maybe I'm not setting locations for CodeStrings? (if .Location was empty (0 entries), then... "" would make sense for output.)
+		# 		nope. being set - cuz unit tests PROVE this info is there... 
+		foreach ($codeString in $buildManifest.CodeStrings) {
+			# poor man's string formatting: 
+			Write-Host "STRING: $($codeString.Text.Replace("`r`n", "[CR][LF]"))";
+			Write-Host "	At: $($codeString.GetLocation())";
+			Write-Host "";
+		}
+		
+		Write-Host "";
+		Write-Host "--------------------------------------------------------------------------";
+		
+		foreach ($comment in $buildManifest.Comments) {
+			# poor man's comment formatting:
+			Write-Host "COMMENT: $($comment.Text.Replace("`r`n", "[CR][LF]"))";
+			Write-Host "	At: $($comment.GetLocation())";
+			Write-Host "";
+		}
+		
+		Write-Host "";
+		Write-Host "--------------------------------------------------------------------------";
 		
 		foreach ($line in $buildManifest.Lines) {
 			
@@ -224,64 +340,13 @@ function Execute-Pipeline {
 				Write-Host "	$($line.GetLocation())";
 				Write-Host "";
 			}
-			
 		}
 		
-		
-<#		
-		# at this point, I've got ALL lines EXCLUDING: root, output, and other global directives AND any removed/stripped comments are gone as well. 
-		# 		which means I can/should review ALL tokens and throw errors on any non-valid tokens. 
-		# 			i.e., I WAS doing this previously against lines in the $buildManifest... but that's too early. Simply 'move' that logic 'down here'
-		# 		otherwise, once those are CHECKED/VALIDATED... 
-		# 		then it's time to create an $outputFileBuilder/Buffer 
-		# 			a) go through and grab-out/replace/process any CONDITIONAL lines/etc. as needed.
-		# 			b) then, for each line in $buildManifest:
-		# 					if(line.hasTOken) - do the replacement and then copy to $outputFileBuilder/Buffer. 
-		# 					else ... just copy into the $outputFileBuilder. 
-		
-		# then ... work on docs and/or marker files. 
-		# 	and, finally, serialize everything where it needs to go. 
+		# ====================================================================================================
+		# 9. Finalization + Metrics/Reporting on build process, etc.:
+		# ====================================================================================================			
 		
 		
-		
-		
-		# 		BUT: FileManifests will have processed CommentPreferences (i.e., remove top /* 1x header comment */ or /* all header commnets */
-# 			 (where 'removed' means: will NOT have output into the Build/ExpandoManifest ... vs actually deleting/removing any actual text. 
-# 				point being: after loading all FILE includes ... i'll have everything i need (within the collection of FileManifests) to grab/parse/build/output IN-FILE docs. 
-			# 
-			#  	otherwise, once we're done (assuming we didn't run into any errors along the way... )
-			# 		we've now got an 'expando' or Build Manifest - something that's ENTIRELY done except for: 
-			# 			a) conditional processing/logic.
-			# 			b) tokens. 
-			# 	translation: 
-			# 			from this point on I then need to process: 
-			# 		a) conditional logic
-			# 		b) tokens
-			# 		c) i was going to say: IN-FILE documentation - but, NOPE, that'll have been done up in FileManifests. (Crazy)
-			# 		d) writing output to OUTPUT.xxx 
-			#   	e) file-marker content/output. 
-			# 		f) spitting back results on stats and the overall outcome and the likes. 
-			
-			
-		
-		
-		
-		#  at this point, we've got an $includeExplodedManifest with: 
-		# 		1. all included directives processed
-		# 		2. root processed as well (if there was a ROOT directive)
-		# 		3. lines of normal code
-		# 		4. tsmake comments - i.e., "COMMENT" directives
-		#		5. CONDITIONAL directives. 
-		# 			but, what's 'nice' is that all of my conditional directives at this point are ... 'serial' or easy to find/identify. 
-		
-		# 			meaning that the NEXT and FINAL pass/loop/step is: 
-		# 				go through and find/replace all conditional directives with ... dynamic SQL that'll do whatever it needs to to make the build work.
-		
-		# 	And then, finally: process tokens.
-		
-#>		
-		
-
 		# TODO: Presumably, if we get 'here' then... there were no errors or problems that stopped the build... 
 		$buildResult.SetSucceeded();  
 	};

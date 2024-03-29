@@ -156,5 +156,25 @@ namespace tsmake
             Array.Reverse(arr);
             return new Stack<T>(arr);
         }
+
+        public static string GetLocation<T>(this Stack<T> locationStack, string indent = "\t", bool increaseIndent = true) where T : Location
+        {
+            if (locationStack.Count == 1)
+                return locationStack.Peek().FileName + " (" + locationStack.Peek().LineNumber + ", " + locationStack.Peek().ColumnNumber + ")";
+
+            var sb = new StringBuilder();
+            var locationClone = locationStack.Clone();
+            var currentIndent = indent;
+            if (increaseIndent) currentIndent = "";
+            while (locationClone.Count > 0)
+            {
+                var location = locationClone.Pop();
+                sb.AppendLine($"{currentIndent}{location.FileName} ({location.LineNumber}, {location.ColumnNumber})");
+                if (increaseIndent)
+                    currentIndent += indent;
+            }
+
+            return sb.ToString();
+        }
     }
 }

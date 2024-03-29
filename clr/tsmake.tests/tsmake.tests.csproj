@@ -22,6 +22,7 @@
     <Folder Include="functional tests\" />
     <Folder Include="unit tests\directive tests\" />
     <Folder Include="unit tests\inclusion tests\" />
+    <Folder Include="unit tests\token tests\" />
   </ItemGroup>
 
   <ItemGroup>

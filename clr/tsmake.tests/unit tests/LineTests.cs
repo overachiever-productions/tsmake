@@ -10,8 +10,10 @@ public class LineTests
     {
         var sut = new Line("some file.sql", 11, "");
 
-        Assert.That(sut.LineType.HasFlag(LineType.RawContent));
-        Assert.That(sut.LineType.HasFlag(LineType.WhiteSpaceOnly));
+        Assert.False(sut.HasComment);
+        Assert.False(sut.HasString);
+        Assert.False(sut.IsDirective);
+        Assert.False(sut.HasTokens);
     }
 
     [Test]
@@ -21,7 +23,7 @@ public class LineTests
 
         var sut = new Line("some file.sql", 11, directiveLine);
 
-        Assert.That(sut.LineType.HasFlag(LineType.Directive));
+        Assert.That(sut.IsDirective);
     }
 
     [Test]
@@ -31,26 +33,10 @@ public class LineTests
 
         var sut = new Line("some file.sql", 11, directiveLine);
 
-        // wth?
-        Assert.False(sut.LineType.HasFlag(LineType.WhiteSpaceOnly));
-    }
-
-    [Test]
-    public void Directive_Is_Not_RawContent()
-    {
-        string directiveLine = @"--##OUTPUT: \\Deployment";
-
-        var sut = new Line("some file.sql", 11, directiveLine);
-
-        Assert.False(sut.LineType.HasFlag(LineType.RawContent));
-    }
-
-    [Test]
-    public void Empty_Line_Is_Not_Marked_As_Comment()
-    {
-        var sut = new Line("build.sql", 18, "");
-
-        Assert.False(sut.LineType.HasFlag(LineType.ContainsComments));
+        Assert.That(sut.IsDirective);
+        Assert.False(sut.HasComment);
+        Assert.False(sut.HasTokens);
+        Assert.False(sut.HasString);
     }
 
     [Test]
@@ -60,7 +46,7 @@ public class LineTests
 
         var sut = new Line("build.sql", 95, codeLine);
 
-        Assert.False(sut.LineType.HasFlag(LineType.ContainsComments));
+        Assert.False(sut.HasComment);
     }
 
     [Test]
@@ -70,6 +56,6 @@ public class LineTests
 
         var sut = new Line("build.sql", 346, codeline);
 
-        Assert.False(sut.LineType.HasFlag(LineType.ContainsStrings));
+        Assert.False(sut.HasString);
     }
 }

@@ -40,10 +40,6 @@ function Invoke-TsmBuild {
 		
 		# TODO: process Version
 		
-		# THEN: if $Tokens isn't empty... pass contents of $Tokens into Import-TsmTokens
-		# 		where, down at the end{} part of the func... will add each token into the TokenRegistry if it DOESN'T already exist, and, if it does, will set the value... 
-
-		
 		# TODO: build up an 'Options' object - which will track options for things like: 
 		# 		- skip/process file-marker, 
 		# 		- remove all /* header comments */ or just the FIRST set. 
@@ -59,7 +55,10 @@ function Invoke-TsmBuild {
 	process {
 		$pwd = Get-Location;
 		
-		if (Has-ArrayValue $BuildFile) {
+		# TODO: the logic below is totally wrong. 1) I think I need to change $BuildFile to [string[]]$BuildFile for this to work in the first place (and make that a specialized parameter set)
+		#   			2) Has-ArrayValue is reporting TRUE even though there's a SINGLE file here... Sigh. 
+		#if (Has-ArrayValue $BuildFile) {
+		if ($false) {
 			Write-Verbose "Multiple Files...";
 			foreach ($bf in $BuildFile) {
 				$cf = Find-ConfigFileByFileNameConvention -BuildFile $bf;
@@ -146,6 +145,7 @@ function Process-Build {
 		[bool]$xDebug = ("Continue" -eq $global:DebugPreference) -or ($PSBoundParameters["Debug"] -eq $true);
 		
 		Remove-TsmTokens;
+		Import-TsmBaseFunctionalityTokens;
 	}
 	
 	process {
@@ -153,7 +153,9 @@ function Process-Build {
 		if (Has-Value $ConfigData) {
 			$configFilePath = $ConfigData.ConfigDataSource;
 			
-			Write-Verbose "	Leveraging Config Data from file: [$configFilePath].";
+			if (Has-Value $configFilePath) {
+				Write-Verbose "	Leveraging Config Data from file: [$configFilePath].";
+			}
 			
 			# TODO: Address options for things like Root, Output, FileMarker, Comment-Removal, and the likes into the BuildContext and/or BuildOptions objects.
 			
