@@ -66,7 +66,7 @@
             if(this.DefaultValue != null)
                 defaultValue = this.DefaultValue;
 
-            return $"NAME:\"{this.Name}\";DEFAULT:\"{defaultValue}\" => {this.Location.FileName}({this.Location.LineNumber},{this.Location.ColumnNumber})";
+            return $"NAME:\"{this.Name}\";DEFAULT:\"{defaultValue}\" => {this.Location.FileName}({this.Location.LineNumber},{this.Location.Column})";
         }
     }
 

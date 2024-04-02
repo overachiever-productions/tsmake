@@ -28,13 +28,12 @@
         }
     }
 
-    // REFACTOR: RootDirective (instead of RootPATHDirective)
-    public class RootPathDirective : BaseDirective
+    public class RootDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
 
-        public RootPathDirective(Line line, Location location) : base(line, location)
+        public RootDirective(Line line, Location location) : base(line, location)
         {
             DirectiveName = "ROOT";
 
@@ -135,7 +134,7 @@
 
             Dictionary<string, string> components = new Dictionary<string, string>();
 
-            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.SingleLineOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
+            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.StandardRegexOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
             int count = parts.Length;
             if (count > 0)
             {
@@ -259,7 +258,7 @@
                 case "COMMENT":
                     return new CommentDirective(line, location);
                 case "ROOT":
-                    return new RootPathDirective(line, location);
+                    return new RootDirective(line, location);
                 case "OUTPUT":
                     return new OutputDirective(line, location);
                 case "FILE":

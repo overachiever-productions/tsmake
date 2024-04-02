@@ -7,7 +7,7 @@
         public List<IDirective> Directives { get; private set; }
         public List<Token> Tokens { get; private set; }
 
-        public RootPathDirective RootDirective { get; private set; }
+        public RootDirective RootDirective { get; private set; }
         public OutputDirective OutputDirective { get; private set; }
 
         public BuildFile(string buildFile, IFileManager fileManager)
@@ -33,7 +33,7 @@
                 case 0:
                     break;
                 case 1:
-                    this.RootDirective = (RootPathDirective)roots[0];
+                    this.RootDirective = (RootDirective)roots[0];
                     break;
                 default:
                     string errorMessage = $"Duplicate ROOT Directive(s) in Build File: [{buildFileSource}].";

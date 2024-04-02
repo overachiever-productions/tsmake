@@ -141,22 +141,22 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
         // The '4' is ... on the first line and at position/column-number 4.
         var position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"4", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(1));
-        Assert.That(position.ColumnNumber, Is.EqualTo(3));
+        Assert.That(position.Column, Is.EqualTo(3));
 
         // 1st CRLF is at index 9 (which is on line 1) - which translates to a 'newline' starting at position 11 (the 'C') - or line 2, column 0. 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"C", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(2));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         // $ is on line 3 - at position/index 3m (2)
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"$", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(3));
-        Assert.That(position.ColumnNumber, Is.EqualTo(2));
+        Assert.That(position.Column, Is.EqualTo(2));
 
         // ; is on line 4 - at position 16 (0 based)
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@";", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(4));
-        Assert.That(position.ColumnNumber, Is.EqualTo(16));
+        Assert.That(position.Column, Is.EqualTo(16));
     }
 
     [Test]
@@ -167,30 +167,30 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
 
         var position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"4", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(4));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"5", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(5));
-        Assert.That(position.ColumnNumber, Is.EqualTo(5));
+        Assert.That(position.Column, Is.EqualTo(5));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"!", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(7));
-        Assert.That(position.ColumnNumber, Is.EqualTo(1));
+        Assert.That(position.Column, Is.EqualTo(1));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"/*", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(9));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"*/", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(10));
-        Assert.That(position.ColumnNumber, Is.EqualTo(18));
+        Assert.That(position.Column, Is.EqualTo(18));
     }
 
     [Test]
     public void Calibrate_Simple_Comment_is_Marked_As_Line_End_Comment()
     {
         var fileBody = @"DECLARE @CurrentVersion varchar(20) = N'{{##S4version:oink}}' -- this is a simple comment ";
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -218,7 +218,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     {
         // also not quite a test - but more of a sanity check and/or for debugging. 
         var fileBody = MINIMAL_MULTI_LINE_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -246,7 +246,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Calibrate_Start_And_End_Positions_For_Single_Line_Block_Comment()
     {
         var fileBody = SINGLE_LINE_BLOCK_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -274,7 +274,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Calibrate_LineEnd_Comment_Inside_String_Is_Ignored()
     {
         var fileBody = SIMPLE_EOL_COMMENT_AS_STRING_CONTENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -296,7 +296,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Calibrate_MultiLine_Comments_Nested_As_MultiLine_String_Data()
     {
         var fileBody = COMMENTS_AS_STRING_CONTENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -339,7 +339,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Correctly_Identifies_WhiteSpace_And_LineEnd_Comment()
     {
         var fileBody = @"  -- This is a comment - but there was whitespace in front of it.";
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -364,7 +364,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Process_Lines_Correctly_Identifies_LineEnd_Comment_With_No_Code_Text()
     {
         var fileBody = @"-----------------------------------";
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -389,7 +389,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Captures_Simple_CodeString()
     {
         var fileBody = SIMPLE_CODESTRING_STRING;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -411,7 +411,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
         Assert.That(codeString.Location.Count, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase(@"build.sql", codeString.Location.Peek().FileName);
         Assert.That(codeString.Location.Peek().LineNumber, Is.EqualTo(1));
-        Assert.That(codeString.Location.Peek().ColumnNumber, Is.EqualTo(7));
+        Assert.That(codeString.Location.Peek().Column, Is.EqualTo(7));
         StringAssert.AreEqualIgnoringCase(@"build.sql (1, 7)", codeString.GetLocation());
 
         Assert.That(result.Lines.Count, Is.EqualTo(1));
@@ -429,7 +429,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Captures_Simple_Unicode_CodeString()
     {
         var fileBody = SIMPLE_UNICODE_CODESTRING_STRING;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -462,7 +462,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Correctly_Ignores_MultiLine_Comments_Within_Strings()
     {
         var fileBody = HEADER_COMMENTS_NESTED_IN_STRING;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -558,7 +558,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Captures_Multiple_Single_Line_CodeStrings()
     {
         var fileBody = GOBS_OF_CODESTRINGS_IN_A_SINGLE_LINE;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -591,7 +591,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Captures_Single_Multi_Line_CodeString()
     {
         var fileBody = SINGLE_MULTILINE_STRING;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -644,7 +644,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Gets_Start_And_End_Positions_Of_Multi_Line_Comment()
     {
         var fileBody = BASIC_MULTI_LINE_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -675,7 +675,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Captures_Multiple_Multi_Line_Strings()
     {
         var fileBody = MULTIPLE_MULTILINE_STRINGS;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -737,7 +737,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Assigns_Location_To_Comment()
     {
         var fileBody = BASIC_MULTI_LINE_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -758,14 +758,14 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
         Assert.That(comment.Location.Peek().FileName, Is.EqualTo("build.sql"));
         Assert.That(comment.Location.Peek().LineNumber, Is.EqualTo(2));
 
-        Assert.That(comment.Location.Peek().ColumnNumber, Is.EqualTo(0));
+        Assert.That(comment.Location.Peek().Column, Is.EqualTo(0));
     }
 
     [Test]
     public void ProcessLines_Captures_Simple_Multi_Line_Comment_Text()
     {
         var fileBody = BASIC_MULTI_LINE_COMMENT;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -790,7 +790,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Assigns_Start_Index_To_Comment_Location()
     {
         var fileBody = MULTI_LINE_BLOCK_COMMENT_STARTING_MID_LINE;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -811,14 +811,14 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
         Assert.That(comment.Location.Peek().FileName, Is.EqualTo("build.sql"));
         Assert.That(comment.Location.Peek().LineNumber, Is.EqualTo(1));
 
-        Assert.That(comment.Location.Peek().ColumnNumber, Is.EqualTo(36));
+        Assert.That(comment.Location.Peek().Column, Is.EqualTo(36));
     }
 
     [Test]
     public void ProcessLines_Captures_Comment_Start_And_End_Lines_And_Indexes()
     {
         var fileBody = MULTI_LINE_BLOCK_COMMENT_STARTING_MID_LINE;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -846,7 +846,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Marks_Start_Of_MultiLine_Comment_As_Block_Comment()
     {
         var fileBody = MULTI_LINE_BLOCK_COMMENT_STARTING_MID_LINE;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -873,7 +873,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void ProcessLines_Bubbles_Simple_Token_Up_To_Caller()
     {
         var fileBody = "--1\r\n\r\nDECLARE @currentVersion sysname = N'{{##VERSION}}';";
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -893,7 +893,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
 
         var token1 = result.Tokens[0];
         Assert.That(token1.Location.LineNumber, Is.EqualTo(3));
-        Assert.That(token1.Location.ColumnNumber, Is.EqualTo(36));
+        Assert.That(token1.Location.Column, Is.EqualTo(36));
         StringAssert.AreEqualIgnoringCase(@"VERSION", token1.Name);
         Assert.Null(token1.DefaultValue);
     }
@@ -948,7 +948,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Single_Line_Block_Comment_Plus_MultiLine_Block_Comment_Start_Can_Live_Together()
     {
         var fileBody = MIXED_BLOCK_COMMENTS;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -1027,7 +1027,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void EndOfLine_Comments_And_Block_Comments_Can_Live_Together()
     {
         var fileBody = BLOCK_AND_EOL_COMMENTS;
-        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(fileBody, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -1104,34 +1104,34 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
 
         var position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"/*", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(5));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"REFERENCE:", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(7));
-        Assert.That(position.ColumnNumber, Is.EqualTo(4));
+        Assert.That(position.Column, Is.EqualTo(4));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"github.com", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(9));
-        Assert.That(position.ColumnNumber, Is.EqualTo(17));
+        Assert.That(position.Column, Is.EqualTo(17));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"*/", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(11));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"DECLARE @som", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(12));
-        Assert.That(position.ColumnNumber, Is.EqualTo(0));
+        Assert.That(position.Column, Is.EqualTo(0));
 
         position = FileProcessor.GetFilePositionByCharacterIndex(fileBody, fileBody.IndexOf(@"OUTPUT:", StringComparison.InvariantCultureIgnoreCase));
         Assert.That(position.LineNumber, Is.EqualTo(2));
-        Assert.That(position.ColumnNumber, Is.EqualTo(6));
+        Assert.That(position.Column, Is.EqualTo(6));
     }
 
     [Test]
     public void Basic_Build_File_Yields_Correct_Number_of_Code_Lines()
     {
         var buildFile = BASIC_BUILD_FILE;
-        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -1149,7 +1149,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     public void Build_File_With_No_Includes_Correctly_Identifies_Source_File_Locations()
     {
         var buildFile = NO_INCLUDE_DIRECTIVES_BUILD_FILE;
-        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(buildFile, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
         fileManager.Setup(x => x.GetFileContent(It.IsAny<string>()))
@@ -1176,7 +1176,7 @@ DECLARE @complex nvarchar(MAX) = N'/*----------------------------'
     {
         var line4 = new Line("simple.build.sql", 4, @"-- ## FILE: SomePath.sql ");
         var includeFile = ULTRA_SIMPLE_INCLUDE_FILE;
-        var fileLines = Regex.Split(includeFile, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+        var fileLines = Regex.Split(includeFile, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
 
         var fileManager = new Mock<IFileManager>();
 

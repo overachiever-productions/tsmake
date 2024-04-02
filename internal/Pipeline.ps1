@@ -276,16 +276,9 @@ function Execute-Pipeline {
 		# ====================================================================================================	
 		
 		# Dump a file marker if/as directed. 
-		return;
-#		foreach ($token in $buildManifest.Tokens) {
-#			Write-Host "TOKEN: $($token.Name) => Default:[$($token.DefaultValue)] ";
-#			Write-Host "	At: $($token.Location.FileName)($($token.Location.LineNumber),$($token.Location.ColumnNumber)) ";
-#			Write-Host "";
-#		}
-#		
-#		Write-Host "";
-#		Write-Host "--------------------------------------------------------------------------";
-#		
+		
+		
+		
 		# TODO: there's something effed-up with directives... they're just not getting into this thing like they should be. 
 		foreach ($directive in $buildManifest.Directives) {
 			Write-Host "DIRECTIVE: $($directive.DirectiveName)";

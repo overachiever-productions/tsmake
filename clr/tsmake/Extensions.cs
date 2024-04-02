@@ -16,7 +16,7 @@ namespace tsmake
                 return PathType.Rooted;
             
             // Absolute - Local File
-            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineOptions))
+            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.StandardRegexOptions))
                 return PathType.Absolute;
 
             // Absolute - UNC Share
@@ -31,7 +31,7 @@ namespace tsmake
             // NOTE:  This func attempts to white-list known valid patterns - anything else is going to drop-out as FALSE.
 
             // Absolute Path - local machine.
-            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineOptions))
+            if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.StandardRegexOptions))
             {
                 if(FileOrDirectoryExists(input))
                     return true;
@@ -94,7 +94,7 @@ namespace tsmake
             // See: https://stackoverflow.com/a/31976060/11191 
 
             // TODO: need to key this against current OS (i.e., Environment.Platform/etc.)
-            if (Regex.IsMatch(path, @"(\<|\>|""|\||\?|\*)+", Global.SingleLineOptions))
+            if (Regex.IsMatch(path, @"(\<|\>|""|\||\?|\*)+", Global.StandardRegexOptions))
                 return true;
 
             // ARGUABLY, could/should look for additional problems like: NULL byte, ASCII 0 - 31, reserved filenames (windows), and other rules
@@ -107,7 +107,7 @@ namespace tsmake
             // TODO: I MAY have a bug with my logic/REGEX where: 1) I've been assuming that directives have XXXX: syntax (where the colon HAS to be immediately after the name)
             //      only... it MAY BE that ... I can have directives in the form of "XXXX      :" and so on... 
             //          i.e., check/test that. 
-            string data = instance.Line.RawContent.Substring(instance.Location.ColumnNumber + instance.DirectiveName.Length + 1).Trim(); // +1 is for the ":"
+            string data = instance.Line.RawContent.Substring(instance.Location.Column + instance.DirectiveName.Length + 1).Trim(); // +1 is for the ":"
 
             if (!removeTsMakeLineComments)
                 return data;
@@ -124,13 +124,13 @@ namespace tsmake
 
         public static string WildcardToRegex(this string pattern)
         {
-            // TODO: add an option for `_ which'll be the equivalent of LIKE '`_` ESCAPE '`' ... (or, maybe?, just set up the equivalent of ESCAPE '`' ... 
+            // TODO: add an option for `_ which'll be the equivalent of LIKE '`_` ESCAPE '`' ... (or, maybe?, just set up the equivalent of ESCAPE '`') ... 
             return Regex.Escape(pattern).Replace(@"%", ".*").Replace(@"_", ".{1}");
         }
 
         public static bool Like(this string input, string pattern)
         {
-            return Regex.IsMatch(input, pattern.WildcardToRegex(), Global.SingleLineOptions);
+            return Regex.IsMatch(input, pattern.WildcardToRegex(), Global.StandardRegexOptions);
         }
 
         public static string CollapsePath(this string path, string directive)
@@ -160,7 +160,7 @@ namespace tsmake
         public static string GetLocation<T>(this Stack<T> locationStack, string indent = "\t", bool increaseIndent = true) where T : Location
         {
             if (locationStack.Count == 1)
-                return locationStack.Peek().FileName + " (" + locationStack.Peek().LineNumber + ", " + locationStack.Peek().ColumnNumber + ")";
+                return locationStack.Peek().FileName + " (" + locationStack.Peek().LineNumber + ", " + locationStack.Peek().Column + ")";
 
             var sb = new StringBuilder();
             var locationClone = locationStack.Clone();
@@ -169,7 +169,7 @@ namespace tsmake
             while (locationClone.Count > 0)
             {
                 var location = locationClone.Pop();
-                sb.AppendLine($"{currentIndent}{location.FileName} ({location.LineNumber}, {location.ColumnNumber})");
+                sb.AppendLine($"{currentIndent}{location.FileName} ({location.LineNumber}, {location.Column})");
                 if (increaseIndent)
                     currentIndent += indent;
             }

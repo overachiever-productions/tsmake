@@ -3,19 +3,12 @@
     public class Position
     {
         public int LineNumber { get; }
-        // REFACTOR: I'm calling these ColumnNumbers - which should be 1 based. 
-        //      but they're ACTUALLY indexes - i.e., 0 based. 
-        //      and I want to keep them 0-based (they're code) ... 
-        //      which means: 
-        //      1) i need a better name. 
-        //      2) IF I end up spitting these out to end-users (for like 'location'-type 'stuff') they'll need to be +1'd 
-        //          so that they make sense to end-users. 
-        public int ColumnNumber { get; }
+        public int Column { get; }
 
-        public Position(int lineNumber, int columnNumber)
+        public Position(int lineNumber, int column)
         {
             this.LineNumber = lineNumber;
-            this.ColumnNumber = columnNumber;
+            this.Column = column;
         }
     }
 
@@ -23,13 +16,13 @@
     {
         public string FileName { get; }
         public int LineNumber { get; }
-        public int ColumnNumber { get; internal set; }
+        public int Column { get; internal set; }
 
-        public Location(string fileName, int lineNumber, int columnNumber = 0)
+        public Location(string fileName, int lineNumber, int column = 0)
         {
             this.FileName = fileName;
             this.LineNumber = lineNumber;
-            this.ColumnNumber = columnNumber;
+            this.Column = column;
         }
     }
 
@@ -79,10 +72,10 @@
 
         public void SetLocation(Stack<Location> location, int startPosition)
         {
-            if (location.Peek().ColumnNumber != startPosition)
+            if (location.Peek().Column != startPosition)
             {
                 Location old = location.Pop();
-                old.ColumnNumber = startPosition;
+                old.Column = startPosition;
                 location.Push(old);
             }
 
@@ -92,7 +85,7 @@
         public void SetEndPosition(Position endPosition)
         {
             this.LineEnd = endPosition.LineNumber;
-            this.ColumnEnd = endPosition.ColumnNumber;
+            this.ColumnEnd = endPosition.Column;
         }
 
         public string GetLocation(string indent = "\t", bool increaseIndent = true)
@@ -135,15 +128,6 @@
         public CodeComment AsCopy()
         {
             return (CodeComment)this.MemberwiseClone();
-        }
-
-        // TODO:
-        // REFACTOR: 
-        //  Not sure I even need this (in fact, pretty sure it's immaterial/not-used - and that removing it + a couple minor tweaks 
-        //      SHOULD make no difference to all unit tests).
-        public void MarkCommentAsInString()
-        {
-            this.CommentIsInString = true;
         }
 
         public void SetAsHeaderComment()
@@ -247,7 +231,7 @@
             {
                 if(comment.LineStart != comment.LineEnd)
                 {
-                    var commentLines = Regex.Split(comment.Text, @"\r\n|\r|\n", Global.SingleLineOptions).ToList();
+                    var commentLines = Regex.Split(comment.Text, @"\r\n|\r|\n", Global.StandardRegexOptions).ToList();
                     int index = this.LineNumber - comment.LineStart;
 
                     var commentLineText = commentLines[index];
@@ -308,7 +292,7 @@
                     return;
                 }
 
-                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>((ROOT|OUTPUT|FILEMARKER|VERSION_CHECKER|DIRECTORY|FILE|COMMENT|:))|[:]{1})\s*", Global.SingleLineOptions);
+                var regex = new Regex(@"^\s*--\s*##\s*(?<directive>((ROOT|OUTPUT|FILEMARKER|VERSION_CHECKER|DIRECTORY|FILE|COMMENT|:))|[:]{1})\s*", Global.StandardRegexOptions);
                 Match m = regex.Match(this.RawContent);
                 if (m.Success)
                 {
@@ -325,7 +309,7 @@
                     return;
                 }
 
-                regex = new Regex(@"\{\{##(?<token>[^\}\}]+)\}\}", Global.SingleLineOptions);
+                regex = new Regex(@"\{\{##(?<token>[^\}\}]+)\}\}", Global.StandardRegexOptions);
                 var matches = regex.Matches(this.RawContent);
                 if (matches.Count > 0 && matches[0].Success)
                 {
@@ -480,7 +464,7 @@
 
             string fileBody = fileManager.GetFileContent(currentSourceFile);
 
-            var regex = new Regex(@"(?<string>N?(\x27)((?!\1).|\1{2})*\1)", Global.SingleLineOptions);
+            var regex = new Regex(@"(?<string>N?(\x27)((?!\1).|\1{2})*\1)", Global.StandardRegexOptions);
             var matches = regex.Matches(fileBody);
             foreach (Match match in matches)
             {
@@ -492,15 +476,15 @@
                 Position endPosition;
 
                 Line startLine = output.Lines[startPosition.LineNumber - 1];
-                var codeString = new CodeString(stringText, startPosition.LineNumber, startPosition.ColumnNumber);
+                var codeString = new CodeString(stringText, startPosition.LineNumber, startPosition.Column);
 
-                if (Regex.IsMatch(stringText, @"\r\n|\r|\n", Global.SingleLineOptions))
+                if (Regex.IsMatch(stringText, @"\r\n|\r|\n", Global.StandardRegexOptions))
                 {
                     int matchEnd = index + length - 1;
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
                     codeString.SetEndPosition(endPosition);
 
-                    string[] stringTextLines = Regex.Split(stringText, @"\r\n|\r|\n", Global.SingleLineOptions);
+                    string[] stringTextLines = Regex.Split(stringText, @"\r\n|\r|\n", Global.StandardRegexOptions);
                     string currentStringTextLine = stringTextLines[0];
                     codeString.SetCurrentLineText(currentStringTextLine);
 
@@ -529,18 +513,18 @@
                 }
                 else
                 {
-                    endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
+                    endPosition = new Position(startPosition.LineNumber, startPosition.Column + length - 1);
                     codeString.SetEndPosition(endPosition);
 
                     codeString.SetCurrentLineText(stringText);
                     startLine.CodeStrings.Add(codeString.AsCopy());
                 }
 
-                codeString.SetLocation(startLine.Location, startPosition.ColumnNumber);
+                codeString.SetLocation(startLine.Location, startPosition.Column);
                 output.AddCodeString(codeString);
             }
 
-            regex = new Regex(@"(?<comment>/\*.*?\*/)", Global.SingleLineOptions);
+            regex = new Regex(@"(?<comment>/\*.*?\*/)", Global.StandardRegexOptions);
             matches = regex.Matches(fileBody);
             foreach (Match match in matches)
             {
@@ -552,16 +536,16 @@
                 Position endPosition;
 
                 Line startLine = output.Lines[startPosition.LineNumber - 1];
-                var codeComment = new CodeComment(commentText, startPosition.LineNumber, startPosition.ColumnNumber);
+                var codeComment = new CodeComment(commentText, startPosition.LineNumber, startPosition.Column);
                 codeComment.CommentType = CommentType.BlockComment;
 
-                if (Regex.IsMatch(commentText, @"\r\n|\r|\n", Global.SingleLineOptions))
+                if (Regex.IsMatch(commentText, @"\r\n|\r|\n", Global.StandardRegexOptions))
                 {
                     int matchEnd = index + length - 1;
                     endPosition = FileProcessor.GetFilePositionByCharacterIndex(fileBody, matchEnd);
                     codeComment.SetEndPosition(endPosition);
 
-                    string[] commentTextLines = Regex.Split(commentText, @"\r\n|\r|\n", Global.SingleLineOptions);
+                    string[] commentTextLines = Regex.Split(commentText, @"\r\n|\r|\n", Global.StandardRegexOptions);
                     string currentCommentTextLine = commentTextLines[0];
                     codeComment.SetCurrentLineText(currentCommentTextLine);
 
@@ -590,14 +574,14 @@
                 }
                 else
                 {
-                    endPosition = new Position(startPosition.LineNumber, startPosition.ColumnNumber + length - 1);
+                    endPosition = new Position(startPosition.LineNumber, startPosition.Column + length - 1);
                     codeComment.SetEndPosition(endPosition);
                     
                     codeComment.SetCurrentLineText(commentText);
                     startLine.CodeComments.Add(codeComment.AsCopy());
                 }
 
-                codeComment.SetLocation(startLine.Location, startPosition.ColumnNumber);
+                codeComment.SetLocation(startLine.Location, startPosition.Column);
                 output.AddCodeComment(codeComment);
             }
 
@@ -607,7 +591,7 @@
             List<CodeComment> lineCommentsToRemove = new List<CodeComment>();
             foreach (var line in output.Lines)
             {
-                regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.SingleLineOptions);
+                regex = new Regex(@"(?<comment>--[^\n\r]*)", Global.StandardRegexOptions);
                 var m = regex.Match(line.RawContent);
                 if (m.Success)
                 {
@@ -668,7 +652,6 @@
                         {
                             if (line.CodeStrings.Any(x => x.CurrentLineText.Contains(comment.CurrentLineText)))
                             {
-                                comment.MarkCommentAsInString();
                                 output.Comments.Remove(comment);
 
                                 lineCommentsToRemove.Add(comment);
@@ -706,7 +689,7 @@
             int lineNumber = 1;
             int previousNewLineStart = 0;
 
-            var regex = new Regex(@"(\r\n|\r|\n)", Global.SingleLineOptions);
+            var regex = new Regex(@"(\r\n|\r|\n)", Global.StandardRegexOptions);
             var lineMatches = regex.Matches(fileBody);
             foreach (Match crlfStart in lineMatches)
             {
