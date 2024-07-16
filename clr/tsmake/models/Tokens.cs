@@ -24,22 +24,57 @@
     {
         public string Name { get; }
         public string DefaultValue { get; }
-        public Location Location { get; }
 
-        public Token(string tokenValue, Location location)
+        public Stack<Location> Location { get; private set; }
+
+        public Token(string tokenValue)
         {
-            if (tokenValue.Contains(":"))
+            if (tokenValue.Contains(":", StringComparison.InvariantCultureIgnoreCase))
             {
-                var parts = tokenValue.Split(':');
+                var parts = tokenValue.Split(':', StringSplitOptions.None);
                 this.Name = parts[0].ToUpperInvariant();
-                this.DefaultValue = parts[1];
+                this.DefaultValue = tokenValue.Substring((this.Name.Length) + 1);
             }
             else
-            {
                 this.Name = tokenValue.ToUpperInvariant();
+        }
+
+        public void SetLocation(Stack<Location> location, int startPosition)
+        {
+            var clone = location.DeepClone();
+            if (clone.Peek().Column != startPosition)
+            {
+                Location old = clone.Pop();
+                old.Column = startPosition;
+                clone.Push(old);
             }
 
-            this.Location = location;
+            this.Location = clone;
+        }
+
+        public override bool Equals(object other)
+        {
+            if (other == null) return false;
+
+            var otherToken = (Token)other;
+            if (otherToken.ToString() == this.ToString())
+                return true;
+
+            return false;
+        }
+
+        public override int GetHashCode()
+        {
+            return this.ToString().GetHashCode();
+        }
+
+        public override string ToString()
+        {
+            var defaultValue = "<EMPTY>";
+            if(this.DefaultValue != null)
+                defaultValue = this.DefaultValue;
+
+            return $"NAME:\"{this.Name}\";DEFAULT:\"{defaultValue}\" => {this.Location.Peek().FileName}({this.Location.Peek().LineNumber},{this.Location.Peek().Column})";
         }
     }
 
@@ -49,7 +84,10 @@
 
         public TokenDefinition GetTokenDefinition(string tokenName)
         {
-            return this.DefinedTokens[tokenName];
+            if(this.DefinedTokens.ContainsKey(tokenName))
+                return this.DefinedTokens[tokenName];
+
+            return null;
         }
 
         public static TokenRegistry Instance => new TokenRegistry();

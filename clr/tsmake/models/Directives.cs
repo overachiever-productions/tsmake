@@ -4,7 +4,7 @@
     {
         string DirectiveName { get; }
         Line Line { get; }
-        Location Location { get; }
+        Stack<Location> Location { get; }
 
         bool IsValid { get; }
         public string ValidationMessage { get; }
@@ -14,27 +14,26 @@
     {
         public string DirectiveName { get; protected set; }
         public Line Line { get; }
-        public Location Location { get; }
+        public Stack<Location> Location { get; private set; }
         public bool IsValid { get; protected set; }
         public string ValidationMessage { get; protected set; }
 
-        protected BaseDirective(Line line, Location location)
+        protected BaseDirective(Line line, Stack<Location> location)
         {
-            DirectiveName = "BASE";
-            Line = line;
-            Location = location;
+            this.DirectiveName = "BASE";
+            this.Line = line;
+            this.Location = location;
 
-            IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
+            this.IsValid = false;  // sub-classes have to EXPLICITLY set .IsValid to true.
         }
     }
 
-    // REFACTOR: RootDirective (instead of RootPATHDirective)
-    public class RootPathDirective : BaseDirective
+    public class RootDirective : BaseDirective
     {
         public string Path { get; }
         public PathType PathType { get; }
 
-        public RootPathDirective(Line line, Location location) : base(line, location)
+        public RootDirective(Line line, Stack<Location> location) : base(line, location)
         {
             DirectiveName = "ROOT";
 
@@ -50,7 +49,7 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [ROOT] in file: {location.Peek().FileName}, line: {location.Peek().LineNumber}.";
         }
     }
 
@@ -59,7 +58,7 @@
         public string Path { get; }
         public PathType PathType { get; }
 
-        public OutputDirective(Line line, Location location) : base(line, location)
+        public OutputDirective(Line line, Stack<Location> location) : base(line, location)
         {
             DirectiveName = "OUTPUT";
 
@@ -74,22 +73,27 @@
                 IsValid = true;
             }
             else
-                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.CurrentFileName}, line: {location.LineNumber}.";
+                ValidationMessage = $"Invalid (or missing) File-Path Data for Directive [OUTPUT] in file: {location.Peek().FileName}, line: {location.Peek().LineNumber}.";
         }
     }
 
     public class CommentDirective : BaseDirective
     {
-        public CommentDirective(Line line, Location location) : base(line, location)
+        public CommentDirective(Line line, Stack<Location> location) : base(line, location)
         {
             DirectiveName = "COMMENT";
+            //base.SetLocation(location, 0);
+
             this.IsValid = true;
         }
     }
 
     public class VersionCheckerDirective : BaseDirective
     {
-        public VersionCheckerDirective(Line line, Location location) : base(line, location) { }
+        public VersionCheckerDirective(Line line, Stack<Location> location) : base(line, location)
+        {
+            
+        }
     }
 
     public class IncludeFileDirective : BaseDirective
@@ -97,7 +101,7 @@
         public string Path { get; }
         public PathType PathType { get; }
 
-        public IncludeFileDirective(Line line, Location location) : base(line, location)
+        public IncludeFileDirective(Line line, Stack<Location> location) : base(line, location)
         {
             DirectiveName = "FILE";
 
@@ -124,9 +128,10 @@
         public List<string> Priorities { get; }
         public List<string> UnPriorities { get; }
 
-        public IncludeDirectoryDirective(Line line, Location location) : base(line, location)
+        public IncludeDirectoryDirective(Line line, Stack<Location> location) : base(line, location)
         {
             DirectiveName = "DIRECTORY";
+
             Exclusions = new List<string>();
             Priorities = new List<string>();
             UnPriorities = new List<string>();
@@ -135,7 +140,7 @@
 
             Dictionary<string, string> components = new Dictionary<string, string>();
 
-            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.RegexOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
+            var parts = Regex.Matches(data, @"(PATH|ORDERBY|EXCLUDE|PRIORITIES):", Global.StandardRegexOptions).Cast<Match>().Select(m => (m.Value, m.Index)).ToArray();
             int count = parts.Length;
             if (count > 0)
             {
@@ -245,12 +250,15 @@
     {
         // not sure if this'll be a single directive, or a 'family' of 4x directives... 
 
-        public ConditionalBlockDirective(Line line, Location location) : base(line, location) { }
+        public ConditionalBlockDirective(Line line, Stack<Location> location) : base(line, location)
+        {
+            
+        }
     }
 
     public class DirectiveFactory
     {
-        public static IDirective CreateDirective(string directiveName, Line line, Location location)
+        public static IDirective CreateDirective(string directiveName, Line line, Stack<Location> location)
         {
             switch (directiveName)
             {
@@ -259,7 +267,7 @@
                 case "COMMENT":
                     return new CommentDirective(line, location);
                 case "ROOT":
-                    return new RootPathDirective(line, location);
+                    return new RootDirective(line, location);
                 case "OUTPUT":
                     return new OutputDirective(line, location);
                 case "FILE":

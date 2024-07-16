@@ -103,7 +103,6 @@ filter New-ParserError {
 
 filter New-BuildError {
 	param (
-		[tsmake.ErrorSeverity]$Severity = "Fatal",
 		[Parameter(Mandatory)]
 		[string]$ErrorMessage,
 		[System.Management.Automation.ErrorRecord]$Exception,
@@ -115,5 +114,5 @@ filter New-BuildError {
 		$context = "Source: [$($Location.FileName)]($($Location.LineNumber), $($Location.ColumnNumber)).";
 	}
 	
-	return New-Object tsmake.BuildError($Severity, $ErrorMessage, $Exception, $context);
+	return New-Object tsmake.BuildError($ErrorMessage, $Exception, $context);
 }

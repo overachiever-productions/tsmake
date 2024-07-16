@@ -42,15 +42,16 @@ namespace tsmake
 
     public class ParserError : BaseError, IError
     {
-        public Location Location { get;}
+        public Stack<Location> Location { get;}
 
-        public ParserError(string errorMessage, Location location, string context = "")
+        public ParserError(string errorMessage, Stack<Location> location, string context = "")
             : base(errorMessage, context) 
         {
             this.Location = location;
 
-            if (string.IsNullOrEmpty(base.Context))
-                base.Context = this.Location.GetLocationContext();
+            // TODO: figure out what to do here... 
+            //if (string.IsNullOrEmpty(base.Context))
+            //    base.Context = this.Location.GetLocationContext();
         }
 
         public override string GetErrorText()

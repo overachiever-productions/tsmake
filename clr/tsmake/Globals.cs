@@ -1,4 +1,4 @@
-﻿// WARNING: Visual Studio will some of these global usings as non-needed - but PowerShell's C# compiler WILL need these usings.
+﻿// WARNING: Visual Studio will show MANY of these global usings as non-needed - but PowerShell's C# compiler WILL need these usings.
 global using System;
 global using System.IO;
 global using System.Collections.Generic;
@@ -13,6 +13,6 @@ namespace tsmake
 {
     public static class Global
     {
-        public static RegexOptions RegexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
+        public static RegexOptions StandardRegexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
     }
 }

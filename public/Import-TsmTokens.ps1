@@ -35,8 +35,6 @@ $global:VerbosePreference = "Continue";
 
 #>
 
-
-
 function Import-TsmTokens {
 	[CmdletBinding()]
 	#[Alias("")]
@@ -110,6 +108,39 @@ function Import-TsmTokens {
 
 filter Remove-TsmTokens {
 	$tsmTokenRegistry.RemoveTokens();
+}
+
+filter Import-TsmBaseFunctionalityTokens {
+	
+	$tsmakeCoreTokens = @{
+		COPYRIGHT = @{
+			AllowInlineDefaults = $true
+			AllowBlanks = $false
+		}
+		DOC_LINK  = @{
+			AllowInlineDefaults = $true
+			AllowBlanks = $true
+		}
+		
+		PROJECT_LINK = @{
+			AllowInlineDefaults = $true
+			AllowBlanks = $true
+		}
+		
+		MIGRATION_ID = @{
+			AllowInlineDefaults = $false
+			AllowBlanks		    = $false
+		}
+		
+		VERSION   = @{
+			AllowInlineDefaults = $true
+			AllowBlanks		    = $false
+		}
+		
+		# TODO: MAJOR, MINOR, BUILD, SEMANTIC ... 
+	};
+	
+	Import-TsmTokens -TokenObject $tsmakeCoreTokens;
 }
 
 filter Get-TsmToken {
