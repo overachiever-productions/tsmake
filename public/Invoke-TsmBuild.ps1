@@ -55,6 +55,14 @@ function Invoke-TsmBuild {
 	process {
 		$pwd = Get-Location;
 		
+		
+		# Relative to the TODO below, not this: https://www.notion.so/overachiever/Pipeline-Integration-1af9cedc28f44de2bdf73fcbad6fac2d?pvs=4#6302714655ca497e8330beb5169218fe 
+		# 		also, think I just need to have a helper func that checks to see if something is an array, and then checks to see if the 'array' is scalar (has a single value ONLY).
+		# 		OR, arguably, DON'T BOTHER with if ($some-Input.HasMultipleArrayValuesInItVsJustHavingAScalarValue) ... 
+		# 		and just FOREACH ($x in $some-Input) 
+		# 				a 'foreach' vs 1x item is fine... i.e., as long as $some-Input isn't null/empty, then I actually SIMPLIFY my logic quite a bit. 
+		# 				by avoiding some addition IFs. 
+		
 		# TODO: the logic below is totally wrong. 1) I think I need to change $BuildFile to [string[]]$BuildFile for this to work in the first place (and make that a specialized parameter set)
 		#   			2) Has-ArrayValue is reporting TRUE even though there's a SINGLE file here... Sigh. 
 		#if (Has-ArrayValue $BuildFile) {
