@@ -8,10 +8,14 @@ filter Import-Types {
 	# Import order CAN impact BUILD operations
 	$classFiles = @(
 		"$ScriptRoot\dotnet\tsmake\Globals.cs";
-#		"$ScriptRoot\dotnet\tsmake\Enums.cs";
+		"$ScriptRoot\dotnet\tsmake\Enums.cs";
 #		"$ScriptRoot\dotnet\tsmake\Errors.cs";
 #		"$ScriptRoot\dotnet\tsmake\Extensions.cs";
-#		
+		
+		"$ScriptRoot\dotnet\tsmake\Tokenizer.cs";
+		"$ScriptRoot\dotnet\tsmake\Tokens.cs";
+		
+		
 #		"$ScriptRoot\dotnet\tsmake\models\Lines.cs";
 #		"$ScriptRoot\dotnet\tsmake\models\Tokens.cs";
 #		"$ScriptRoot\dotnet\tsmake\models\Directives.cs";

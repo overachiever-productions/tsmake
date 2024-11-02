@@ -15,3 +15,21 @@ public static class Global
 {
     public static RegexOptions SingleLineRegexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
 }
+
+public static class ExtensionMethods
+{
+    public static string ReplaceAtIndex(this string source, int index, char replacement)
+    {
+        if (source == null) throw new ArgumentNullException("source");
+
+        StringBuilder builder = new StringBuilder(source);
+        builder[index] = replacement;
+        return builder.ToString();
+    }
+}
+
+public class SyntaxException : Exception
+{
+    public SyntaxException(string message) : base(message) { }
+    public SyntaxException(string message, Exception ex) : base(message, ex) { }
+}

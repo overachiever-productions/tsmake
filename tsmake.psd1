@@ -11,7 +11,7 @@
 	# CompatiblePSEditions = @('Core', 'Desktop')
 	
 	PowerShellVersion = '7.0'
-	DotNetFrameworkVersion = '8'
+	DotNetFrameworkVersion = '8.0.0'
 	ProcessorArchitecture = 'None'
 	RequiredModules = @()
 	RequiredAssemblies = @()
