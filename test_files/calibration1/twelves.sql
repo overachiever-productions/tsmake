@@ -4,6 +4,6 @@
 -- 12.3
 -- 12.4
 -- 12.5
--- ## FILE: twelve-sixes.
+-- ## FILE: twelve-sixes.sql
 -- 12.7 
 -- 12.8

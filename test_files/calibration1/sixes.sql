@@ -1,7 +1,6 @@
 -- 6.0
 -- 6.1
---	##: This is a comment and will NOT be included - nor should it interrupt the line-number counts... 
--- 6.2
+--## COMMENT: This is a comment and will NOT be included - nor should it interrupt the line-number counts... 
 -- 6.3
 -- 6.4
 -- 6.5
