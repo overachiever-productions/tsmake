@@ -90,6 +90,8 @@ public interface ICodeLine
     int StartOffset { get; }
     int EndOffset { get; }
 
+    bool IsIncludeDirective { get; }
+
     void SetLineNumber(int lineNumber);
 }
 
@@ -99,6 +101,16 @@ public class CodeLine(string lineText, int startOffset, int endOffset) : ICodeLi
     public string LineText { get; private set; } = lineText;
     public int StartOffset { get; private set; } = startOffset;
     public int EndOffset { get; private set; } = endOffset;
+
+    public bool IsIncludeDirective
+    {
+        get
+        {
+            // TODO: this MIGHT not be the EXACT way to do this (though... i do LIKE that i'm moving all 'directive' parsing code out to ... a single-ish class).
+            //      in other words, I might need to handle this slightly differently than using a STATIC method... 
+            return DirectivesParser.IsIncludeDirective(this.LineText);
+        }
+    }
 
     public void SetLineNumber(int lineNumber)
     {

@@ -9,6 +9,7 @@ public enum VersionScheme
 
 public enum PathType
 {
+    NotSet,
     Absolute,
     Relative,
     Rooted

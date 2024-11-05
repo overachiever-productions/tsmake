@@ -12,9 +12,11 @@ filter Import-Types {
 #		"$ScriptRoot\dotnet\tsmake\Errors.cs";
 #		"$ScriptRoot\dotnet\tsmake\Extensions.cs";
 		
-		"$ScriptRoot\dotnet\tsmake\Tokenizer.cs";
-		"$ScriptRoot\dotnet\tsmake\Tokens.cs";
+		"$ScriptRoot\dotnet\tsmake\Tokenization\Tokenizer.cs";
+		"$ScriptRoot\dotnet\tsmake\Tokenization\Handlers.cs";
 		
+		"$ScriptRoot\dotnet\tsmake\Directives.cs";
+		"$ScriptRoot\dotnet\tsmake\FileProcessing\Manifest.cs";
 		
 #		"$ScriptRoot\dotnet\tsmake\models\Lines.cs";
 #		"$ScriptRoot\dotnet\tsmake\models\Tokens.cs";
