@@ -197,26 +197,22 @@ public class Manifest(IFileSystem fileSystem)
 
     public void LoadContents(string filePath, int depth = 0)
     {
-        if (depth == 0)
-        {
-            // TODO: make sure the filePath is good and such. 
-            // and... maybe I need to do this for 'deeper' recursions ... but I don't ... think? so? 
-        }
-
         List<string> rawCodeLines = this.FileSystem.GetFileLines(filePath);
 
-        this.ProcessCoreDirectives(rawCodeLines, filePath);
-        if (this.RootDirective != null)
-            this.FileSystem.SetRootDirectory(this.RootDirective.AbsolutePath);
-        else
-            this.FileSystem.SetRootDirectory(this.FileSystem.WorkingDirectory);
+        if (depth == 0)
+        {
+            // TODO: validate the file path - i.e., make sure it's good or ... throw an exception/whatever. 
 
+            this.ProcessCoreDirectives(rawCodeLines, filePath);
+            if (this.RootDirective != null)
+                this.FileSystem.SetRootDirectory(this.RootDirective.AbsolutePath);
+            else
+                this.FileSystem.SetRootDirectory(this.FileSystem.WorkingDirectory);
+        }
 
-
+        this.Stack.Push(filePath);
+        
         int lineNumber = 0;
-
-// TODO: ?? Add filePath to a STACK of strings ... commensurate with DEPTH... 
-
         foreach (string rawCodeLine in rawCodeLines)
         {
             // ALWAYS increment the line# - otherwise, we LOSE original line#s for reporting on problems/errors/etc. 
@@ -225,7 +221,8 @@ public class Manifest(IFileSystem fileSystem)
             if (DirectivesParser.IsCommentDirective(rawCodeLine))
                 continue;
 
-            // TODO: if it's a ROOT or OUTPUT directive... continue as well. i.e., no need to dump those into the output. 
+            if(DirectivesParser.IsRootDirective(rawCodeLine) || DirectivesParser.IsOutputDirective(rawCodeLine))
+                continue;
             
             var currentLine = new ManifestLine(lineNumber, filePath, rawCodeLine, depth, new Stack<string>(this.Stack));
 
@@ -238,30 +235,15 @@ public class Manifest(IFileSystem fileSystem)
                     var manifestLines = RecurseSubFile(child, depth + 1);
                     foreach (var line in manifestLines)
                     {
-                        // if it's illegal... ignore or throw... 
+                        // if it's illegal (i.e., an illegal directive)... ignore or throw...  (probably ignore. I don't care about missed directives)
+                        //          and 'illegal' here (for a directive) might mean something like ROOT, OUTPUT or whatever (i.e., within a NESTED/SUB-FILE).
 
                         // if it's a comment ... don't add. 
 
                         // otherwise:
                         this.ManifestLines.Add(line);
                     }
-
-                    // PICKUP/NEXT:
-                    //      note, for EACH FILE... get the CONTENTS and ... then stream them OUT into the results.... 
-                    //          i.e., recursively... 
-
-                    // NEW FAKE: 
-                    //string fullPath = child;
-                    //this.ManifestLines.Add(new ManifestLine(100 + lineNumber, child, fullPath, depth + 1, new Stack<string>(this.Stack)));
-
-
-                    // FAKE:
-                    //string fullPath = this.FileSystem.TranslatePath(include.Path, include.PathType);
-                    //string content = $"PATH: [{include.Path}]; PATH-TYPE: [{include.PathType}]; ROOT-PATH: [{this.FileSystem.RootDirectory}]; FULL PATH: [{fullPath}]";
-                    //var line1 = new ManifestLine(100 + lineNumber, child, content, 1, new Stack<string>());
-                    //this.ManifestLines.Add(line1);
                 }
-
             }
             else
                 this.ManifestLines.Add(currentLine);
@@ -270,25 +252,31 @@ public class Manifest(IFileSystem fileSystem)
 
     private List<IManifestLine> RecurseSubFile(string fullFilePath, int depth)
     {
-        // so... stack will be pushed/popped and then 'copied' into each ... ManifestLine... 
+        this.Stack.Push(fullFilePath);
+        var output = new List<IManifestLine>();
 
         try
         {
-            this.Stack.Push(fullFilePath);
-
-
-            var output = new List<IManifestLine>();
-
             List<string> rawCodeLines = this.FileSystem.GetFileLines(fullFilePath);
 
             int lineNumber = 0;
             foreach (var line in rawCodeLines)
             {
                 lineNumber++;
-                // if it's an include... then recursively call back into this func: 
+                
+                if (DirectivesParser.IsIncludeDirective(line))
+                {
+                    var includeLine = new ManifestLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack));
+                    var include = DirectivesParser.GetFileSystemDirective(includeLine, this.FileSystem);
 
-                // otherwise...
-                output.Add(new ManifestLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack)));
+                    foreach (var child in include.GetChildren())
+                    {
+                        List<IManifestLine> nestedManifestLines = RecurseSubFile(child, depth + 1);
+                        output.AddRange(nestedManifestLines);
+                    }
+                }
+                else 
+                    output.Add(new ManifestLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack)));
             }
 
             return output;
