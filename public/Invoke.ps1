@@ -6,8 +6,17 @@
 		
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 			$global:VerbosePreference = "Continue";
-				# Set 'current' location = "..\test_files\simple" 
+				# Set 'current' location = "..\test_files\simple1" 
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\simple1");
+				Invoke-TsmBuild; 
+
+	
+	CALIBRATED EXAMPLE:
+
+				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
+			$global:VerbosePreference = "Continue";
+				# Set 'current' location = "..\test_files\calibration1" 
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration1");
 				Invoke-TsmBuild; 
 
 

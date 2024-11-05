@@ -36,7 +36,8 @@ Write-Host "doing process stuff... ";
 		$manifestLines = $manifest.ManifestLines;
 		
 		foreach ($line in $manifestLines) {
-			Write-Host "$($line.LineNumber) => $($line.LineText)";
+			#Write-Host "$($line.LineNumber) => $($line.LineText)";
+			Write-Host "$($line.LineText)		=> $($line.FileName), $($line.LineNumber)";
 		}
 		
 		
