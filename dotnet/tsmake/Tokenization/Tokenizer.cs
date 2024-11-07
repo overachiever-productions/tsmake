@@ -170,9 +170,9 @@ public class UseDirective(string text)
     public string TargetDatabase { get; } = text; // TODO: just assigning this ... here to avoid breaking the build from within PowerShell. 
 }
 
-public class TextSources(string originalCommand, string originalBatch)
+public class TextSources(string? originalCommand, string originalBatch)
 {
-    public string OriginalCommand { get; } = originalCommand;
+    public string? OriginalCommand { get; } = originalCommand;
     public string OriginalBatch { get; } = originalBatch;
 }
 
@@ -220,8 +220,8 @@ public interface ITokenizer
     List<Comment> Comments { get; }
     int BlockCommentNestingLevel { get; set; }
 
-    void Initialize();
-    void Tokenize();
+    void Tokenize(string rawText);
+    //void Tokenize(Stream rawTextStream);      MIGHT make sense to build this as an overload?
 
     List<ParsedBatch> GetParsedBatches(bool ignoreGoInUseOnlyBatches);
 
@@ -231,8 +231,7 @@ public interface ITokenizer
     CodeLine GetCurrentLineFromCurrentLocation();
 }
 
-// vNEXT: might make more sense to pass in a STREAM (or similar abstraction) vs a string?
-public class Tokenizer(string rawText) : ITokenizer
+public class Tokenizer : ITokenizer
 {
     private List<ITokenInitializer> _tokenInitializers = new List<ITokenInitializer>();
     private List<ITokenFinalizer> _tokenFinalizers = new List<ITokenFinalizer>();
@@ -253,7 +252,7 @@ public class Tokenizer(string rawText) : ITokenizer
     public List<Comment> Comments { get; internal set; } = new();
     public int BlockCommentNestingLevel { get; set; }
 
-    public string RawText { get; private set; } = rawText;
+    public string RawText { get; private set; } = string.Empty;
     public int CurrentIndex { get; private set; } = -1;
 
     public void EnlistInitializer(ITokenInitializer initializer)
@@ -290,7 +289,12 @@ public class Tokenizer(string rawText) : ITokenizer
         return new CodeLine(currentLine, start, end);
     }
 
-    public void Initialize()
+    protected Tokenizer()
+    {
+        this.Initialize();
+    }
+
+    protected void Initialize()
     {
         this.EnlistInitializer(new CrLfInitializer());
         this.EnlistInitializer(new StringInitializer());
@@ -299,8 +303,15 @@ public class Tokenizer(string rawText) : ITokenizer
         this.EnlistInitializer(new CommentInitializer());
     }
 
-    public void Tokenize()
+    public static Tokenizer InitializedTokenizer()
     {
+        return new Tokenizer();
+    }
+
+    public void Tokenize(string rawText)
+    {
+        this.RawText = rawText;
+
         int readValue;
         this.CurrentIndex = 0;
         this._newlineIndexes.Push(0);

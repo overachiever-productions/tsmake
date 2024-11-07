@@ -1,9 +1,5 @@
 ﻿namespace tsmake;
 
-// TODO: change the name of this to a BuildManifest... 1) I've already got a -BuildFile in Posh...
-//      (don't need another one) and 2) I'm already using 'manifest' for the lines. 
-//          or... maybe an Assembler or ... something. 
-
 public interface ISourceLine
 {
     int LineNumber { get; }
