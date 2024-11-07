@@ -16,7 +16,7 @@ public interface IDirective
 public interface IFileSystemDirective
 {
     string DirectiveName { get; }
-    IManifestLine ManifestLine { get; }
+    ISourceLine SourceLine { get; }
 
     int IndexStart { get; }
     int IndexEnd { get; }
@@ -43,12 +43,12 @@ public class BaseDirective(ICodeLine codeLine, string directiveData, int start, 
     public string DirectiveData { get; protected set; } = directiveData;
 }
 
-public class BaseFileSystemDirective(IFileSystem fileSystem, IManifestLine manifestLine, string directiveData, int start, int end) : IFileSystemDirective
+public class BaseFileSystemDirective(IFileSystem fileSystem, ISourceLine sourceLine, string directiveData, int start, int end) : IFileSystemDirective
 {
     protected List<string> _children = new List<string>();
     private IFileSystem FileSystem = fileSystem;
     public string DirectiveName { get; protected set; } = "BASE";
-    public IManifestLine ManifestLine { get; protected set; } = manifestLine;
+    public ISourceLine SourceLine { get; protected set; } = sourceLine;
     public int IndexStart { get; protected set; } = start;
     public int IndexEnd { get; protected set; } = end;
     public bool IsValid { get; protected set; } = false;
@@ -74,8 +74,8 @@ public class RootDirective : BaseFileSystemDirective
 {
     public string AbsolutePath { get; private set; }
 
-    internal RootDirective(IFileSystem fileSystem, IManifestLine manifestLine, string directiveData, int start, int end)
-        : base(fileSystem, manifestLine, directiveData, start, end)
+    internal RootDirective(IFileSystem fileSystem, ISourceLine sourceLine, string directiveData, int start, int end)
+        : base(fileSystem, sourceLine, directiveData, start, end)
     {
         this.DirectiveName = "ROOT";
 
@@ -92,8 +92,8 @@ public class RootDirective : BaseFileSystemDirective
 
 public class OutputDirective : BaseFileSystemDirective
 {
-    internal OutputDirective(IFileSystem fileSystem, IManifestLine manifestLine, string directiveData, int start, int end)
-        : base(fileSystem, manifestLine, directiveData, start, end)
+    internal OutputDirective(IFileSystem fileSystem, ISourceLine sourceLine, string directiveData, int start, int end)
+        : base(fileSystem, sourceLine, directiveData, start, end)
     {
         this.DirectiveName = "OUTPUT";
     }
@@ -101,8 +101,8 @@ public class OutputDirective : BaseFileSystemDirective
 
 public class FileSystemFileDirective : BaseFileSystemDirective
 {
-    internal FileSystemFileDirective(IFileSystem fileSystem, IManifestLine manifestLine, string directiveData, int start, int end)
-        : base(fileSystem, manifestLine, directiveData, start, end)
+    internal FileSystemFileDirective(IFileSystem fileSystem, ISourceLine sourceLine, string directiveData, int start, int end)
+        : base(fileSystem, sourceLine, directiveData, start, end)
     {
         this.DirectiveName = "FILE";
 
@@ -123,8 +123,8 @@ public class FileSystemFileDirective : BaseFileSystemDirective
 
 public class FileSystemDirectoryDirective : BaseFileSystemDirective
 {
-    internal FileSystemDirectoryDirective(IFileSystem fileSystem, IManifestLine manifestLine, string directiveData, int start, int end)
-        : base(fileSystem, manifestLine, directiveData, start, end)
+    internal FileSystemDirectoryDirective(IFileSystem fileSystem, ISourceLine sourceLine, string directiveData, int start, int end)
+        : base(fileSystem, sourceLine, directiveData, start, end)
     {
         this.DirectiveName = "DIRECTORY";
 
@@ -158,10 +158,10 @@ public class DirectivesParser
         return regex.IsMatch(text);
     }
 
-    public static IFileSystemDirective GetFileSystemDirective(IManifestLine manifestLine, IFileSystem fileSystem)
+    public static IFileSystemDirective GetFileSystemDirective(ISourceLine sourceLine, IFileSystem fileSystem)
     {
         var regex = new Regex(@"^\s*--\s*##\s*(?<directive>((ROOT|OUTPUT|DIRECTORY|FILE:))|[:]{1})\s*", Global.SingleLineRegexOptions);
-        Match m = regex.Match(manifestLine.LineText);
+        Match m = regex.Match(sourceLine.LineText);
         if (m.Success)
         {
             var directive = m.Groups["directive"];
@@ -169,7 +169,7 @@ public class DirectivesParser
             int start = directive.Index;
             int end = start + directive.Length;
 
-            var directiveData = GetDirectiveData(manifestLine.LineText.Substring(end));
+            var directiveData = GetDirectiveData(sourceLine.LineText.Substring(end));
 
             switch (directiveName)
             {
@@ -178,9 +178,9 @@ public class DirectivesParser
                 case "OUTPUT":
                     return null;
                 case "FILE":
-                    return new FileSystemFileDirective(fileSystem, manifestLine, directiveData, start, end);
+                    return new FileSystemFileDirective(fileSystem, sourceLine, directiveData, start, end);
                 case "DIRECTORY":
-                    return new FileSystemDirectoryDirective(fileSystem, manifestLine, directiveData, start, end);
+                    return new FileSystemDirectoryDirective(fileSystem, sourceLine, directiveData, start, end);
                 default:
                     throw new InvalidCastException($"Invalid Directive-Name: [{directiveName}].");
             }
@@ -201,7 +201,7 @@ public class DirectivesParser
     //        int start = directive.Index;
     //        int end = start + directive.Length;
 
-    //        var directiveData = var directiveData = GetDirectiveData(manifestLine.LineText.Substring(end));
+    //        var directiveData = var directiveData = GetDirectiveData(sourceLine.LineText.Substring(end));
 
     //        // TODO: wrap this in a try/catch... 
     //        switch (directiveName)
