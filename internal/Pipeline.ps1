@@ -27,7 +27,7 @@ function Execute-Pipeline {
 		# 1. Create the Build Manifest (i.e., assemble ALL lines of code for processing):
 		# ====================================================================================================	
 		
-		[tsmake.SimpleFileSystem]$fileSystem = New-Object tsmake.SimpleFileSystem($WorkingDirectory);
+		[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory);
 		#[tsmake.Tokenizer] = 
 		
 		

@@ -16,7 +16,7 @@ public interface IFileSystem
     List<string> GetFileLines(string filePath);
 }
 
-public class SimpleFileSystem(string workingDirectory) : IFileSystem
+public class FileSystem(string workingDirectory) : IFileSystem
 {
     public string WorkingDirectory { get; } = workingDirectory;
     public string RootDirectory { get; private set; }
