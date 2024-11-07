@@ -220,7 +220,7 @@ public interface ITokenizer
     List<Comment> Comments { get; }
     int BlockCommentNestingLevel { get; set; }
 
-    void Tokenize(string rawText);
+    void Tokenize();
     //void Tokenize(Stream rawTextStream);      MIGHT make sense to build this as an overload?
 
     List<ParsedBatch> GetParsedBatches(bool ignoreGoInUseOnlyBatches);
@@ -289,8 +289,9 @@ public class Tokenizer : ITokenizer
         return new CodeLine(currentLine, start, end);
     }
 
-    protected Tokenizer()
+    protected Tokenizer(string rawText)
     {
+        this.RawText = rawText;
         this.Initialize();
     }
 
@@ -303,15 +304,13 @@ public class Tokenizer : ITokenizer
         this.EnlistInitializer(new CommentInitializer());
     }
 
-    public static Tokenizer InitializedTokenizer()
+    public static Tokenizer StringTokenizer(string rawText)
     {
-        return new Tokenizer();
+        return new Tokenizer(rawText);
     }
 
-    public void Tokenize(string rawText)
+    public void Tokenize()
     {
-        this.RawText = rawText;
-
         int readValue;
         this.CurrentIndex = 0;
         this._newlineIndexes.Push(0);
