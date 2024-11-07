@@ -230,10 +230,6 @@ public interface ITokenizer
     CodeLine GetCurrentLineFromCurrentLocation();
 }
 
-// NOTE: If I end up needing to test mocks of this thing... then I'm going to have to: 
-//      create an ITokenizerFactory
-//          and have it have 2x methods .GetStringTokenizer(string rawString) and ... .GetStreamTokenizer(Stream stream)
-//          and then pass THAT into my objects.
 public class Tokenizer : ITokenizer
 {
     private List<ITokenInitializer> _tokenInitializers = new List<ITokenInitializer>();
@@ -292,7 +288,7 @@ public class Tokenizer : ITokenizer
         return new CodeLine(currentLine, start, end);
     }
 
-    protected Tokenizer(string rawText)
+    internal Tokenizer(string rawText)
     {
         this.RawText = rawText;
         this.Initialize();
@@ -512,5 +508,19 @@ public class Tokenizer : ITokenizer
         }
 
         return output;
+    }
+}
+
+public interface ITokenizerFactory
+{
+    Tokenizer FromString(string rawText);
+    // Might make sense to implement this: Tokenizer FromStream(Stream stream);
+}
+
+public class TokenizerFactory : ITokenizerFactory {
+
+    public Tokenizer FromString(string rawText)
+    {
+        return new Tokenizer(rawText);
     }
 }
