@@ -23,7 +23,7 @@ public class SourceLine(int lineNumber, string fileName, string text, int depth,
 }
 
 // TODO: create an interface... (for testing)
-public class Manifest(IFileSystem fileSystem)
+public class Assembler(IFileSystem fileSystem)
 {
     private Stack<string> Stack = new Stack<string>();
     private IFileSystem FileSystem = fileSystem;

@@ -31,12 +31,12 @@ function Execute-Pipeline {
 		#[tsmake.Tokenizer] = 
 		
 		
-		[tsmake.Manifest]$manifest = New-Object tsmake.Manifest($fileSystem);
+		[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem);
 		
-		$manifest.LoadContents($BuildFile);
+		$assembler.LoadContents($BuildFile);
 		
 # HACK / TESTING: 
-$codeLines = $manifest.CodeLines;
+$codeLines = $assembler.CodeLines;
 foreach ($line in $codeLines) {
 	Write-Host "$($line.LineText)		=> $($line.FileName), $($line.LineNumber)";
 }

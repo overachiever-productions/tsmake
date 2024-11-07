@@ -16,7 +16,9 @@ filter Import-Types {
 		"$ScriptRoot\dotnet\tsmake\Tokenization\Handlers.cs";
 		
 		"$ScriptRoot\dotnet\tsmake\Directives.cs";
-		"$ScriptRoot\dotnet\tsmake\FileProcessing\Manifest.cs";
+		
+		"$ScriptRoot\dotnet\tsmake\FileProcessing\FileSystem.cs";
+		"$ScriptRoot\dotnet\tsmake\FileProcessing\Assembler.cs";
 		
 #		"$ScriptRoot\dotnet\tsmake\models\Lines.cs";
 #		"$ScriptRoot\dotnet\tsmake\models\Tokens.cs";
