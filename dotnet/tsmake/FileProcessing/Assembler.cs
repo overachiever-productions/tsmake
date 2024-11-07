@@ -19,10 +19,11 @@ public class SourceLine(int lineNumber, string fileName, string text, int depth,
 }
 
 // TODO: create an interface... (for testing)
-public class Assembler(IFileSystem fileSystem)
+public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactory)
 {
     private Stack<string> Stack = new Stack<string>();
     private IFileSystem FileSystem = fileSystem;
+    private ITokenizerFactory TokenizerFactory = tokenizerFactory;
     
     public RootDirective RootDirective { get; private set; } 
     public OutputDirective OutputDirective { get; private set; }
@@ -114,8 +115,6 @@ public class Assembler(IFileSystem fileSystem)
                 else 
                     output.Add(new SourceLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack)));
             }
-
-            return output;
         }
         catch 
         {
@@ -125,6 +124,14 @@ public class Assembler(IFileSystem fileSystem)
         {
             this.Stack.Pop();
         }
+
+        string fileContents = this.FileSystem.GetFileContent(fullFilePath);
+        var tokenizer = this.TokenizerFactory.FromString(fileContents);
+        
+        // TODO: wrap this in a try catch and/or put SOME sort of error handling here. 
+        tokenizer.Tokenize();
+
+        return output;
     }
 
     private void ProcessCoreDirectives(List<string> rawCodeLines, string filePath)

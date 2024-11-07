@@ -10,10 +10,10 @@ public interface IFileSystem
     //List<string> GetDirectoryFiles(string directory, RecursionOption recursion);
     //bool DirectoryExists(string path);
     //bool FileExists(string path);
-    //List<string> GetFileLines(string filePath);
     PathType GetPathType(string filePath, bool strict = false);
     bool IsValidFilePath(string filePath);
     List<string> GetFileLines(string filePath);
+    string GetFileContent(string filePath);
 }
 
 public class FileSystem(string workingDirectory) : IFileSystem
@@ -127,6 +127,11 @@ public class FileSystem(string workingDirectory) : IFileSystem
     public List<string> GetFileLines(string filePath)
     {
         return File.ReadAllLines(filePath).ToList();
+    }
+
+    public string GetFileContent(string filePath)
+    {
+        return File.ReadAllText(filePath);
     }
 
     public static bool FileOrDirectoryExists(string path)

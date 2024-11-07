@@ -28,10 +28,10 @@ function Execute-Pipeline {
 		# ====================================================================================================	
 		
 		[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory);
-		#[tsmake.Tokenizer] = 
+		[tsmake.TokenizerFactory]$tokenizerFactory = New-Object tsmake.TokenizerFactory;
 		
 		
-		[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem);
+		[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem, $tokenizerFactory);
 		
 		$assembler.LoadContents($BuildFile);
 		
