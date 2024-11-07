@@ -6,8 +6,7 @@ public class GoStatementTests
     public void GoHandlers_Match_Simple_Go_In_Multi_Line_Command()
     {
         string text = "SELECT @@SERVERNAME [server_name];\r\nGO";
-        var sut = new Tokenizer(text);
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer(text);
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -26,8 +25,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_Spaces_On_Newline_Before_Go()
     {
-        var sut = new Tokenizer("SELECT @@SERVERNAME [server_name];\r\n   GO");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\n   GO");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -38,8 +36,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_Spaces_On_Newline_After_Go()
     {
-        var sut = new Tokenizer("SELECT @@SERVERNAME [server_name];\r\n   GO   ");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\n   GO   ");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -49,8 +46,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_Tabs_On_Newline_Before_Go()
     {
-        var sut = new Tokenizer("SELECT @@SERVERNAME [server_name];\r\n\t GO");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\n\t GO");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -61,8 +57,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_Eol_Comments_After_Go()
     {
-        var sut = new Tokenizer("SELECT @@SERVERNAME [server_name];\r\n  GO -- with some comment here...");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\n  GO -- with some comment here...");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -73,8 +68,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Capture_Simple_Go_With_Numbers()
     {
-        var sut = new Tokenizer("CHECKPOINT;\r\nGo   32 -- and a comment");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("CHECKPOINT;\r\nGo   32 -- and a comment");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -86,8 +80,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_EolComments_Touching_Go()
     {
-        var sut = new Tokenizer("SELECT @@SERVERNAME [server_name];\r\n  GO-- this comment is dumb - but legit");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\n  GO-- this comment is dumb - but legit");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
@@ -98,8 +91,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Correctly_Allow_Numbers_Touching_Go()
     {
-        var sut = new Tokenizer("CHECKPOINT;\r\nGO3\r\nCHECKPOINT;\r\nGO2\r\nSELECT @@SERVERNAME\r\nGO");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("CHECKPOINT;\r\nGO3\r\nCHECKPOINT;\r\nGO2\r\nSELECT @@SERVERNAME\r\nGO");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(3));
@@ -117,8 +109,7 @@ public class GoStatementTests
     [Test]
     public void GoHandlers_Ignore_Go_Statements_Within_Block_Comments()
     {
-        var sut = new Tokenizer("/*\r\n\r\nSELECT @@SERVERNAME; \r\nGO \r\n\r\n*/\r\n\r\nSELECT @@VERSION;");
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("/*\r\n\r\nSELECT @@SERVERNAME; \r\nGO \r\n\r\n*/\r\n\r\nSELECT @@VERSION;");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(0));
@@ -129,9 +120,7 @@ public class GoStatementTests
     public void GoHandlers_Ignore_Go_Statements_Within_Strings()
     {
         // still not sure why you'd put a "GO" inside of a 'string'... but... don't want it to cause problems IF someone does: 
-        var sut = new Tokenizer("DECLARE @text nvarchar(MAX) = N'/*\r\n\r\nSELECT @@SERVERNAME; \r\nGO \r\n\r\n*/';\r\n\r\nSELECT @@VERSION;\r\nGO");
-
-        sut.Initialize();
+        var sut = Tokenizer.StringTokenizer("DECLARE @text nvarchar(MAX) = N'/*\r\n\r\nSELECT @@SERVERNAME; \r\nGO \r\n\r\n*/';\r\n\r\nSELECT @@VERSION;\r\nGO");
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));

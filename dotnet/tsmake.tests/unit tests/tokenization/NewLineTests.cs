@@ -15,9 +15,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_String_By_CrLf()
     {
-        var sut = new Tokenizer(SUPER_SIMPLE_MULTI_LINE_STRING);
-        sut.Initialize();
-
+        var sut = Tokenizer.StringTokenizer(SUPER_SIMPLE_MULTI_LINE_STRING);
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(2));
@@ -32,9 +30,7 @@ Line.
     [Test]
     public void NewLineHandlers_Do_Not_Add_Extra_Blank_Lines_At_EoString()
     {
-        var sut = new Tokenizer(SIMPLE_MULTI_LINE_STRING_WITH_CRLF_TERMINATOR);
-        sut.Initialize();
-
+        var sut = Tokenizer.StringTokenizer(SIMPLE_MULTI_LINE_STRING_WITH_CRLF_TERMINATOR);
         sut.Tokenize();
 
         // should be 3x lines - cuz that's how many there are (NOT 4 lines - i.e., the 'native' CRLF + a bogus/terminator from code/processing.
@@ -46,9 +42,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_On_LineFeed_Only()
     {
-        var sut = new Tokenizer("This is a\nterrible newline (in windows)\r\n.");
-        sut.Initialize();
-
+        var sut = Tokenizer.StringTokenizer("This is a\nterrible newline (in windows)\r\n.");
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
@@ -61,9 +55,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_On_CarriageReturn_Only()
     {
-        var sut = new Tokenizer("This is a\rterrible newline (in windows)\r\n.");
-        sut.Initialize();
-
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.");
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));

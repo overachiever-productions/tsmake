@@ -221,7 +221,6 @@ public interface ITokenizer
     int BlockCommentNestingLevel { get; set; }
 
     void Tokenize();
-    //void Tokenize(Stream rawTextStream);      MIGHT make sense to build this as an overload?
 
     List<ParsedBatch> GetParsedBatches(bool ignoreGoInUseOnlyBatches);
 
@@ -303,6 +302,8 @@ public class Tokenizer : ITokenizer
         this.EnlistInitializer(new BlockCommentInitializer());
         this.EnlistInitializer(new CommentInitializer());
     }
+
+    // MIGHT make sense to create a public static Tokenizer StreamTokenizer(Stream stream) ... for perf reasons?
 
     public static Tokenizer StringTokenizer(string rawText)
     {
