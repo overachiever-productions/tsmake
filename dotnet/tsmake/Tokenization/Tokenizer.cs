@@ -170,9 +170,9 @@ public class UseDirective(string text)
     public string TargetDatabase { get; } = text; // TODO: just assigning this ... here to avoid breaking the build from within PowerShell. 
 }
 
-public class TextSources(string? originalCommand, string originalBatch)
+public class TextSources(string originalCommand, string originalBatch)
 {
-    public string? OriginalCommand { get; } = originalCommand;
+    public string OriginalCommand { get; } = originalCommand;
     public string OriginalBatch { get; } = originalBatch;
 }
 
@@ -230,6 +230,10 @@ public interface ITokenizer
     CodeLine GetCurrentLineFromCurrentLocation();
 }
 
+// NOTE: If I end up needing to test mocks of this thing... then I'm going to have to: 
+//      create an ITokenizerFactory
+//          and have it have 2x methods .GetStringTokenizer(string rawString) and ... .GetStreamTokenizer(Stream stream)
+//          and then pass THAT into my objects.
 public class Tokenizer : ITokenizer
 {
     private List<ITokenInitializer> _tokenInitializers = new List<ITokenInitializer>();
