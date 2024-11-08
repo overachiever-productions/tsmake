@@ -3,7 +3,7 @@
 function Execute-Pipeline {
 	[CmdletBinding()]
 	param (
-		[ValidateSet("BUILD", "DOCS", "BOTH")]
+		[ValidateSet("Build", "Docs", "BuildAndDocs")]
 		[string]$Verb,
 		[string]$BuildFile,
 		[string]$Output,
@@ -18,24 +18,50 @@ function Execute-Pipeline {
 		[bool]$xVerbose = ("Continue" -eq $global:VerbosePreference) -or ($PSBoundParameters["Verbose"] -eq $true);
 		[bool]$xDebug = ("Continue" -eq $global:DebugPreference) -or ($PSBoundParameters["Debug"] -eq $true);
 		
-		# new-up a BuildResult object... 
-		# and... a file-handler. 
+		# new-up a BuildResult object... which... won't HAVE 'much' in terms of 'output'
 	};
 	
 	process {
 		# ====================================================================================================
-		# 1. Create the Build Manifest (i.e., assemble ALL lines of code for processing):
+		# 1. Create Core Objects:
 		# ====================================================================================================	
+		[tsmake.BuildResult]$result = New-Object tsmake.BuildResult($Verb, $BuildFile);
 		
-		[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory);
-		[tsmake.TokenizerFactory]$tokenizerFactory = New-Object tsmake.TokenizerFactory;
+		try {
+			
+			[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory);
+			[tsmake.TokenizerFactory]$tokenizerFactory = New-Object tsmake.TokenizerFactory;
+			
+			[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem, $tokenizerFactory);
+		}
+		catch {
+			# new Configuration Error ... 
+			# 		and... bind the error to ... the $result. 
+			return;
+		}
+		
+		# ====================================================================================================
+		# 2. Assemble all source-code from files/sub-files (i.e., includes):
+		# ====================================================================================================		
+		try {
+			$assembler.LoadContents($BuildFile);
+			
+			
+		}
+		catch [tsmake.Error] {
+			# syntax error or whatever... 
+			# 	should be able to just bind it to $results and then:
+			return;
+		}
+		catch {
+			# runtime error unless the error is of a specific type... 
+			#  bind it to $results and then... 
+			return;
+		}
 		
 		
-		[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem, $tokenizerFactory);
 		
-		$assembler.LoadContents($BuildFile);
-		
-# HACK / TESTING: 
+		# HACK / TESTING: 
 $codeLines = $assembler.CodeLines;
 foreach ($line in $codeLines) {
 	Write-Host "$($line.LineText)		=> $($line.FileName), $($line.LineNumber)";
@@ -72,19 +98,14 @@ foreach ($line in $codeLines) {
 		# 		conditionals, version-checkers, and that's it, right?
 		
 		
-
 		
 		
-		
-		
-		
-
-		
-		
-		
+		# if we get all the way here: 
+		#$results.SetComplete();
+		# and add in any artifacts as needed... 
 	};
 	
 	end {
-		
+		return $result;
 	};
 }

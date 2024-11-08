@@ -57,7 +57,8 @@ function Invoke-TsmBuild {
 		[Parameter(ValueFromPipeline)]
 		[string[]]$BuildFile,
 		[string]$ConfigFile,
-		[string]$Output,  				
+		[string]$Output,  			# need to account for the option/fact that I can specify an OUTPUT directory and... the BUILD will build something like admindb_latest.sql (oh wait, that's hard-coded)
+									# actually, what I need to account for in the ABOVE is that there IS some sort of way to embed the VERSION info into the file name. I don't / won't use that for things like dda, admindb, etc... but for 'runners' and other users ... this'll be a big deal.
 
 		# Actually... what's the point of having a VERSION here as part of the build process? 
 		# do i NEED it? 
@@ -65,14 +66,15 @@ function Invoke-TsmBuild {
 		# 	BUT: 
 		# 		- how's that work if/when there are > 1 -BuildFiles specified? 
 		# 			and... if I can't build multiple projects at the same time when a version is specified ... why bother having a version and/or option to build multiple files? 
-		# 		- could I accomplish this in some other way - like with a -Token ??? 
+		# 		- could I accomplish this in some other way - like with a -Token ???   (not really - cuz of the FILE names - outputs. But... how are outputs LINKED to version numbers?)
 		[string]$Version, 				# TODO: Pass -Version in as a string and have C# code parse it to determing if Semantic, FourPart, or Organic/Custom...
 		[string[]]$Tokens,
 		[switch]$SkipDocumentation = $false
 		# options/switches: 
 		# -SkipFileMarker (default is to include one?)
 		# -StopOnFirstErrorOrWhatever
-		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)		
+		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)	
+		# -CommentRemovalOptions (going to be semi complex (i.e., non boolean) - some sort of enum or whatever... )
 	);
 	
 	begin {
@@ -83,9 +85,9 @@ function Invoke-TsmBuild {
 		# 		- skip/process file-marker, 
 		# 		- remove all /* header comments */ or just the FIRST set. 
 		# 		- StopOnFirstError or whatever I'm going to call that feature/option.
-		$verb = "BOTH";
+		$verb = "BuildAndDocs";
 		if ($SkipDocumentation) {
-			$verb = "BUILD";
+			$verb = "Build";
 		}
 		
 		$results = @();
