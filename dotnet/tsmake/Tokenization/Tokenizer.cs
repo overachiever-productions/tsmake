@@ -118,46 +118,68 @@ public class CodeLine(string lineText, int startOffset, int endOffset) : ICodeLi
     }
 }
 
-public interface IToken
+public interface IToken<T>
 {
     TokenType TokenType { get; }
-    int StartIndex { get; }
-    int EndIndex { get; }
+    int Start { get;  }
+    int End { get; }
     string Text { get; }
+
+    T Clone();
 }
 
-public class CodeString(int start, int end, string text, bool isUnicode) : IToken
+public class CodeString(int start, int end, string text, bool isUnicode) : IToken<CodeString>
 {
     public TokenType TokenType { get; } = TokenType.String;
-    public int StartIndex { get; } = start;
-    public int EndIndex { get; } = end;
+    public int Start { get; } = start;
+    public int End { get; } = end;
     public string Text { get; } = text;
     public bool IsUnicode { get; } = isUnicode;
+
+    public CodeString Clone()
+    {
+        return new CodeString(this.Start, this.End, this.Text, this.IsUnicode);
+    }
 }
 
-public class GoStatement(int startIndex, int endIndex, string text, int goCount) : IToken
+public class GoStatement(int startIndex, int endIndex, string text, int goCount) : IToken<GoStatement>
 {
     public TokenType TokenType { get; } = TokenType.GoStatement;
-    public int StartIndex { get; } = startIndex;
-    public int EndIndex { get; } = endIndex;
+    public int Start { get; } = startIndex;
+    public int End { get; } = endIndex;
     public string Text { get; } = text;
     public int GoCount { get; } = goCount;
+
+    public GoStatement Clone()
+    {
+        return new GoStatement(this.Start, this.End, this.Text, this.GoCount);
+    }
 }
 
-public class BlockComment(int startIndex, int endIndex, string text) : IToken
+public class BlockComment(int startIndex, int endIndex, string text) : IToken<BlockComment>
 {
     public TokenType TokenType { get; } = TokenType.BlockComment;
-    public int StartIndex { get; } = startIndex;
-    public int EndIndex { get; } = endIndex;
+    public int Start { get; } = startIndex;
+    public int End { get; } = endIndex;
     public string Text { get; } = text;
+
+    public BlockComment Clone()
+    {
+        return new BlockComment(this.Start, this.End, this.Text);
+    }
 }
 
-public class Comment(int startIndex, int endIndex, string text) : IToken
+public class Comment(int startIndex, int endIndex, string text) : IToken<Comment>
 {
     public TokenType TokenType { get; } = TokenType.EolComment;
-    public int StartIndex { get; } = startIndex;
-    public int EndIndex { get; } = endIndex;
+    public int Start { get; } = startIndex;
+    public int End { get; } = endIndex;
     public string Text { get; } = text;
+
+    public Comment Clone()
+    {
+        return new Comment(this.Start, this.End, this.Text);
+    }
 }
 
 public class UseDirective(string text)
@@ -238,12 +260,13 @@ public class Tokenizer : ITokenizer
     private Stack<int> _newlineIndexes = new Stack<int>();
     private int _lineNumber = 0;
 
+    // TODO: arguably, these should be PROTECTED/INTERNAL vs public. 
     public NewLineStatus NewLineStatus { get; set; }
     public StringStatus StringStatus { get; set; } = StringStatus.None;
     public BlockCommentStatus BlockCommentStatus { get; set; } = BlockCommentStatus.None;
     public CommentStatus CommentStatus { get; set; } = CommentStatus.None;
-
     public CharacterBuffer CharacterBuffer { get; set; } = new(10);
+
     public List<ICodeLine> CodeLines { get; internal set; } = new();
     public List<CodeString> Strings { get; internal set; } = new();
     public List<GoStatement> GoStatements { get; internal set; } = new();
@@ -303,7 +326,7 @@ public class Tokenizer : ITokenizer
         this.EnlistInitializer(new CommentInitializer());
     }
 
-    // MIGHT make sense to create a public static Tokenizer StreamTokenizer(Stream stream) ... for perf reasons?
+    // EVENTUALLY: public static Tokenizer StreamTokenizer(Stream stream) ... for perf reasons?
 
     public static Tokenizer StringTokenizer(string rawText)
     {
@@ -362,18 +385,18 @@ public class Tokenizer : ITokenizer
         int previousStart = 0;
         foreach (var go in this.GoStatements)
         {
-            int end = go.EndIndex - previousStart - go.Text.Length;
+            int end = go.End - previousStart - go.Text.Length;
 
             string batchText = this.RawText.Substring(previousStart, end).Trim();
             if (string.IsNullOrWhiteSpace(batchText) || batchText == go.Text)
                 continue;
 
             var sources = new TextSources(this.RawText, this.RawText.Substring(previousStart, (end + go.Text.Length)));
-            var batch = new ParsedBatch(previousStart, go.EndIndex, batchText, sources);
+            var batch = new ParsedBatch(previousStart, go.End, batchText, sources);
             batch.GoStatement = go;
             output.Add(batch);
 
-            previousStart = go.StartIndex + go.Text.Length;
+            previousStart = go.Start + go.Text.Length;
         }
 
         if (previousStart < this.RawText.Length)
@@ -416,8 +439,8 @@ public class Tokenizer : ITokenizer
 
                         if (string.IsNullOrWhiteSpace(text))
                         {
-                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.StartIndex, ' ');
-                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.StartIndex + 1, ' ');
+                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.Start, ' ');
+                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.Start + 1, ' ');
 
                             // There's an EDGE case where a 'batch' might terminate with a USE xxxx; ... and have NOTHING after it. 
                             //      that's ... useless, but, need to account for it (which the code below does):
@@ -443,9 +466,9 @@ public class Tokenizer : ITokenizer
 
         foreach (var batch in output)
         {
-            batch.Comments = this.GetCommentsForBatch(batch.StartIndex, batch.EndIndex);
-            batch.BlockComments = this.GetBlockCommentsForBatch(batch.StartIndex, batch.EndIndex);
-            batch.Strings = this.GetStringsForBatch(batch.StartIndex, batch.EndIndex);
+            batch.Comments = this.Comments.GetTokenByOffset(batch.StartIndex, batch.EndIndex);
+            batch.BlockComments = this.BlockComments.GetTokenByOffset(batch.StartIndex, batch.EndIndex);
+            batch.Strings = this.Strings.GetTokenByOffset(batch.StartIndex, batch.EndIndex);
         }
 
         // !!!! TODO: 
@@ -471,40 +494,23 @@ public class Tokenizer : ITokenizer
 
         this._newlineIndexes.Push(this.CurrentIndex + 1);
     }
+}
 
-    // REFACTOR: I've got 3x copy/paste/tweak iterations here for different <T> ... i just need 1x Generic implementation.
-    //          er, well... .IsUnicode is a bit of an oddity... but, i guess if I can .copy/.clone each <T> then ... i'm fine. 
-    private List<Comment> GetCommentsForBatch(int startIndex, int endIndex)
+public static class TokenizerExtensions
+{
+    public static List<T> GetTokenByOffset<T>(this List<T> tokens, int start, int end) where T : IToken<T>
     {
-        var output = new List<Comment>();
-        foreach (var comment in this.Comments)
+        var output = new List<T>();
+        foreach (var token in tokens)
         {
-            if (comment.StartIndex >= startIndex && comment.EndIndex <= endIndex)
-                output.Add(new Comment(comment.StartIndex - startIndex, comment.EndIndex - startIndex, comment.Text));
-        }
+            if (token.Start >= start && token.End <= end)
+                output.Add(token.Clone());
 
-        return output;
-    }
-
-    private List<BlockComment> GetBlockCommentsForBatch(int startIndex, int endIndex)
-    {
-        var output = new List<BlockComment>();
-        foreach (var comment in this.BlockComments)
-        {
-            if (comment.StartIndex >= startIndex && comment.EndIndex <= endIndex)
-                output.Add(new BlockComment(comment.StartIndex - startIndex, comment.EndIndex - startIndex, comment.Text));
-        }
-
-        return output;
-    }
-
-    private List<CodeString> GetStringsForBatch(int startIndex, int endIndex)
-    {
-        var output = new List<CodeString>();
-        foreach (var codeString in this.Strings)
-        {
-            if (codeString.StartIndex >= startIndex && codeString.EndIndex <= endIndex)
-                output.Add(new CodeString(codeString.StartIndex, codeString.EndIndex, codeString.Text, codeString.IsUnicode));
+            // TODO: The logic below lets us short-circuit once we've matched stuff overlapping start - end. BUT... it's NOT working - i.e., tests fail when 
+            //      it's enabled/uncommented. Figure out what's up and/or if, honestly, it's needed (though, if there are 200 'strings' and we get what we need on 
+            //         string #3 ...can't really see that it makes sense to go through the remaining 197 of them (i.e., i think it does make sense to try to get this to work).
+            //if (end > token.End)
+            //    break;
         }
 
         return output;

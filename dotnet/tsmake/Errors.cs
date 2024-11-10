@@ -1,6 +1,4 @@
-﻿using System.Management.Automation;
-
-namespace tsmake;
+﻿namespace tsmake;
 
 public interface IError
 {
@@ -54,9 +52,9 @@ public class Error : IError
         return new Error(errorRecord, ErrorType.Runtime, sourceLine, phase, message, facet, detail);
     }
 
-    public static Error NewConfigurationError(SourceLine sourceLine, string phase, string message, string facet = "", string detail = "")
+    public static Error NewConfigurationError(ErrorRecord errorRecord, SourceLine sourceLine, string phase, string message, string facet = "", string detail = "")
     {
-        return new Error(ErrorType.Configuration, sourceLine, phase, message, facet, detail);
+        return new Error(errorRecord, ErrorType.Configuration, sourceLine, phase, message, facet, detail);
     }
 
     //public static Error NewValidationError()
@@ -67,6 +65,11 @@ public class Error : IError
     public static Error NewSyntaxError(SourceLine sourceLine, string phase, string message, string facet = "", string detail = "")
     {
         return new Error(ErrorType.Syntax, sourceLine, phase, message, facet, detail);
+    }
+
+    public static Error FakeError(ErrorRecord errorRecord)
+    {
+        return new Error(ErrorType.Runtime, null, "fake", "doh", "doh2", "doh3");
     }
 
     //public static Error NewBuildError()

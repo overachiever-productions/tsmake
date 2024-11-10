@@ -17,8 +17,6 @@ function Execute-Pipeline {
 	begin {
 		[bool]$xVerbose = ("Continue" -eq $global:VerbosePreference) -or ($PSBoundParameters["Verbose"] -eq $true);
 		[bool]$xDebug = ("Continue" -eq $global:DebugPreference) -or ($PSBoundParameters["Debug"] -eq $true);
-		
-		# new-up a BuildResult object... which... won't HAVE 'much' in terms of 'output'
 	};
 	
 	process {
@@ -35,8 +33,7 @@ function Execute-Pipeline {
 			[tsmake.Assembler]$assembler = New-Object tsmake.Assembler($fileSystem, $tokenizerFactory);
 		}
 		catch {
-			# new Configuration Error ... 
-			# 		and... bind the error to ... the $result. 
+			$result.AddError((New-ConfigurationError -ErrorRecord $_ -Message "Unexpected Error During tsmake Object Initialization." -Phase "tsmake:Startup" -Detail "This is NOT a user error."));
 			return;
 		}
 		
@@ -45,17 +42,28 @@ function Execute-Pipeline {
 		# ====================================================================================================		
 		try {
 			$assembler.LoadContents($BuildFile);
-			
-			
 		}
-		catch [tsmake.Error] {
-			# syntax error or whatever... 
-			# 	should be able to just bind it to $results and then:
+		catch [tsmake.SyntaxException]{
+			# TODO: dotnet SyntaxException needs to include 3x additional bits of info OTHER than just the string implementation it currently uses: 
+			# 		1. SourceFile details (i.e., file name)
+			# 		2. position. 
+			# 		3. line-number. 
+			# 		technically, ALL of the above is 'SourceLine' stuff... 
+			
+			Write-Host "syntax exception... need to translate";
 			return;
 		}
+#		catch [tsmake.Error] {
+#			# syntax error or whatever... 
+#			# 	should be able to just bind it to $results and then:
+#			
+#			Write-Host "tsmake.error of: $($_) "
+#			return;
+#		}
 		catch {
 			# runtime error unless the error is of a specific type... 
-			#  bind it to $results and then... 
+			#  bind it to $results and then...
+			Write-Host "generic error $_"
 			return;
 		}
 		
@@ -100,12 +108,12 @@ foreach ($line in $codeLines) {
 		
 		
 		
-		# if we get all the way here: 
-		#$results.SetComplete();
-		# and add in any artifacts as needed... 
+		# if we get all the way here, add in any artifacts as needed... 
+		# $result.AddArtifact(xxxx)
 	};
 	
 	end {
+		$result.SetComplete();
 		return $result;
 	};
 }

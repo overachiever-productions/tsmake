@@ -11,8 +11,8 @@ public class StringTests
         Assert.That(sut.CodeLines.Count, Is.EqualTo(1));
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
-        Assert.That(sut.Strings[0].StartIndex, Is.EqualTo(11));
-        Assert.That(sut.Strings[0].EndIndex, Is.EqualTo(18));
+        Assert.That(sut.Strings[0].Start, Is.EqualTo(11));
+        Assert.That(sut.Strings[0].End, Is.EqualTo(18));
 
         StringAssert.AreEqualIgnoringCase("'string'", sut.Strings[0].Text);
     }

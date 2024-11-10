@@ -128,7 +128,12 @@ public class StringFinalizer : ITokenFinalizer
     public void Terminate(ITokenizer tokenizer)
     {
         if (tokenizer.StringStatus.HasFlag(StringStatus.InString))
+        {
+            var end = tokenizer.CurrentIndex;
+
             throw new SyntaxException($"Syntax Error. String starting at position {this._stringStart} is not closed.");
+        }
+            
     }
 }
 

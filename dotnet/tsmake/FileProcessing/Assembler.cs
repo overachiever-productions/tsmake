@@ -7,15 +7,41 @@ public interface ISourceLine
     string FileName { get; }  // name of the current file. 
     Stack<string> Stack { get; }
     string LineText { get; }
+
+    string PrintStack();
 }
 
-public class SourceLine(int lineNumber, string fileName, string text, int depth, Stack<string> stack) : ISourceLine
+public class SourceLine(int lineNumber, string fileName, string text, Stack<string> stack) : ISourceLine
 {
     public int LineNumber { get; } = lineNumber;
-    public int Depth { get; } = depth;              // REFACTOR: get this from the stack. 
-    public string FileName { get; } = fileName;     // REFACTOR: pull this from the stack.   i.e., I don't need any kind of explicit inputs/etc. for this and previous. 
+    public int Depth => this.Stack.Count;
+    public string FileName => this.Stack.Peek(); 
     public Stack<string> Stack { get; } = stack;
     public string LineText { get; } = text;
+
+    public string PrintStack()
+    {
+        // Eventually, I want this to look a bit more like this: 
+        //      D:\\FakeDir\\SomeFile.sql:line x(18 - 24)
+        //      	in D:\\FakeDir\\ParentFile.build.sql: line y
+        //      	in D:\\FakeDir\\my_latest.build.sql: line z
+
+        var copyOfStack = new Stack<string>(this.Stack);
+        StringBuilder builder = new StringBuilder();
+        int depth = 0;
+        while (copyOfStack.Count > 0)
+        {
+            if(depth == 0)
+                builder.AppendLine(copyOfStack.Pop());
+            else
+                
+                builder.AppendLine($"\tin {copyOfStack.Pop()}");
+
+            depth++;
+        }
+
+        return builder.ToString().TrimEnd();
+    }
 }
 
 // TODO: create an interface... (for testing)
@@ -50,8 +76,26 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         int lineNumber = 0;
         foreach (string rawCodeLine in rawCodeLines)
         {
-            // ALWAYS increment the line# - otherwise, we LOSE original line#s for reporting on problems/errors/etc. 
+            // ALWAYS increment the line# - otherwise, we LOSE original line #s for reporting on problems/errors/etc. 
             lineNumber++; 
+
+            // TODO: 
+            // HMMM. 
+            // I could have an int position = 0; right up near the lineNumber = 0 declaration. 
+            // and here, for every, single, line that gets processed, get the LENGTH() of the line itself
+            //      and the START of each codeline would then be position, and the END of each code-line would then be position + LENGTH()
+            //      and then set position = position + LENGTH()... 
+            // and ... that now the start/end (or offset) of each code line.
+            //   then, if I ever want/need to lookup a code LINE by its position within the file... 
+            //      i do a while(targetPosition < startOfLine)
+            //          or whatever ... so that I basically zip through (foreach) EACH CodeLine
+            //                      in a given file until I find a .Start > targetPosition... at which point, i know which line i'm on... 
+            //                      and... done. 
+            //      the above ALL presupposes that each "rawCodeLine" i'm iterating through HAS the CRLF, LF, or CR as part of the line in question... 
+            //          if that's NOT true... then I've got some issues. 
+            //      also, not quite sure why I couldn't do this via the tokenizer too... 
+            //      though, I guess that comes later in the pipeline. 
+
 
             if (DirectivesParser.IsCommentDirective(rawCodeLine))
                 continue;
@@ -59,7 +103,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             if(DirectivesParser.IsRootDirective(rawCodeLine) || DirectivesParser.IsOutputDirective(rawCodeLine))
                 continue;
             
-            var currentLine = new SourceLine(lineNumber, filePath, rawCodeLine, depth, new Stack<string>(this.Stack));
+            var currentLine = new SourceLine(lineNumber, filePath, rawCodeLine, new Stack<string>(this.Stack));
 
             if (DirectivesParser.IsIncludeDirective(rawCodeLine))
             {
@@ -103,7 +147,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                 
                 if (DirectivesParser.IsIncludeDirective(line))
                 {
-                    var includeLine = new SourceLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack));
+                    var includeLine = new SourceLine(lineNumber, fullFilePath, line, new Stack<string>(this.Stack));
                     var include = DirectivesParser.GetFileSystemDirective(includeLine, this.FileSystem);
 
                     foreach (var child in include.GetChildren())
@@ -113,7 +157,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     }
                 }
                 else 
-                    output.Add(new SourceLine(lineNumber, fullFilePath, line, depth, new Stack<string>(this.Stack)));
+                    output.Add(new SourceLine(lineNumber, fullFilePath, line, new Stack<string>(this.Stack)));
             }
         }
         catch 
@@ -146,7 +190,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
             if (DirectivesParser.IsRootDirective(line))
             {
-                var manifestLine = new SourceLine(lineNumber, filePath, line, 0, new Stack<string>(this.Stack));
+                var manifestLine = new SourceLine(lineNumber, filePath, line, new Stack<string>(this.Stack));
                 this.RootDirective = (RootDirective)DirectivesParser.GetFileSystemDirective(manifestLine, this.FileSystem);
 
                 rooted = true;

@@ -5,7 +5,6 @@ filter Import-Types {
 		[string]$ScriptRoot = $PSScriptRoot
 	);
 	
-	# Import order CAN impact BUILD operations
 	$classFiles = @(
 		"$ScriptRoot\dotnet\tsmake\Globals.cs";
 		"$ScriptRoot\dotnet\tsmake\Enums.cs";

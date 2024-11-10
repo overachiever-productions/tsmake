@@ -13,8 +13,8 @@ public class CommentTests
         // NOTE: EOL comments do NOT include the CR, CRLF, or LF of at the 'end' of the line. Just the text.
         StringAssert.AreEqualIgnoringCase("-- witty comment here.", sut.Comments[0].Text);
 
-        Assert.That(sut.Comments[0].StartIndex, Is.EqualTo(20));
-        Assert.That(sut.Comments[0].EndIndex, Is.EqualTo(42));
+        Assert.That(sut.Comments[0].Start, Is.EqualTo(20));
+        Assert.That(sut.Comments[0].End, Is.EqualTo(42));
 
         // sanity check: 
         string comment = text.Substring(20, 42 - 20);

@@ -11,8 +11,8 @@ public class GoStatementTests
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
 
-        Assert.That(sut.GoStatements[0].StartIndex, Is.EqualTo(36));
-        Assert.That(sut.GoStatements[0].EndIndex, Is.EqualTo(38));
+        Assert.That(sut.GoStatements[0].Start, Is.EqualTo(36));
+        Assert.That(sut.GoStatements[0].End, Is.EqualTo(38));
 
         // sanity check: 
         string go = text.Substring(36, 2);

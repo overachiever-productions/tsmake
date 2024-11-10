@@ -16,6 +16,7 @@ public static class Global
     public static RegexOptions SingleLineRegexOptions = RegexOptions.CultureInvariant | RegexOptions.IgnoreCase | RegexOptions.Singleline;
 }
 
+// REFACTOR: move this OUT of globals as an Extension Method and ... just shove it into a logical spot as a PRIVATE method within the tokenizer? (or wherever it's used)
 public static class ExtensionMethods
 {
     public static string ReplaceAtIndex(this string source, int index, char replacement)
