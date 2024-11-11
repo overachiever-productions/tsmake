@@ -2,6 +2,8 @@
 
 public interface ISourceLine
 {
+    int Start { get; }
+    int End { get; }
     int LineNumber { get; }
     int Depth { get; }
     string FileName { get; }  // name of the current file. 
@@ -11,8 +13,10 @@ public interface ISourceLine
     string PrintStack();
 }
 
-public class SourceLine(int lineNumber, string fileName, string text, Stack<string> stack) : ISourceLine
+public class SourceLine(int start, int end, int lineNumber, string text, Stack<string> stack) : ISourceLine
 {
+    public int Start { get; } = start;
+    public int End { get; } = end;
     public int LineNumber { get; } = lineNumber;
     public int Depth => this.Stack.Count;
     public string FileName => this.Stack.Peek(); 
@@ -74,10 +78,14 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         this.Stack.Push(filePath);
         
         int lineNumber = 0;
+        int offset = 1;
         foreach (string rawCodeLine in rawCodeLines)
         {
-            // ALWAYS increment the line# - otherwise, we LOSE original line #s for reporting on problems/errors/etc. 
-            lineNumber++; 
+            lineNumber++;
+            var start = offset;
+            var end = offset + rawCodeLine.Length;
+            offset = end;
+
 
             // TODO: 
             // HMMM. 
@@ -103,7 +111,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             if(DirectivesParser.IsRootDirective(rawCodeLine) || DirectivesParser.IsOutputDirective(rawCodeLine))
                 continue;
             
-            var currentLine = new SourceLine(lineNumber, filePath, rawCodeLine, new Stack<string>(this.Stack));
+            var currentLine = new SourceLine(start, end, lineNumber, rawCodeLine, new Stack<string>(this.Stack));
 
             if (DirectivesParser.IsIncludeDirective(rawCodeLine))
             {
@@ -141,13 +149,17 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             List<string> rawCodeLines = this.FileSystem.GetFileLines(fullFilePath);
 
             int lineNumber = 0;
+            int offset = 1;
             foreach (var line in rawCodeLines)
             {
                 lineNumber++;
+                var start = offset;
+                var end = offset + line.Length;
+                offset = end;
                 
                 if (DirectivesParser.IsIncludeDirective(line))
                 {
-                    var includeLine = new SourceLine(lineNumber, fullFilePath, line, new Stack<string>(this.Stack));
+                    var includeLine = new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack));
                     var include = DirectivesParser.GetFileSystemDirective(includeLine, this.FileSystem);
 
                     foreach (var child in include.GetChildren())
@@ -157,7 +169,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     }
                 }
                 else 
-                    output.Add(new SourceLine(lineNumber, fullFilePath, line, new Stack<string>(this.Stack)));
+                    output.Add(new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack)));
             }
         }
         catch 
@@ -184,13 +196,17 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         bool outputed = false;
 
         int lineNumber = 0;
+        int offset = 1;
         foreach (string line in rawCodeLines)
         {
             lineNumber++; // ALWAYS increments... 
+            var start = offset;
+            var end = offset + line.Length;
+            offset = end;
 
             if (DirectivesParser.IsRootDirective(line))
             {
-                var manifestLine = new SourceLine(lineNumber, filePath, line, new Stack<string>(this.Stack));
+                var manifestLine = new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack));
                 this.RootDirective = (RootDirective)DirectivesParser.GetFileSystemDirective(manifestLine, this.FileSystem);
 
                 rooted = true;
