@@ -234,6 +234,7 @@ public interface ITokenizer
     void MarkFinalizerForRemoval(ITokenFinalizer finalizer);
 
     CharacterBuffer CharacterBuffer { get; }
+    int CurrentLineNumber { get; }
 
     List<ICodeLine> CodeLines { get; }
     List<CodeString> Strings { get; }
@@ -259,6 +260,14 @@ public class Tokenizer : ITokenizer
     private List<ITokenFinalizer> _finalizersToRemove = new List<ITokenFinalizer>();
     private Stack<int> _newlineIndexes = new Stack<int>();
     private int _lineNumber = 0;
+
+    public int CurrentLineNumber
+    {
+        get
+        {
+            return this._lineNumber + 1;
+        }
+    }
 
     // TODO: arguably, these should be PROTECTED/INTERNAL vs public. 
     public NewLineStatus NewLineStatus { get; set; }

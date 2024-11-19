@@ -35,10 +35,10 @@ public class SourceLine(int start, int end, int lineNumber, string text, Stack<s
         int depth = 0;
         while (copyOfStack.Count > 0)
         {
-            if(depth == 0)
+            if (depth == 0)
                 builder.AppendLine(copyOfStack.Pop());
             else
-                
+
                 builder.AppendLine($"\tin {copyOfStack.Pop()}");
 
             depth++;
@@ -86,7 +86,6 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             var end = offset + rawCodeLine.Length;
             offset = end;
 
-
             // TODO: 
             // HMMM. 
             // I could have an int position = 0; right up near the lineNumber = 0 declaration. 
@@ -122,7 +121,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     var manifestLines = RecurseSubFile(child, depth + 1);
                     foreach (var line in manifestLines)
                     {
-                        // if it's illegal (i.e., an illegal directive)... ignore or throw...  (probably ignore. I don't care about missed directives)
+                        // TODO: if it's illegal (i.e., an illegal directive)... ignore or throw...  (probably ignore. I don't care about missed directives)
                         //          and 'illegal' here (for a directive) might mean something like ROOT, OUTPUT or whatever (i.e., within a NESTED/SUB-FILE).
 
                         // if it's a comment ... don't add. 
@@ -141,11 +140,12 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
     private List<ISourceLine> RecurseSubFile(string fullFilePath, int depth)
     {
-        this.Stack.Push(fullFilePath);
         var output = new List<ISourceLine>();
 
         try
         {
+            this.Stack.Push(fullFilePath);
+
             List<string> rawCodeLines = this.FileSystem.GetFileLines(fullFilePath);
 
             int lineNumber = 0;
@@ -170,22 +170,27 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                 }
                 else 
                     output.Add(new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack)));
+
+                string fileContents = this.FileSystem.GetFileContent(fullFilePath);
+                var tokenizer = this.TokenizerFactory.FromString(fileContents);
+
+                tokenizer.Tokenize(); // we're NOT interested in tokenized results - just checking that we DON'T have an open string/comment... 
             }
+        }
+        catch (SyntaxException sex)
+        {
+            // this is a hack to see if i can get the file name in: 
+
+            throw new SyntaxException($"FILE: [{fullFilePath}] stack\r\n: [{this.GetPrintedStack()}] => Line: [{sex.LineNumber}] => Original: [{sex.Message}]", sex.LineNumber, sex.Start, sex.End);
         }
         catch 
         {
-            throw;
+            throw;  // preserve stack-trace
         }
         finally
         {
             this.Stack.Pop();
         }
-
-        string fileContents = this.FileSystem.GetFileContent(fullFilePath);
-        var tokenizer = this.TokenizerFactory.FromString(fileContents);
-        
-        // TODO: wrap this in a try catch and/or put SOME sort of error handling here. 
-        tokenizer.Tokenize();
 
         return output;
     }
@@ -213,14 +218,34 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             }
 
             if (DirectivesParser.IsOutputDirective(line))
-            {
-
                 outputed = true;
-            }
 
             if (rooted && outputed)
                 return;
-
         }
+    }
+
+    private string GetPrintedStack()
+    {
+        // REFACTOR: 
+        // TODO: 
+        // this is an EXACT copy/paste of ICodeLine.PrintStack();
+        //      i.e., just need to make the logic below part of an ... extension method or something. 
+
+        var copyOfStack = new Stack<string>(this.Stack);
+        StringBuilder builder = new StringBuilder();
+        int depth = 0;
+        while (copyOfStack.Count > 0)
+        {
+            if (depth == 0)
+                builder.AppendLine(copyOfStack.Pop());
+            else
+
+                builder.AppendLine($"\tin {copyOfStack.Pop()}");
+
+            depth++;
+        }
+
+        return builder.ToString().TrimEnd();
     }
 }

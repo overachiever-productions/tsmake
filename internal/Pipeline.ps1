@@ -50,7 +50,7 @@ function Execute-Pipeline {
 			# 		3. line-number. 
 			# 		technically, ALL of the above is 'SourceLine' stuff... 
 			
-			Write-Host "syntax exception... need to translate";
+			Write-Host "Syntax Error: $_";
 			return;
 		}
 #		catch [tsmake.Error] {
@@ -72,7 +72,7 @@ function Execute-Pipeline {
 		# HACK / TESTING: 
 $codeLines = $assembler.CodeLines;
 foreach ($line in $codeLines) {
-	Write-Host "$($line.LineText)		=> $($line.FileName), $($line.LineNumber)";
+	Write-Host "$($line.LineText)		=> $($line.FileName) : $($line.LineNumber) ($($line.Start), $($line.End))";
 }
 		
 # PICKUP / NEXT: 

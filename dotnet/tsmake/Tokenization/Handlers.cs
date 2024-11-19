@@ -130,8 +130,8 @@ public class StringFinalizer : ITokenFinalizer
         if (tokenizer.StringStatus.HasFlag(StringStatus.InString))
         {
             var end = tokenizer.CurrentIndex;
-
-            throw new SyntaxException($"Syntax Error. String starting at position {this._stringStart} is not closed.");
+            
+            throw new SyntaxException($"Syntax Error. String starting at position {this._stringStart} is not closed.", tokenizer.CurrentLineNumber, this._stringStart, end);
         }
             
     }
@@ -350,11 +350,13 @@ public class BlockCommentFiller(int commentStart) : ITokenFinalizer
 
     public void Terminate(ITokenizer tokenizer)
     {
+        var end = tokenizer.CurrentIndex;
+
         if (tokenizer.BlockCommentNestingLevel > 0)
-            throw new SyntaxException($"Syntax Error. Block-Comment (with nested block-comments) starting at position {this._commentStart} is not closed.");
+            throw new SyntaxException($"Syntax Error. Block-Comment (with nested block-comments) starting at position {this._commentStart} is not closed.", tokenizer.CurrentLineNumber, this._commentStart, end);
 
         if (tokenizer.BlockCommentStatus.HasFlag(BlockCommentStatus.InComment))
-            throw new SyntaxException($"Syntax Error. Block-Comment starting at position {this._commentStart} is not closed.");
+            throw new SyntaxException($"Syntax Error. Block-Comment starting at position {this._commentStart} is not closed.", tokenizer.CurrentLineNumber, this._commentStart, end);
     }
 }
 

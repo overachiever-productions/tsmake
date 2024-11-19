@@ -29,8 +29,9 @@ public static class ExtensionMethods
     }
 }
 
-public class SyntaxException : Exception
+public class SyntaxException(string message, int line, int start, int end) : Exception(message)
 {
-    public SyntaxException(string message) : base(message) { }
-    public SyntaxException(string message, Exception ex) : base(message, ex) { }
+    public int LineNumber { get; } = line;
+    public int Start { get; } = start;
+    public int End { get; } = end;
 }
