@@ -1,5 +1,9 @@
 ﻿namespace tsmake;
 
+// NOTE: The current implementation could be seen to treat CrLf/Newline handlers as IF they're semi-optional. 
+//      They're NOT optional. They're 100% required and/or tied to basic tokenization/operations and 
+//          without these handlers, the whole tokenizer would simply fall apart. 
+//          i.e., it only LOOKs like these handlers are optional - cuz they use the SAME framework/approach as ALL other handlers. 
 public class CrLfInitializer : ITokenInitializer
 {
     public bool Handles(char character)
@@ -12,7 +16,7 @@ public class CrLfInitializer : ITokenInitializer
         if (tokenizer.NewLineStatus.HasFlag(NewLineStatus.CrFoundWaitingOnLf))
             return;
 
-        if (13 == (int)currentChar && 10 == reader.Peek())
+        if (13 == currentChar && 10 == reader.Peek())
         {
             tokenizer.NewLineStatus = NewLineStatus.CrFoundWaitingOnLf;
 
@@ -21,7 +25,7 @@ public class CrLfInitializer : ITokenInitializer
             return;
         }
 
-        // if still here, then 10 or 13 (by self). SKIP finalizer and spin up new line NOW. 
+        // if still here, then 10 or 13 (by self).  
         tokenizer.AddCodeLineFromCurrentLocation();
     }
 }
@@ -69,28 +73,24 @@ public class StringInitializer : ITokenInitializer
 
         bool isUnicode = false;
         int stringStart = tokenizer.CurrentIndex;
-        if (78 == (int)tokenizer.CharacterBuffer.Peek())
+        if (78 == tokenizer.CharacterBuffer.Peek())
         {
             isUnicode = true;
             stringStart--;
         }
 
-        var finalizer = new StringFinalizer(stringStart, isUnicode);
+        var finalizer = new StringFinalizer(stringStart, isUnicode, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset());
         tokenizer.EnlistFinalizer(finalizer);
     }
 }
 
-public class StringFinalizer : ITokenFinalizer
+public class StringFinalizer(int stringStart, bool isUnicode, int startLine, int startLineOffset) : ITokenFinalizer
 {
     private int _nestingDepth = 0;
-    private int _stringStart = 0;
-    private bool _isUnicode = false;
-
-    public StringFinalizer(int stringStart, bool isUnicode)
-    {
-        this._stringStart = stringStart;
-        this._isUnicode = isUnicode;
-    }
+    private int _stringStart = stringStart;
+    private bool _isUnicode = isUnicode;
+    private int _startLine = startLine;
+    private int _startLineOffset = startLineOffset;
 
     public bool WatchesFor(char character)
     {
@@ -110,9 +110,10 @@ public class StringFinalizer : ITokenFinalizer
         if (0 == this._nestingDepth)
         {
             string text = tokenizer.RawText.Substring(this._stringStart, tokenizer.CurrentIndex - this._stringStart + 1);
-            var codeString = new CodeString(this._stringStart, tokenizer.CurrentIndex, text, this._isUnicode);
 
-            tokenizer.Strings.Add(codeString); // feels dirty to add this directly... but maybe ... meh?
+            var codeString = new CodeString(this._stringStart, tokenizer.CurrentIndex, this._startLine, this._startLineOffset, text, this._isUnicode);
+
+            tokenizer.Strings.Add(codeString); 
 
             tokenizer.MarkFinalizerForRemoval(this);
         }
@@ -130,10 +131,13 @@ public class StringFinalizer : ITokenFinalizer
         if (tokenizer.StringStatus.HasFlag(StringStatus.InString))
         {
             var end = tokenizer.CurrentIndex;
-            
-            throw new SyntaxException($"Syntax Error. String starting at position {this._stringStart} is not closed.", tokenizer.CurrentLineNumber, this._stringStart, end);
+
+            var errorString = tokenizer.RawText.Substring(this._stringStart, end - this._stringStart);
+            var index = 1 + this._stringStart - tokenizer.GetLineStartOffsetByOffset(this._stringStart);
+            var message = $"String starting on line {tokenizer.CurrentLineNumber} (Col: {index}) is not closed => {errorString}";
+
+            throw new SyntaxException(message, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset(), this._stringStart, end);
         }
-            
     }
 }
 
@@ -157,8 +161,8 @@ public class GoInitializer : ITokenInitializer
         {
             var currentCodeLine = tokenizer.GetCurrentLineFromCurrentLocation();
 
-            string textBeforeGo = currentCodeLine.LineText.Substring(0,
-                currentCodeLine.LineText.IndexOf("go", StringComparison.CurrentCultureIgnoreCase));
+            string textBeforeGo = currentCodeLine.Text.Substring(0,
+                currentCodeLine.Text.IndexOf("go", StringComparison.CurrentCultureIgnoreCase));
 
             if (string.IsNullOrWhiteSpace(textBeforeGo))
                 tokenizer.EnlistFinalizer(new GoFinalizer(tokenizer.CurrentIndex, currentCodeLine));
@@ -179,15 +183,15 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
     public void Process(ITokenizer tokenizer, StringReader reader, char currentChar)
     {
         // legal characters following "GO" are: <whitespace>, digits (e.g., GO12), or "--" (i.e., "GO--this is legit - even if it's lame)). 
-        int goTextEnd = this._currentLine.LineText.IndexOf("go", StringComparison.InvariantCultureIgnoreCase) + 2;
-        string textAfterGo = this._currentLine.LineText.Substring(goTextEnd, this._currentLine.LineText.Length - goTextEnd);
+        int goTextEnd = this._currentLine.Text.IndexOf("go", StringComparison.InvariantCultureIgnoreCase) + 2;
+        string textAfterGo = this._currentLine.Text.Substring(goTextEnd, this._currentLine.Text.Length - goTextEnd);
 
         var regex = new Regex(@"--[^\r\n]*", Global.SingleLineRegexOptions);
         textAfterGo = regex.Replace(textAfterGo, "");
 
         char charImmediatelyAfterGo = (char)reader.Peek();
 
-        string goText = this._currentLine.LineText.Substring(0, goTextEnd);
+        string goText = this._currentLine.Text.Substring(0, goTextEnd);
         int goNumber = 0;
         GoStatement goStatement = null;
 
@@ -199,20 +203,20 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
             if (m.Success)
             {
                 string number = m.Groups["number"].Value;
-                int index = this._currentLine.LineText.IndexOf(number, StringComparison.InvariantCultureIgnoreCase);
+                int index = this._currentLine.Text.IndexOf(number, StringComparison.InvariantCultureIgnoreCase);
 
-                goText = this._currentLine.LineText.Substring(0, index + number.Length);
+                goText = this._currentLine.Text.Substring(0, index + number.Length);
                 goNumber = int.Parse(number);
             }
 
-            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, goText, goNumber);
+            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, goNumber);
         }
 
         // now ... check for eol comments - e.g., "GO--and this is an ugly comment in a stupid spot right up next to the GO".
         if ((int)charImmediatelyAfterGo == 45)
         {
             if (string.IsNullOrWhiteSpace(textAfterGo))
-                goStatement = new GoStatement(this._goStart, tokenizer.CurrentIndex, goText, 0);
+                goStatement = new GoStatement(this._goStart, tokenizer.CurrentIndex, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, 0);
         }
 
         // check for GO### - which is legit (e.g., GO3)
@@ -223,13 +227,13 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
             if (m.Success)
             {
                 string number = m.Groups["number"].Value;
-                int index = this._currentLine.LineText.IndexOf(number, StringComparison.InvariantCultureIgnoreCase);
+                int index = this._currentLine.Text.IndexOf(number, StringComparison.InvariantCultureIgnoreCase);
 
-                goText = this._currentLine.LineText.Substring(0, index + number.Length);
+                goText = this._currentLine.Text.Substring(0, index + number.Length);
                 goNumber = int.Parse(number);
             }
 
-            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, goText, goNumber);
+            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, goNumber);
         }
 
         if ((int)charImmediatelyAfterGo == 59)
@@ -283,15 +287,17 @@ public class BlockCommentInitializer : ITokenInitializer
         if (42 == nextChar)
         {
             tokenizer.BlockCommentStatus = BlockCommentStatus.SlashFoundWaitingOnStar;
-            var finalizer = new BlockCommentFiller(tokenizer.CurrentIndex);
+            var finalizer = new BlockCommentFiller(tokenizer.CurrentIndex, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset());
             tokenizer.EnlistFinalizer(finalizer);
         }
     }
 }
 
-public class BlockCommentFiller(int commentStart) : ITokenFinalizer
+public class BlockCommentFiller(int commentStart, int startLine, int startLineOffset) : ITokenFinalizer
 {
     private int _commentStart = commentStart;
+    private int _startLine = startLine;
+    private int _startLineOffset = startLineOffset;
 
     public bool WatchesFor(char character)
     {
@@ -345,7 +351,7 @@ public class BlockCommentFiller(int commentStart) : ITokenFinalizer
 
     public void ProcessRemoval(ITokenizer tokenizer)
     {
-        tokenizer.EnlistFinalizer(new BlockCommentFinalizer(this._commentStart));
+        tokenizer.EnlistFinalizer(new BlockCommentFinalizer(this._commentStart, this._startLine, this._startLineOffset));
     }
 
     public void Terminate(ITokenizer tokenizer)
@@ -353,17 +359,27 @@ public class BlockCommentFiller(int commentStart) : ITokenFinalizer
         var end = tokenizer.CurrentIndex;
 
         if (tokenizer.BlockCommentNestingLevel > 0)
-            throw new SyntaxException($"Syntax Error. Block-Comment (with nested block-comments) starting at position {this._commentStart} is not closed.", tokenizer.CurrentLineNumber, this._commentStart, end);
+            throw new SyntaxException($"Syntax Error. Block-Comment (with nested block-comments) starting at position {this._commentStart} is not closed.", 
+                tokenizer.CurrentLineNumber, 
+                tokenizer.GetCurrentLineStartOffset(), 
+                this._commentStart, 
+                end);
 
         if (tokenizer.BlockCommentStatus.HasFlag(BlockCommentStatus.InComment))
-            throw new SyntaxException($"Syntax Error. Block-Comment starting at position {this._commentStart} is not closed.", tokenizer.CurrentLineNumber, this._commentStart, end);
+            throw new SyntaxException($"Syntax Error. Block-Comment starting at position {this._commentStart} is not closed.", 
+                tokenizer.CurrentLineNumber, 
+                tokenizer.GetCurrentLineStartOffset(), 
+                this._commentStart, 
+                end);
     }
 }
 
 // 3x 'handlers' allow watching for FINAL "/" in "/* comments */" without triggering a NEW comment or problems with nesting.
-public class BlockCommentFinalizer(int commentStart) : ITokenFinalizer
+public class BlockCommentFinalizer(int commentStart, int startLine, int startLineOffset) : ITokenFinalizer
 {
     private int _commentStart = commentStart;
+    private int _startLine = startLine;
+    private int _startLineOffset = startLineOffset;
 
     public bool WatchesFor(char character)
     {
@@ -375,7 +391,7 @@ public class BlockCommentFinalizer(int commentStart) : ITokenFinalizer
     {
         string commentText = tokenizer.RawText.Substring(this._commentStart, tokenizer.CurrentIndex - this._commentStart + 1);
 
-        tokenizer.BlockComments.Add(new BlockComment(this._commentStart, tokenizer.CurrentIndex + 1, commentText));
+        tokenizer.BlockComments.Add(new BlockComment(this._commentStart, tokenizer.CurrentIndex + 1, this._startLine, this._startLineOffset, commentText));
         tokenizer.BlockCommentStatus = BlockCommentStatus.None;
         tokenizer.MarkFinalizerForRemoval(this);
     }
@@ -429,7 +445,7 @@ public class CommentFinalizer(int commentStart) : ITokenFinalizer
     {
         // as soon as we hit CR, CRLF, or LF ... we're done... 
         var commentText = tokenizer.RawText.Substring(this._commentStart, tokenizer.CurrentIndex - this._commentStart);
-        tokenizer.Comments.Add(new Comment(this._commentStart, tokenizer.CurrentIndex, commentText));
+        tokenizer.Comments.Add(new Comment(this._commentStart, tokenizer.CurrentIndex, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset(), commentText));
 
         tokenizer.CommentStatus = CommentStatus.None;
         tokenizer.MarkFinalizerForRemoval(this);
@@ -443,7 +459,7 @@ public class CommentFinalizer(int commentStart) : ITokenFinalizer
         if (tokenizer.CommentStatus.HasFlag(CommentStatus.InComment))
         {
             var commentText = tokenizer.RawText.Substring(this._commentStart, tokenizer.CurrentIndex - this._commentStart);
-            tokenizer.Comments.Add(new Comment(this._commentStart, tokenizer.CurrentIndex, commentText));
+            tokenizer.Comments.Add(new Comment(this._commentStart, tokenizer.CurrentIndex, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset(), commentText));
         }
     }
 }

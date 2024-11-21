@@ -11,8 +11,8 @@ public class StringTests
         Assert.That(sut.CodeLines.Count, Is.EqualTo(1));
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
-        Assert.That(sut.Strings[0].Start, Is.EqualTo(11));
-        Assert.That(sut.Strings[0].End, Is.EqualTo(18));
+        Assert.That(sut.Strings[0].OffsetStart, Is.EqualTo(11));
+        Assert.That(sut.Strings[0].OffsetEnd, Is.EqualTo(18));
 
         StringAssert.AreEqualIgnoringCase("'string'", sut.Strings[0].Text);
     }
@@ -125,6 +125,33 @@ public class StringTests
         Assert.Throws<SyntaxException>(sut.Tokenize);
     }
 
+    [Test]
+    public void StringHandlers_Identify_LineNumber_Of_Strings()
+    {
+        var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n'4'");
+        sut.Tokenize();
+
+        Assert.That(sut.Strings.Count, Is.EqualTo(1));
+
+        var s1 = sut.Strings[0];
+        Assert.That(s1.StartLine, Is.EqualTo(4));
+        Assert.That(s1.OffsetStart, Is.EqualTo(15));
+        Assert.That(s1.StartLineOffset, Is.EqualTo(15));  
+        Assert.That(s1.ColumnStart, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void StringHandlers_Identify_ColumnStart_Of_Strings()
+    {
+        var sut = Tokenizer.StringTokenizer("--1\r\nSELECT 'some string' [output]");
+        sut.Tokenize();
+
+        Assert.That(sut.Strings.Count, Is.EqualTo(1));
+
+        var s1 = sut.Strings[0];
+        Assert.That(s1.StartLine, Is.EqualTo(2));
+        Assert.That(s1.ColumnStart, Is.EqualTo(8));
+    }
 
     // with -- and 'string' in the comments. but ... don't break the line. 
     //          i.e., think it's as simple as adding a new EolCommentStatus ... and IF tokenizer.EolStatus <> None ... then ignore... 

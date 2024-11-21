@@ -96,7 +96,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             //   then, if I ever want/need to lookup a code LINE by its position within the file... 
             //      i do a while(targetPosition < startOfLine)
             //          or whatever ... so that I basically zip through (foreach) EACH CodeLine
-            //                      in a given file until I find a .Start > targetPosition... at which point, i know which line i'm on... 
+            //                      in a given file until I find a .OffsetStart > targetPosition... at which point, i know which line i'm on... 
             //                      and... done. 
             //      the above ALL presupposes that each "rawCodeLine" i'm iterating through HAS the CRLF, LF, or CR as part of the line in question... 
             //          if that's NOT true... then I've got some issues. 
@@ -180,8 +180,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         catch (SyntaxException sex)
         {
             // this is a hack to see if i can get the file name in: 
-
-            throw new SyntaxException($"FILE: [{fullFilePath}] stack\r\n: [{this.GetPrintedStack()}] => Line: [{sex.LineNumber}] => Original: [{sex.Message}]", sex.LineNumber, sex.Start, sex.End);
+            throw new SyntaxException($"{sex.Message} (line start: {sex.LineOffsetStart} vs string start: {sex.OffsetStart})", sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd);
         }
         catch 
         {
@@ -225,13 +224,19 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         }
     }
 
-    private string GetPrintedStack()
+    private string GetStackSummary()
     {
         // REFACTOR: 
         // TODO: 
         // this is an EXACT copy/paste of ICodeLine.PrintStack();
         //      i.e., just need to make the logic below part of an ... extension method or something. 
 
+
+        // TODO: there's an ugly bug here ... 
+        //      well, 2x of them: 
+        //      a) i'm pretty sure this is doing things backwards ... i'd like to see the 'furthest' file at the top... 
+        //      b) it's ... copying ... itself? 
+        //          which is why {depth} is injected into the string/output) ... 
         var copyOfStack = new Stack<string>(this.Stack);
         StringBuilder builder = new StringBuilder();
         int depth = 0;
@@ -240,8 +245,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             if (depth == 0)
                 builder.AppendLine(copyOfStack.Pop());
             else
-
-                builder.AppendLine($"\tin {copyOfStack.Pop()}");
+                builder.AppendLine($"\t{depth}in {copyOfStack.Pop()}");
 
             depth++;
         }

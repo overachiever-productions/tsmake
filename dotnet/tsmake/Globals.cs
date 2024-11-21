@@ -29,9 +29,10 @@ public static class ExtensionMethods
     }
 }
 
-public class SyntaxException(string message, int line, int start, int end) : Exception(message)
+public class SyntaxException(string message, int line, int lineStart, int start, int end) : Exception(message)
 {
     public int LineNumber { get; } = line;
-    public int Start { get; } = start;
-    public int End { get; } = end;
+    public int LineOffsetStart { get; } = lineStart;
+    public int OffsetStart { get; } = start;
+    public int OffsetEnd { get; } = end;
 }

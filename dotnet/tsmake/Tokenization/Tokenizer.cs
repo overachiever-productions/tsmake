@@ -86,11 +86,9 @@ public interface ITokenFinalizer
 public interface ICodeLine
 {
     int LineNumber { get; }
-    string LineText { get; }
-    int StartOffset { get; }
-    int EndOffset { get; }
-
-    bool IsIncludeDirective { get; }
+    string Text { get; }
+    int OffsetStart { get; }  // This is the SAME as the .LineOffsetStart
+    int OffsetEnd { get; }
 
     void SetLineNumber(int lineNumber);
 }
@@ -98,19 +96,9 @@ public interface ICodeLine
 public class CodeLine(string lineText, int startOffset, int endOffset) : ICodeLine
 {
     public int LineNumber { get; private set; }
-    public string LineText { get; private set; } = lineText;
-    public int StartOffset { get; private set; } = startOffset;
-    public int EndOffset { get; private set; } = endOffset;
-
-    public bool IsIncludeDirective
-    {
-        get
-        {
-            // TODO: this MIGHT not be the EXACT way to do this (though... i do LIKE that i'm moving all 'directive' parsing code out to ... a single-ish class).
-            //      in other words, I might need to handle this slightly differently than using a STATIC method... 
-            return DirectivesParser.IsIncludeDirective(this.LineText);
-        }
-    }
+    public string Text { get; private set; } = lineText;
+    public int OffsetStart { get; private set; } = startOffset;
+    public int OffsetEnd { get; private set; } = endOffset;
 
     public void SetLineNumber(int lineNumber)
     {
@@ -120,65 +108,82 @@ public class CodeLine(string lineText, int startOffset, int endOffset) : ICodeLi
 
 public interface IToken<T>
 {
-    TokenType TokenType { get; }
-    int Start { get;  }
-    int End { get; }
+    // REFACTOR: I've got a handful of copy/paste implementations that aren't that variable - i.e., use a 'TokenBase' for core functionality 
+    TokenType TokenType { get; }            // REFACTOR: for my purposes, this is pretty redundant. i could easily nuke it and probably be just fine. 
+    int OffsetStart { get;  }
+    int OffsetEnd { get; }
     string Text { get; }
+
+    int StartLine { get; }  
+    int StartLineOffset { get; } 
+    int ColumnStart { get; }
 
     T Clone();
 }
 
-public class CodeString(int start, int end, string text, bool isUnicode) : IToken<CodeString>
+public class CodeString(int start, int end, int lineStart, int lineStartOffset, string text, bool isUnicode) : IToken<CodeString>
 {
     public TokenType TokenType { get; } = TokenType.String;
-    public int Start { get; } = start;
-    public int End { get; } = end;
+    public int OffsetStart { get; } = start;
+    public int OffsetEnd { get; } = end;
     public string Text { get; } = text;
+    public int StartLine { get; } = lineStart;
+    public int StartLineOffset { get; } = lineStartOffset;
+    public int ColumnStart => 1 + this.OffsetStart - this.StartLineOffset;
     public bool IsUnicode { get; } = isUnicode;
 
     public CodeString Clone()
     {
-        return new CodeString(this.Start, this.End, this.Text, this.IsUnicode);
+        return new CodeString(this.OffsetStart, this.OffsetEnd, lineStart, lineStartOffset, text, isUnicode);
     }
 }
 
-public class GoStatement(int startIndex, int endIndex, string text, int goCount) : IToken<GoStatement>
+public class GoStatement(int startIndex, int endIndex, int lineStart, int lineStartOffset, string text, int goCount) : IToken<GoStatement>
 {
     public TokenType TokenType { get; } = TokenType.GoStatement;
-    public int Start { get; } = startIndex;
-    public int End { get; } = endIndex;
+    public int OffsetStart { get; } = startIndex;
+    public int OffsetEnd { get; } = endIndex;
     public string Text { get; } = text;
+    public int StartLine { get; } = lineStart;
+    public int StartLineOffset { get; } = lineStartOffset;
+    public int ColumnStart => 1 + this.OffsetStart - this.StartLineOffset;
     public int GoCount { get; } = goCount;
 
     public GoStatement Clone()
     {
-        return new GoStatement(this.Start, this.End, this.Text, this.GoCount);
+        return new GoStatement(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text, goCount);
     }
 }
 
-public class BlockComment(int startIndex, int endIndex, string text) : IToken<BlockComment>
+public class BlockComment(int startIndex, int endIndex, int lineStart, int lineStartOffset, string text) : IToken<BlockComment>
 {
     public TokenType TokenType { get; } = TokenType.BlockComment;
-    public int Start { get; } = startIndex;
-    public int End { get; } = endIndex;
+    public int OffsetStart { get; } = startIndex;
+    public int OffsetEnd { get; } = endIndex;
     public string Text { get; } = text;
+    public int StartLine { get; } = lineStart;
+    public int StartLineOffset { get; } = lineStartOffset;
+    public int ColumnStart => 1 + this.OffsetStart - this.StartLineOffset;
 
     public BlockComment Clone()
     {
-        return new BlockComment(this.Start, this.End, this.Text);
+        return new BlockComment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text);
     }
 }
 
-public class Comment(int startIndex, int endIndex, string text) : IToken<Comment>
+public class Comment(int startIndex, int endIndex, int lineStart, int lineStartOffset, string text) : IToken<Comment>
 {
     public TokenType TokenType { get; } = TokenType.EolComment;
-    public int Start { get; } = startIndex;
-    public int End { get; } = endIndex;
+    public int OffsetStart { get; } = startIndex;
+    public int OffsetEnd { get; } = endIndex;
     public string Text { get; } = text;
+    public int StartLine { get; } = lineStart;
+    public int StartLineOffset { get; } = lineStartOffset;
+    public int ColumnStart => 1 + this.OffsetStart - this.StartLineOffset;
 
     public Comment Clone()
     {
-        return new Comment(this.Start, this.End, this.Text);
+        return new Comment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text);
     }
 }
 
@@ -250,6 +255,7 @@ public interface ITokenizer
     void AddCodeLineFromCurrentLocation();
 
     int GetCurrentLineStartOffset();
+    int GetLineStartOffsetByOffset(int offset);
     CodeLine GetCurrentLineFromCurrentLocation();
 }
 
@@ -306,8 +312,32 @@ public class Tokenizer : ITokenizer
         return this._newlineIndexes.Peek();
     }
 
+    public int GetLineStartOffsetByOffset(int offset)
+    {
+        // TODO: https://overachieverllc.atlassian.net/browse/TSM-17
+        int[] indexes = this._newlineIndexes.ToArray();
+
+        if (indexes.Length == 0)
+            return 1;
+
+        int current = 0;
+        int index = 0;
+        while (offset >= current)
+        {
+            if (index >= indexes.Length)
+                return current;
+
+            current = indexes[index];
+            index++;
+        }
+
+        return current;
+    }
+
     public CodeLine GetCurrentLineFromCurrentLocation()
     {
+        // REFACTOR: this really could/should just be a LINQ 'query' to find the 'index' closest to the offset (but not over it).
+
         int start = this.GetCurrentLineStartOffset();
 
         char[] chars = { '\r', '\n' };
@@ -394,18 +424,18 @@ public class Tokenizer : ITokenizer
         int previousStart = 0;
         foreach (var go in this.GoStatements)
         {
-            int end = go.End - previousStart - go.Text.Length;
+            int end = go.OffsetEnd - previousStart - go.Text.Length;
 
             string batchText = this.RawText.Substring(previousStart, end).Trim();
             if (string.IsNullOrWhiteSpace(batchText) || batchText == go.Text)
                 continue;
 
             var sources = new TextSources(this.RawText, this.RawText.Substring(previousStart, (end + go.Text.Length)));
-            var batch = new ParsedBatch(previousStart, go.End, batchText, sources);
+            var batch = new ParsedBatch(previousStart, go.OffsetEnd, batchText, sources);
             batch.GoStatement = go;
             output.Add(batch);
 
-            previousStart = go.Start + go.Text.Length;
+            previousStart = go.OffsetStart + go.Text.Length;
         }
 
         if (previousStart < this.RawText.Length)
@@ -448,8 +478,8 @@ public class Tokenizer : ITokenizer
 
                         if (string.IsNullOrWhiteSpace(text))
                         {
-                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.Start, ' ');
-                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.Start + 1, ' ');
+                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.OffsetStart, ' ');
+                            sourceText = sourceText.ReplaceAtIndex(batch.GoStatement.OffsetStart + 1, ' ');
 
                             // There's an EDGE case where a 'batch' might terminate with a USE xxxx; ... and have NOTHING after it. 
                             //      that's ... useless, but, need to account for it (which the code below does):
@@ -512,13 +542,13 @@ public static class TokenizerExtensions
         var output = new List<T>();
         foreach (var token in tokens)
         {
-            if (token.Start >= start && token.End <= end)
+            if (token.OffsetStart >= start && token.OffsetEnd <= end)
                 output.Add(token.Clone());
 
             // TODO: The logic below lets us short-circuit once we've matched stuff overlapping start - end. BUT... it's NOT working - i.e., tests fail when 
             //      it's enabled/uncommented. Figure out what's up and/or if, honestly, it's needed (though, if there are 200 'strings' and we get what we need on 
             //         string #3 ...can't really see that it makes sense to go through the remaining 197 of them (i.e., i think it does make sense to try to get this to work).
-            //if (end > token.End)
+            //if (end > token.OffsetEnd)
             //    break;
         }
 

@@ -192,7 +192,7 @@ public class DirectivesParser
     //public static IDirective GetDirective(ICodeLine codeLine)
     //{
     //    var regex = new Regex(@"^\s*--\s*##\s*(?<directive>((ROOT|OUTPUT|FILEMARKER|VERSION_CHECKER|DIRECTORY|FILE|COMMENT|:))|[:]{1})\s*", Global.SingleLineRegexOptions);
-    //    Match m = regex.Match(codeLine.LineText);
+    //    Match m = regex.Match(codeLine.Text);
 
     //    if (m.Success)
     //    {
@@ -201,7 +201,7 @@ public class DirectivesParser
     //        int start = directive.Index;
     //        int end = start + directive.Length;
 
-    //        var directiveData = var directiveData = GetDirectiveData(sourceLine.LineText.Substring(end));
+    //        var directiveData = var directiveData = GetDirectiveData(sourceLine.Text.Substring(end));
 
     //        // TODO: wrap this in a try/catch... 
     //        switch (directiveName)
