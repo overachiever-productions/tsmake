@@ -21,10 +21,10 @@ Line.
         Assert.That(sut.CodeLines.Count, Is.EqualTo(2));
 
         Assert.That(sut.CodeLines[0].LineNumber == 0);
-        StringAssert.AreEqualIgnoringCase("New\r\n", sut.CodeLines[0].LineText);
+        StringAssert.AreEqualIgnoringCase("New\r\n", sut.CodeLines[0].Text);
 
         Assert.That(sut.CodeLines[1].LineNumber == 1);
-        StringAssert.AreEqualIgnoringCase("Line.", sut.CodeLines[1].LineText);
+        StringAssert.AreEqualIgnoringCase("Line.", sut.CodeLines[1].Text);
     }
 
     [Test]
@@ -36,7 +36,7 @@ Line.
         // should be 3x lines - cuz that's how many there are (NOT 4 lines - i.e., the 'native' CRLF + a bogus/terminator from code/processing.
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
 
-        StringAssert.AreEqualIgnoringCase("", sut.CodeLines[2].LineText);
+        StringAssert.AreEqualIgnoringCase("", sut.CodeLines[2].Text);
     }
 
     [Test]
@@ -47,9 +47,9 @@ Line.
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
 
-        StringAssert.AreEqualIgnoringCase("This is a\n", sut.CodeLines[0].LineText);
-        StringAssert.AreEqualIgnoringCase("terrible newline (in windows)\r\n", sut.CodeLines[1].LineText);
-        StringAssert.AreEqualIgnoringCase(".", sut.CodeLines[2].LineText);
+        StringAssert.AreEqualIgnoringCase("This is a\n", sut.CodeLines[0].Text);
+        StringAssert.AreEqualIgnoringCase("terrible newline (in windows)\r\n", sut.CodeLines[1].Text);
+        StringAssert.AreEqualIgnoringCase(".", sut.CodeLines[2].Text);
     }
 
     [Test]
@@ -60,8 +60,8 @@ Line.
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
 
-        StringAssert.AreEqualIgnoringCase("This is a\r", sut.CodeLines[0].LineText);
-        StringAssert.AreEqualIgnoringCase("terrible newline (in windows)\r\n", sut.CodeLines[1].LineText);
-        StringAssert.AreEqualIgnoringCase(".", sut.CodeLines[2].LineText);
+        StringAssert.AreEqualIgnoringCase("This is a\r", sut.CodeLines[0].Text);
+        StringAssert.AreEqualIgnoringCase("terrible newline (in windows)\r\n", sut.CodeLines[1].Text);
+        StringAssert.AreEqualIgnoringCase(".", sut.CodeLines[2].Text);
     }
 }

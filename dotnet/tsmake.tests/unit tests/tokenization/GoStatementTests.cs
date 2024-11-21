@@ -11,8 +11,8 @@ public class GoStatementTests
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
 
-        Assert.That(sut.GoStatements[0].Start, Is.EqualTo(36));
-        Assert.That(sut.GoStatements[0].End, Is.EqualTo(38));
+        Assert.That(sut.GoStatements[0].OffsetStart, Is.EqualTo(36));
+        Assert.That(sut.GoStatements[0].OffsetEnd, Is.EqualTo(38));
 
         // sanity check: 
         string go = text.Substring(36, 2);
@@ -125,6 +125,16 @@ public class GoStatementTests
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void GoHandlers_Correctly_Identify_GoStatement_LineNumber()
+    {
+        var sut = Tokenizer.StringTokenizer("SELECT 'this is\r\nmulti-line-text' [output];\r\nGO");
+        sut.Tokenize();
+
+        Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
+        Assert.That(sut.GoStatements[0].StartLine, Is.EqualTo(3));
     }
 
     // what other edge cases are there? 

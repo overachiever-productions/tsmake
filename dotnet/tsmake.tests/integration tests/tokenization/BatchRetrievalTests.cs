@@ -135,8 +135,8 @@ public class BatchRetrievalTests
         Assert.That(batches[0].Comments.Count, Is.EqualTo(1));
 
         // sanity check vs new offsets/indexes: 
-        Assert.That(batches[0].Comments[0].Start, Is.EqualTo(15));
-        Assert.That(batches[0].Comments[0].End, Is.EqualTo(30));
+        Assert.That(batches[0].Comments[0].OffsetStart, Is.EqualTo(15));
+        Assert.That(batches[0].Comments[0].OffsetEnd, Is.EqualTo(30));
 
         StringAssert.AreEqualIgnoringCase("-- comment here", batches[0].Comments[0].Text);
     }
@@ -156,8 +156,8 @@ public class BatchRetrievalTests
         Assert.That(batches[0].BlockComments.Count, Is.EqualTo(2));
 
         // sanity check
-        Assert.That(batches[0].BlockComments[0].Start, Is.EqualTo(0));
-        Assert.That(batches[0].BlockComments[0].End, Is.EqualTo(78));
+        Assert.That(batches[0].BlockComments[0].OffsetStart, Is.EqualTo(0));
+        Assert.That(batches[0].BlockComments[0].OffsetEnd, Is.EqualTo(78));
 
         StringAssert.AreEqualIgnoringCase("/* Some \r\n multi-line comments with a \r\n\r\nUSE [master]\r\nGO\r\n\r\n nested inside*/", text.Substring(0, 78 - 0));
         StringAssert.AreEqualIgnoringCase("/* Some \r\n multi-line comments with a \r\n\r\nUSE [master]\r\nGO\r\n\r\n nested inside*/", batches[0].BlockComments[0].Text);

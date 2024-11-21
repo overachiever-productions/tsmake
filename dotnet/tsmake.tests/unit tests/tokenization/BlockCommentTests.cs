@@ -12,8 +12,8 @@ public class BlockCommentTests
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
-        Assert.That(sut.BlockComments[0].Start, Is.EqualTo(34));
-        Assert.That(sut.BlockComments[0].End, Is.EqualTo(53));
+        Assert.That(sut.BlockComments[0].OffsetStart, Is.EqualTo(34));
+        Assert.That(sut.BlockComments[0].OffsetEnd, Is.EqualTo(53));
 
         // sanity check: 
         string comment = text.Substring(34, 53 - 34);
