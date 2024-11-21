@@ -50,7 +50,7 @@ function Execute-Pipeline {
 			# 		3. line-number. 
 			# 		technically, ALL of the above is 'SourceLine' stuff... 
 			
-			Write-Host "Syntax Error: $_";
+			Write-Host "SYNTAX ERROR`r`n$_";
 			return;
 		}
 #		catch [tsmake.Error] {
