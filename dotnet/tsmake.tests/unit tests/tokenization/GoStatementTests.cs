@@ -128,7 +128,7 @@ public class GoStatementTests
     }
 
     [Test]
-    public void GoHandlers_Correctly_Identify_GoStatement_LineNumber()
+    public void GoHandlers_Identify_GoStatement_LineNumber()
     {
         var sut = Tokenizer.StringTokenizer("SELECT 'this is\r\nmulti-line-text' [output];\r\nGO");
         sut.Tokenize();
@@ -137,5 +137,21 @@ public class GoStatementTests
         Assert.That(sut.GoStatements[0].StartLine, Is.EqualTo(3));
     }
 
-    // what other edge cases are there? 
+    [Test]
+    public void GoHandlers_Identify_GoStatement_LineStartOffset()
+    {
+        var sut = Tokenizer.StringTokenizer("SELECT 'this is\r\nmulti-line-text' [output];\r\nGO  -- with some comments");
+        sut.Tokenize();
+
+        Assert.That(sut.GoStatements.Count, Is.EqualTo(1));
+        Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
+
+        Assert.That(sut.GoStatements[0].StartLine, Is.EqualTo(3));
+
+        Assert.That(sut.GoStatements[0].StartLineOffset, Is.EqualTo(45));
+        StringAssert.AreEqualIgnoringCase(sut.CodeLines[2].Text, "GO  -- with some comments");
+
+        // sanity checks: 
+        StringAssert.AreEqualIgnoringCase(sut.RawText.Substring(45,2), "GO");
+    }
 }

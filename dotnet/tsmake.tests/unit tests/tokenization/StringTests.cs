@@ -125,7 +125,7 @@ public class StringTests
         Assert.Throws<SyntaxException>(sut.Tokenize);
     }
 
-    [Test]
+    [Test] 
     public void StringHandlers_Identify_LineNumber_Of_Strings()
     {
         var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n'4'");

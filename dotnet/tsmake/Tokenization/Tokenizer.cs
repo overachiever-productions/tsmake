@@ -134,7 +134,7 @@ public class CodeString(int start, int end, int lineStart, int lineStartOffset, 
 
     public CodeString Clone()
     {
-        return new CodeString(this.OffsetStart, this.OffsetEnd, lineStart, lineStartOffset, text, isUnicode);
+        return new CodeString(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, this.Text, this.IsUnicode);
     }
 }
 
@@ -151,7 +151,7 @@ public class GoStatement(int startIndex, int endIndex, int lineStart, int lineSt
 
     public GoStatement Clone()
     {
-        return new GoStatement(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text, goCount);
+        return new GoStatement(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, this.Text, this.GoCount);
     }
 }
 
@@ -167,11 +167,11 @@ public class BlockComment(int startIndex, int endIndex, int lineStart, int lineS
 
     public BlockComment Clone()
     {
-        return new BlockComment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text);
+        return new BlockComment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, this.Text);
     }
 }
 
-public class Comment(int startIndex, int endIndex, int lineStart, int lineStartOffset, string text) : IToken<Comment>
+public class Comment(int startIndex, int endIndex, int lineStart, int lineStartOffset, string text = "") : IToken<Comment>
 {
     public TokenType TokenType { get; } = TokenType.EolComment;
     public int OffsetStart { get; } = startIndex;
@@ -183,7 +183,7 @@ public class Comment(int startIndex, int endIndex, int lineStart, int lineStartO
 
     public Comment Clone()
     {
-        return new Comment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, text);
+        return new Comment(this.OffsetStart, this.OffsetEnd, this.StartLine, this.StartLineOffset, this.Text);
     }
 }
 
@@ -519,7 +519,7 @@ public class Tokenizer : ITokenizer
 
     public void AddCodeLineFromCurrentLocation()
     {
-        int lineStart = this.GetCurrentLineStartOffset();
+        int lineStart = this.GetCurrentLineStartOffset(); 
         int lineEnd = this.CurrentIndex + 1;
         if (lineEnd > this.RawText.Length)
             lineEnd = this.RawText.Length;
@@ -527,7 +527,7 @@ public class Tokenizer : ITokenizer
         string lineText = this.RawText.Substring(lineStart, lineEnd - lineStart);
         var codeLine = new CodeLine(lineText, lineStart, this.CurrentIndex + 1);
 
-        codeLine.SetLineNumber(this._lineNumber);
+        codeLine.SetLineNumber(this.CurrentLineNumber);
         this.CodeLines.Add(codeLine);
         this._lineNumber++;
 

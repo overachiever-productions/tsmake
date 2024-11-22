@@ -20,10 +20,10 @@ Line.
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(2));
 
-        Assert.That(sut.CodeLines[0].LineNumber == 0);
+        Assert.That(sut.CodeLines[0].LineNumber, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase("New\r\n", sut.CodeLines[0].Text);
 
-        Assert.That(sut.CodeLines[1].LineNumber == 1);
+        Assert.That(sut.CodeLines[1].LineNumber, Is.EqualTo(2));
         StringAssert.AreEqualIgnoringCase("Line.", sut.CodeLines[1].Text);
     }
 
@@ -63,5 +63,28 @@ Line.
         StringAssert.AreEqualIgnoringCase("This is a\r", sut.CodeLines[0].Text);
         StringAssert.AreEqualIgnoringCase("terrible newline (in windows)\r\n", sut.CodeLines[1].Text);
         StringAssert.AreEqualIgnoringCase(".", sut.CodeLines[2].Text);
+    }
+
+    [Test]
+    public void LineHandlers_Identify_Line_Numbers()
+    {
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.");
+        sut.Tokenize();
+
+        Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
+
+        Assert.That(sut.CodeLines[0].LineNumber, Is.EqualTo(1));
+        Assert.That(sut.CodeLines[1].LineNumber, Is.EqualTo(2));
+        Assert.That(sut.CodeLines[2].LineNumber, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void LineHandlers_Identify_Line_StartOffset()
+    {
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.but this is fine\r\nalso fine.");
+        sut.Tokenize();
+
+        Assert.That(sut.CodeLines.Count, Is.EqualTo(4));
+        Assert.That(sut.CodeLines[2].OffsetStart, Is.EqualTo(41));  // NOTE: this IS 'correct' - on a 0-based count. i.e., it's arguable that the line actually STARTS on 42... 
     }
 }

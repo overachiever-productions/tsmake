@@ -196,7 +196,7 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
         GoStatement goStatement = null;
 
         // check for most common scenario: whitespace OR end-of-string/file/etc.
-        if (string.IsNullOrWhiteSpace(charImmediatelyAfterGo.ToString()) || (65535 == (int)charImmediatelyAfterGo))
+        if (string.IsNullOrWhiteSpace(charImmediatelyAfterGo.ToString()) || (65535 == charImmediatelyAfterGo))
         {
             regex = new Regex(@"\s*(?<number>[0-9]+)", Global.SingleLineRegexOptions);
             Match m = regex.Match(textAfterGo);
@@ -209,14 +209,14 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
                 goNumber = int.Parse(number);
             }
 
-            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, goNumber);
+            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, tokenizer.CurrentLineNumber, this._currentLine.OffsetStart, goText, goNumber);
         }
 
         // now ... check for eol comments - e.g., "GO--and this is an ugly comment in a stupid spot right up next to the GO".
-        if ((int)charImmediatelyAfterGo == 45)
+        if (charImmediatelyAfterGo == 45)
         {
             if (string.IsNullOrWhiteSpace(textAfterGo))
-                goStatement = new GoStatement(this._goStart, tokenizer.CurrentIndex, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, 0);
+                goStatement = new GoStatement(this._goStart, tokenizer.CurrentIndex, tokenizer.CurrentLineNumber, this._currentLine.OffsetStart, goText, 0);
         }
 
         // check for GO### - which is legit (e.g., GO3)
@@ -233,7 +233,7 @@ public class GoFinalizer(int goStart, CodeLine currentLine) : ITokenFinalizer
                 goNumber = int.Parse(number);
             }
 
-            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, this._currentLine.LineNumber, this._currentLine.OffsetStart, goText, goNumber);
+            goStatement = new GoStatement(this._goStart, this._goStart + goText.Length, tokenizer.CurrentLineNumber, this._currentLine.OffsetStart, goText, goNumber);
         }
 
         if ((int)charImmediatelyAfterGo == 59)
@@ -374,7 +374,6 @@ public class BlockCommentFiller(int commentStart, int startLine, int startLineOf
     }
 }
 
-// 3x 'handlers' allow watching for FINAL "/" in "/* comments */" without triggering a NEW comment or problems with nesting.
 public class BlockCommentFinalizer(int commentStart, int startLine, int startLineOffset) : ITokenFinalizer
 {
     private int _commentStart = commentStart;

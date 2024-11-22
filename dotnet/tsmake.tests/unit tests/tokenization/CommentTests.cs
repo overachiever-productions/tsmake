@@ -66,11 +66,35 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Treat_Dashed_Lines_As_Single_Comment()
     {
-        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n-------------------------------");
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(3));
 
         StringAssert.AreEqualIgnoringCase("-- Flower Pot!", sut.Comments[1].Text);
+    }
+
+    [Test]
+    public void CommentHandlers_Identify_Line_Numbers()
+    {
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
+        sut.Tokenize();
+
+        Assert.That(sut.Comments.Count, Is.EqualTo(3));
+
+        Assert.That(sut.Comments[0].StartLine, Is.EqualTo(1));
+        Assert.That(sut.Comments[1].StartLine, Is.EqualTo(2));
+        Assert.That(sut.Comments[2].StartLine, Is.EqualTo(3));
+    }
+
+    [Test]
+    public void CommentHandlers_Identify_Line_Start_Offsets()
+    {
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
+        sut.Tokenize();
+
+        Assert.That(sut.Comments.Count, Is.EqualTo(3));
+
+        Assert.That(sut.Comments[1].StartLineOffset, Is.EqualTo(24));
     }
 }

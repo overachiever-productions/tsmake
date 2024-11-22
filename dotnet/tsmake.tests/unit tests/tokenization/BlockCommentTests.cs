@@ -109,4 +109,28 @@ public class BlockCommentTests
     // and   "/*   /*   /*   dsaklfjlds */*/*/"
 
 
+    [Test]
+    public void BlockCommentHandlers_Identify_Comment_Start_Line()
+    {
+        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a comment */\r\ndbo.someTable;");
+        sut.Tokenize();
+
+        Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
+        Assert.That(sut.BlockComments[0].StartLine, Is.EqualTo(2));
+    }
+
+    [Test]
+    public void BlockCommentHandlers_Identify_Comment_Start_Line_Offset()
+    {
+        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a \r\n multiline comment */\r\ndbo.someTable;");
+        sut.Tokenize();
+
+        Assert.That(sut.CodeLines.Count, Is.EqualTo(4));
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
+
+        Assert.That(sut.BlockComments[0].StartLine, Is.EqualTo(2));
+        Assert.That(sut.BlockComments[0].OffsetStart, Is.Not.EqualTo(sut.CodeLines[1].OffsetStart));
+        Assert.That(sut.BlockComments[0].StartLineOffset, Is.EqualTo(sut.CodeLines[1].OffsetStart));
+    }
 }
