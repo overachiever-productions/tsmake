@@ -23,31 +23,15 @@ public static class StackExtensions
 
 public interface ISourceLine
 {
-    // TODO: I honestly don't think I need .Start and .End. 
-    //        1. If I do, they should be called Offsets. ... 
-    //          only.
-    //        2. If i call them offsets, they're NOT offsets - because they're 'offsets' with the CR | LF | CRLF removed. 
-    //              which is pointless. 
-    //    instead, all'z I think I need is: 
-    //          .LineNumber  -> from this I can get the ACTUAL offsets via Tokenized Files. 
-    //          .FileName
-    //          .Stack
-    //          .Text
-    //int Start { get; }
-    //int End { get; }
     int LineNumber { get; }
     int Depth { get; }
     string FileName { get; }  // name of the current file. 
     Stack<string> Stack { get; }
     string LineText { get; }
-
-    //string PrintStack();
 }
 
 public class SourceLine(int lineNumber, string text, Stack<string> stack) : ISourceLine
 {
-    //public int Start { get; } = start;
-    //public int End { get; } = end;
     public int LineNumber { get; } = lineNumber;
     public int Depth => this.Stack.Count;
     public string FileName => this.Stack.Peek(); 
@@ -66,21 +50,15 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
     public List<ISourceLine> CodeLines { get; } = new List<ISourceLine>();
 
-    public void LoadContents(string filePath, int depth = 0)
+    public void LoadContents(string filePath)
     {
+        // TODO: validate the file path - i.e., make sure it's good or ... throw an exception/whatever. 
+        //      actually... just make sure that this is done from within powershell ... 
+
         List<string> rawCodeLines = this.FileSystem.GetFileLines(filePath);
 
-        // REFACTOR: depth is ALWAYS == 0 ... cuz I wrote this func thinking it'd be the recursion func... then ... handed recursion OFF to the RecurseSubFile func... 
-        if (depth == 0)
-        {
-            // TODO: validate the file path - i.e., make sure it's good or ... throw an exception/whatever. 
-
-            this.ProcessCoreDirectives(rawCodeLines, filePath);
-            if (this.RootDirective != null)
-                this.FileSystem.SetRootDirectory(this.RootDirective.AbsolutePath);
-            else
-                this.FileSystem.SetRootDirectory(this.FileSystem.WorkingDirectory);
-        }
+        this.ProcessCoreDirectives(rawCodeLines, filePath);
+        this.FileSystem.SetRootDirectory(this.RootDirective == null ? this.FileSystem.WorkingDirectory : this.RootDirective.AbsolutePath);
 
         this.Stack.Push(filePath);
         
@@ -103,17 +81,15 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
                 foreach (var child in include.GetChildren())
                 {
-                    var manifestLines = RecurseSubFile(child, depth + 1);
+                    var manifestLines = RecurseSubFile(child);
                     foreach (var line in manifestLines)
                     {
                         // TODO: if it's illegal (i.e., an illegal directive)... ignore or throw...  (probably ignore. I don't care about missed directives)
                         //          and 'illegal' here (for a directive) might mean something like ROOT, OUTPUT or whatever (i.e., within a NESTED/SUB-FILE).
 
-                        // if it's a comment ... don't add. 
                         if(DirectivesParser.IsCommentDirective(line.LineText))
                             continue;
 
-                        // otherwise:
                         this.CodeLines.Add(line);
                     }
                 }
@@ -123,12 +99,15 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         }
     }
 
-    private List<ISourceLine> RecurseSubFile(string fullFilePath, int depth)
+    private List<ISourceLine> RecurseSubFile(string fullFilePath)
     {
         var output = new List<ISourceLine>();
 
         try
         {
+            // TODO: make sur the file EXISTS before attempting to push it into the stack. 
+            //  MIGHT even make sense to do this ... from within the caller... (which is self after a point, but is initially .LoadContents()).
+
             this.Stack.Push(fullFilePath);
 
             List<string> rawCodeLines = this.FileSystem.GetFileLines(fullFilePath);
@@ -145,7 +124,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
                     foreach (var child in include.GetChildren())
                     {
-                        List<ISourceLine> nestedManifestLines = RecurseSubFile(child, depth + 1);
+                        List<ISourceLine> nestedManifestLines = RecurseSubFile(child);
                         output.AddRange(nestedManifestLines);
                     }
                 }
@@ -160,11 +139,8 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         }
         catch (SyntaxException sex)
         {
-            throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, new Stack<string>(this.Stack));
-        }
-        catch 
-        {
-            throw;  // preserve stack-trace
+            // addition of the current fileName is a HACK: https://overachieverllc.atlassian.net/browse/TSM-19
+            throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, fullFilePath, new Stack<string>(this.Stack));
         }
         finally
         {

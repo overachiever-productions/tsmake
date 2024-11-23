@@ -20,15 +20,12 @@ function Execute-Pipeline {
 	};
 	
 	process {
-		$processingErrors = @();
-		
 		# ====================================================================================================
 		# 1. Create Core Objects:
 		# ====================================================================================================	
 		[tsmake.BuildResult]$result = New-Object tsmake.BuildResult($Verb, $BuildFile);
 		
 		try {
-			
 			[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory);
 			[tsmake.TokenizerFactory]$tokenizerFactory = New-Object tsmake.TokenizerFactory;
 			
@@ -50,11 +47,15 @@ function Execute-Pipeline {
 			# create a new ... SYNTAX error 
 			# vs ... runtime error, validation error, etc. 
 			
+			# and add it to $result.Errors... 
+			# then return.
+			
 			Write-Host "SYNTAX ERROR`r`n$_";
 			#Write-Host "	Line: $($_.Exception.LineNumber)"
 			#Write-Host "	LineOffset: $($_.Exception.LineOffsetStart)"
 			#Write-Host "	StartOffset: $($_.Exception.OffsetStart)"
 			#Write-Host "	EndOffset: $($_.Exception.OffsetEnd)"
+			Write-Host "	File: $($_.Exception.FileName)"; # this is a hack - see https://overachieverllc.atlassian.net/browse/TSM-19
 			$stack = [tsmake.StackExtensions]::PrintStack($_.Exception.Stack);
 			Write-Host "	$stack"
 			return;

@@ -198,8 +198,7 @@ function Invoke-TsmBuild {
 		
 		
 		foreach ($file in $buildFiles) {
-			#Write-Host "Building: [$file]"			
-			
+			Write-Verbose "Starting Build Pipeline. Verb: [$verb]. File: [$file]";
 			
 			$results += Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
 		}
