@@ -133,10 +133,11 @@ public class StringFinalizer(int stringStart, bool isUnicode, int startLine, int
             var end = tokenizer.CurrentIndex;
 
             var errorString = tokenizer.RawText.Substring(this._stringStart, end - this._stringStart);
-            var index = 1 + this._stringStart - tokenizer.GetLineStartOffsetByOffset(this._stringStart);
-            var message = $"String starting on line {tokenizer.CurrentLineNumber} (Col: {index}) is not closed => {errorString}";
+            var index = 1 + this._stringStart - this._startLineOffset;
 
-            throw new SyntaxException(message, tokenizer.CurrentLineNumber, tokenizer.GetCurrentLineStartOffset(), this._stringStart, end);
+            var message = $"String starting on line {this._startLine} (Col: {index}) is not closed => {errorString}";
+
+            throw new SyntaxException(message, this._startLine, this._startLineOffset, this._stringStart, end);
         }
     }
 }
