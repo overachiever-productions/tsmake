@@ -1,36 +1,10 @@
 ﻿namespace tsmake;
 
-public interface ISourceLine
+public static class StackExtensions
 {
-    int Start { get; }
-    int End { get; }
-    int LineNumber { get; }
-    int Depth { get; }
-    string FileName { get; }  // name of the current file. 
-    Stack<string> Stack { get; }
-    string LineText { get; }
-
-    string PrintStack();
-}
-
-public class SourceLine(int start, int end, int lineNumber, string text, Stack<string> stack) : ISourceLine
-{
-    public int Start { get; } = start;
-    public int End { get; } = end;
-    public int LineNumber { get; } = lineNumber;
-    public int Depth => this.Stack.Count;
-    public string FileName => this.Stack.Peek(); 
-    public Stack<string> Stack { get; } = stack;
-    public string LineText { get; } = text;
-
-    public string PrintStack()
+    public static string PrintStack(this Stack<string> stack)
     {
-        // Eventually, I want this to look a bit more like this: 
-        //      D:\\FakeDir\\SomeFile.sql:line x(18 - 24)
-        //      	in D:\\FakeDir\\ParentFile.build.sql: line y
-        //      	in D:\\FakeDir\\my_latest.build.sql: line z
-
-        var copyOfStack = new Stack<string>(this.Stack);
+        var copyOfStack = new Stack<string>(stack);
         StringBuilder builder = new StringBuilder();
         int depth = 0;
         while (copyOfStack.Count > 0)
@@ -38,8 +12,7 @@ public class SourceLine(int start, int end, int lineNumber, string text, Stack<s
             if (depth == 0)
                 builder.AppendLine(copyOfStack.Pop());
             else
-
-                builder.AppendLine($"\tin {copyOfStack.Pop()}");
+                builder.AppendLine($"\t  -> {copyOfStack.Pop()}"); // I MIGHT want to put ⇗ in here instead of 'in' (or some other unicode 'arrow' thingy?)
 
             depth++;
         }
@@ -48,7 +21,40 @@ public class SourceLine(int start, int end, int lineNumber, string text, Stack<s
     }
 }
 
-// TODO: create an interface... (for testing)
+public interface ISourceLine
+{
+    // TODO: I honestly don't think I need .Start and .End. 
+    //        1. If I do, they should be called Offsets. ... 
+    //          only.
+    //        2. If i call them offsets, they're NOT offsets - because they're 'offsets' with the CR | LF | CRLF removed. 
+    //              which is pointless. 
+    //    instead, all'z I think I need is: 
+    //          .LineNumber  -> from this I can get the ACTUAL offsets via Tokenized Files. 
+    //          .FileName
+    //          .Stack
+    //          .Text
+    //int Start { get; }
+    //int End { get; }
+    int LineNumber { get; }
+    int Depth { get; }
+    string FileName { get; }  // name of the current file. 
+    Stack<string> Stack { get; }
+    string LineText { get; }
+
+    //string PrintStack();
+}
+
+public class SourceLine(int lineNumber, string text, Stack<string> stack) : ISourceLine
+{
+    //public int Start { get; } = start;
+    //public int End { get; } = end;
+    public int LineNumber { get; } = lineNumber;
+    public int Depth => this.Stack.Count;
+    public string FileName => this.Stack.Peek(); 
+    public Stack<string> Stack { get; } = stack;
+    public string LineText { get; } = text;
+}
+
 public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactory)
 {
     private Stack<string> Stack = new Stack<string>();
@@ -64,6 +70,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
     {
         List<string> rawCodeLines = this.FileSystem.GetFileLines(filePath);
 
+        // REFACTOR: depth is ALWAYS == 0 ... cuz I wrote this func thinking it'd be the recursion func... then ... handed recursion OFF to the RecurseSubFile func... 
         if (depth == 0)
         {
             // TODO: validate the file path - i.e., make sure it's good or ... throw an exception/whatever. 
@@ -78,31 +85,9 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         this.Stack.Push(filePath);
         
         int lineNumber = 0;
-        int offset = 1;
         foreach (string rawCodeLine in rawCodeLines)
         {
             lineNumber++;
-            var start = offset;
-            var end = offset + rawCodeLine.Length;
-            offset = end;
-
-            // TODO: 
-            // HMMM. 
-            // I could have an int position = 0; right up near the lineNumber = 0 declaration. 
-            // and here, for every, single, line that gets processed, get the LENGTH() of the line itself
-            //      and the START of each codeline would then be position, and the END of each code-line would then be position + LENGTH()
-            //      and then set position = position + LENGTH()... 
-            // and ... that now the start/end (or offset) of each code line.
-            //   then, if I ever want/need to lookup a code LINE by its position within the file... 
-            //      i do a while(targetPosition < startOfLine)
-            //          or whatever ... so that I basically zip through (foreach) EACH CodeLine
-            //                      in a given file until I find a .OffsetStart > targetPosition... at which point, i know which line i'm on... 
-            //                      and... done. 
-            //      the above ALL presupposes that each "rawCodeLine" i'm iterating through HAS the CRLF, LF, or CR as part of the line in question... 
-            //          if that's NOT true... then I've got some issues. 
-            //      also, not quite sure why I couldn't do this via the tokenizer too... 
-            //      though, I guess that comes later in the pipeline. 
-
 
             if (DirectivesParser.IsCommentDirective(rawCodeLine))
                 continue;
@@ -110,7 +95,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             if(DirectivesParser.IsRootDirective(rawCodeLine) || DirectivesParser.IsOutputDirective(rawCodeLine))
                 continue;
             
-            var currentLine = new SourceLine(start, end, lineNumber, rawCodeLine, new Stack<string>(this.Stack));
+            var currentLine = new SourceLine(lineNumber, rawCodeLine, new Stack<string>(this.Stack));
 
             if (DirectivesParser.IsIncludeDirective(rawCodeLine))
             {
@@ -149,17 +134,13 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             List<string> rawCodeLines = this.FileSystem.GetFileLines(fullFilePath);
 
             int lineNumber = 0;
-            int offset = 1;
             foreach (var line in rawCodeLines)
             {
                 lineNumber++;
-                var start = offset;
-                var end = offset + line.Length;
-                offset = end;
                 
                 if (DirectivesParser.IsIncludeDirective(line))
                 {
-                    var includeLine = new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack));
+                    var includeLine = new SourceLine(lineNumber, line, new Stack<string>(this.Stack));
                     var include = DirectivesParser.GetFileSystemDirective(includeLine, this.FileSystem);
 
                     foreach (var child in include.GetChildren())
@@ -169,18 +150,17 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     }
                 }
                 else 
-                    output.Add(new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack)));
+                    output.Add(new SourceLine(lineNumber, line, new Stack<string>(this.Stack)));
 
                 string fileContents = this.FileSystem.GetFileContent(fullFilePath);
                 var tokenizer = this.TokenizerFactory.FromString(fileContents);
 
-                tokenizer.Tokenize(); // we're NOT interested in tokenized results - just checking that we DON'T have an open string/comment... 
+                tokenizer.Tokenize(); // we're NOT interested in tokenized results - just checking that we DON'T have an open strings/comments... 
             }
         }
         catch (SyntaxException sex)
         {
-            // this is a hack to see if i can get the file name in: 
-            throw new SyntaxException($"{sex.Message} (line start: {sex.LineOffsetStart} vs string start: {sex.OffsetStart})", sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd);
+            throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, new Stack<string>(this.Stack));
         }
         catch 
         {
@@ -200,17 +180,13 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         bool outputed = false;
 
         int lineNumber = 0;
-        int offset = 1;
         foreach (string line in rawCodeLines)
         {
             lineNumber++; // ALWAYS increments... 
-            var start = offset;
-            var end = offset + line.Length;
-            offset = end;
 
             if (DirectivesParser.IsRootDirective(line))
             {
-                var manifestLine = new SourceLine(start, end, lineNumber, line, new Stack<string>(this.Stack));
+                var manifestLine = new SourceLine(lineNumber, line, new Stack<string>(this.Stack));
                 this.RootDirective = (RootDirective)DirectivesParser.GetFileSystemDirective(manifestLine, this.FileSystem);
 
                 rooted = true;
@@ -222,34 +198,5 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             if (rooted && outputed)
                 return;
         }
-    }
-
-    private string GetStackSummary()
-    {
-        // REFACTOR: 
-        // TODO: 
-        // this is an EXACT copy/paste of ICodeLine.PrintStack();
-        //      i.e., just need to make the logic below part of an ... extension method or something. 
-
-
-        // TODO: there's an ugly bug here ... 
-        //      well, 2x of them: 
-        //      a) i'm pretty sure this is doing things backwards ... i'd like to see the 'furthest' file at the top... 
-        //      b) it's ... copying ... itself? 
-        //          which is why {depth} is injected into the string/output) ... 
-        var copyOfStack = new Stack<string>(this.Stack);
-        StringBuilder builder = new StringBuilder();
-        int depth = 0;
-        while (copyOfStack.Count > 0)
-        {
-            if (depth == 0)
-                builder.AppendLine(copyOfStack.Pop());
-            else
-                builder.AppendLine($"\t{depth}in {copyOfStack.Pop()}");
-
-            depth++;
-        }
-
-        return builder.ToString().TrimEnd();
     }
 }

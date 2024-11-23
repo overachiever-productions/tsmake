@@ -20,6 +20,8 @@ function Execute-Pipeline {
 	};
 	
 	process {
+		$processingErrors = @();
+		
 		# ====================================================================================================
 		# 1. Create Core Objects:
 		# ====================================================================================================	
@@ -44,13 +46,17 @@ function Execute-Pipeline {
 			$assembler.LoadContents($BuildFile);
 		}
 		catch [tsmake.SyntaxException]{
-			# TODO: dotnet SyntaxException needs to include 3x additional bits of info OTHER than just the string implementation it currently uses: 
-			# 		1. SourceFile details (i.e., file name)
-			# 		2. position. 
-			# 		3. line-number. 
-			# 		technically, ALL of the above is 'SourceLine' stuff... 
+			
+			# create a new ... SYNTAX error 
+			# vs ... runtime error, validation error, etc. 
 			
 			Write-Host "SYNTAX ERROR`r`n$_";
+			#Write-Host "	Line: $($_.Exception.LineNumber)"
+			#Write-Host "	LineOffset: $($_.Exception.LineOffsetStart)"
+			#Write-Host "	StartOffset: $($_.Exception.OffsetStart)"
+			#Write-Host "	EndOffset: $($_.Exception.OffsetEnd)"
+			$stack = [tsmake.StackExtensions]::PrintStack($_.Exception.Stack);
+			Write-Host "	$stack"
 			return;
 		}
 #		catch [tsmake.Error] {

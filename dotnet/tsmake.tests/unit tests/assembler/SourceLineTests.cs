@@ -6,7 +6,7 @@ public class SourceLineTests
     public void SourceLine_Shows_Depth_Zero_On_No_Ancestors()
     {
         var stack = new Stack<string>();
-        var sut = new SourceLine(48, 75, 3, "Fake Line Text for Line # 3", new Stack<string>(stack));
+        var sut = new SourceLine(3, "Fake Line Text for Line # 3", new Stack<string>(stack));
 
         Assert.That(sut.Depth, Is.EqualTo(0));
     }
@@ -17,7 +17,7 @@ public class SourceLineTests
         var stack = new Stack<string>();
         stack.Push(@"D:\FakeDir\ParentFile.build.sql");
 
-        var sut = new SourceLine(48, 75, 3, "Fake Line Text for Line # 3", new Stack<string>(stack));
+        var sut = new SourceLine(3, "Fake Line Text for Line # 3", new Stack<string>(stack));
 
         Assert.That(sut.Depth, Is.EqualTo(1));
     }
@@ -31,7 +31,7 @@ public class SourceLineTests
         var stack = new Stack<string>();
         stack.Push(parentFile);
         
-        var sut = new SourceLine(48, 75, 3, "Fake Line Text for Line # 3", new Stack<string>(stack));
+        var sut = new SourceLine(3, "Fake Line Text for Line # 3", new Stack<string>(stack));
 
         Assert.That(sut.Depth, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase(childFile, sut.FileName);
@@ -46,11 +46,11 @@ public class SourceLineTests
         // Simulate Assembler .Push()ing a new file. (Note, SourceLines do NOT .Push()) current file, assembler does. 
         stack.Push(@"D:\FakeDir\SomeFile.sql");
 
-        var sut = new SourceLine(48, 75, 3, "Fake Line Text for Line # 3", new Stack<string>(stack));
+        var sut = new SourceLine(3, "Fake Line Text for Line # 3", new Stack<string>(stack));
 
         Assert.That(sut.Depth, Is.EqualTo(2));
 
-        string printedStack = sut.PrintStack();
+        string printedStack = sut.Stack.PrintStack();
         var lines = printedStack.Split('\n');
 
         Assert.That(sut.Depth, Is.EqualTo(2));
@@ -63,13 +63,14 @@ public class SourceLineTests
         var stack = new Stack<string>();
         stack.Push(@"D:\FakeDir\ParentFile.build.sql");
 
-        // Simulate Assembler .Push()ing a new file. (Note, SourceLines do NOT .Push()) current file, assembler does. 
+        // Simulate Assembler .Push()ing a new file.
+        // Note: SourceLines do NOT .Push() current file, Assembler does. 
         stack.Push(@"D:\FakeDir\SomeFile.sql");
 
-        var sut = new SourceLine(48, 75, 3, "Fake Line Text for Line # 3", new Stack<string>(stack));
-        string printedStack = sut.PrintStack();
+        var sut = new SourceLine(3, "Fake Line Text for Line # 3", new Stack<string>(stack));
+        string printedStack = sut.Stack.PrintStack();
 
-        var expectedOutput = "D:\\FakeDir\\SomeFile.sql\r\n\tin D:\\FakeDir\\ParentFile.build.sql";
+        var expectedOutput = "D:\\FakeDir\\SomeFile.sql\r\n\t  -> D:\\FakeDir\\ParentFile.build.sql";
 
         StringAssert.AreEqualIgnoringCase(expectedOutput, printedStack);
         Assert.That(sut.Depth, Is.EqualTo(2));

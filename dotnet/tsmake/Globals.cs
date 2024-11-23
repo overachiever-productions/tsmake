@@ -3,8 +3,6 @@ global using System;
 global using System.IO;
 global using System.Text;
 global using System.Linq;
-global using System.Data.Common;
-global using System.Data.Odbc;
 global using System.Collections.Generic;
 global using System.Text.RegularExpressions;
 global using System.Management.Automation;
@@ -29,10 +27,11 @@ public static class ExtensionMethods
     }
 }
 
-public class SyntaxException(string message, int line, int lineStart, int start, int end) : Exception(message)
+public class SyntaxException(string message, int line, int lineStart, int start, int end, Stack<string> stack = null) : Exception(message)
 {
     public int LineNumber { get; } = line;
     public int LineOffsetStart { get; } = lineStart;
     public int OffsetStart { get; } = start;
     public int OffsetEnd { get; } = end;
+    public Stack<string> Stack { get; } = stack;
 }
