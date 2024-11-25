@@ -17,7 +17,7 @@
 	RequiredAssemblies = @()
 	ScriptsToProcess = @()
 	TypesToProcess = @()
-	FormatsToProcess = @()
+	FormatsToProcess = @('tsmake.format.ps1xml')
 	NestedModules = @()
 	FunctionsToExport = '*' #For performance, list functions explicitly
 	CmdletsToExport = '*' 

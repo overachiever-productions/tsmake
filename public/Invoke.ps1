@@ -90,7 +90,8 @@ function Invoke-TsmBuild {
 			$verb = "Build";
 		}
 		
-		$results = @();
+		#$results = @();
+		$buildResult = New-Object tsmake.BuildWrapper;
 	};
 	
 	process {
@@ -200,11 +201,13 @@ function Invoke-TsmBuild {
 		foreach ($file in $buildFiles) {
 			Write-Verbose "Starting Build Pipeline. Verb: [$verb]. File: [$file]";
 			
-			$results += Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
+			#$results += Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
+			$result = Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
+			$buildResult.AddResult($result);
 		}
 	};
 	
 	end {
-		return $results;
+		return $buildResult;
 	};
 }

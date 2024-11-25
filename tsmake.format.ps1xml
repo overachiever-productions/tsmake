@@ -1,0 +1,103 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Configuration>
+  <Controls>
+    <Control>
+      <Name>tsmake-Error</Name>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <Text>&lt;This is where an error definition would go.&gt;</Text>
+              <NewLine />
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </Control>
+    <Control>
+      <Name>conditional-control</Name>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <Text>this is conditional text. </Text>
+              <NewLine />
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </Control>
+  </Controls>
+  <ViewDefinitions>
+    <View>
+      <Name>BuildResult-Default</Name>
+      <ViewSelectedBy>
+        <TypeName>tsmake.BuildWrapper</TypeName>
+      </ViewSelectedBy>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.SizedDash(118)</ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.ColoredString('BUILD RESULTS', 'Cyan', 2)</ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.ColoredString('Number of Operations: ', 'Cyan', 4) + $_.Results.Count</ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.ColoredString('Outcome: ', 'Cyan', 4) + $TsmFormatter.GetBuildWrapperOutcome($_)</ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.SizedDash(118)</ScriptBlock>
+              </ExpressionBinding>
+              <NewLine />
+              <ExpressionBinding>
+                <ItemSelectionCondition>
+                  <!--
+                    So... I finally got the SYNTAX (xml) right... 
+                    BUT... the behavior just isn't working out... 
+                    
+                       https://learn.microsoft.com/en-us/powershell/scripting/developer/format/itemselectioncondition-element-for-expressionbinding-for-groupby-format?view=powershell-7.4
+                    
+                    -->
+                  <ScriptBlock>$false</ScriptBlock>
+                </ItemSelectionCondition>
+                <CustomControlName>conditional-control</CustomControlName>
+              </ExpressionBinding>
+              <ExpressionBinding>
+                <ScriptBlock>$_.Errors</ScriptBlock>
+                <EnumerateCollection />
+                <CustomControlName>tsmake-Error</CustomControlName>
+              </ExpressionBinding>
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </View>
+    <!-- maybe turn the stuff below into a 'control'?) -->
+    <!--<View>
+      <Name>BuildResult-Default</Name>
+      <ViewSelectedBy>
+        <TypeName>tsmake.BuildResult</TypeName>
+      </ViewSelectedBy>
+      <CustomControl>
+        <CustomEntries>
+          <CustomEntry>
+            <CustomItem>
+              <ExpressionBinding>
+                <ScriptBlock>$TsmFormatter.SizedDash(11)</ScriptBlock>
+              </ExpressionBinding>
+            </CustomItem>
+          </CustomEntry>
+        </CustomEntries>
+      </CustomControl>
+    </View>-->
+  </ViewDefinitions>
+</Configuration>

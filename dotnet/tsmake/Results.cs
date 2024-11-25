@@ -61,6 +61,28 @@ public class BuildResult(Verb verb, string buildFile) : BaseResult(OperationType
     public string BuildFile { get;  } = buildFile;
 }
 
+public class BuildWrapper
+{
+    public List<IResult> Results { get; } = new List<IResult>();
+
+    public List<IError> Errors
+    {
+        get
+        {
+            var output = new List<IError>();
+            foreach(var result in this.Results)
+                output.AddRange(result.Errors);
+
+            return output;
+        }
+    }
+
+    public void AddResult(IResult added)
+    {
+        this.Results.Add(added);
+    }
+}
+
 // TODO: add the following result types - eventually: 
 //  MigrationResult (i.e., RunnerResult or whatever is needed to handle executions). 
 //  GeneratorResult (i.e., what happens when you instruct tsmake to create a new build.sql file from sourc-control or whatever. 
