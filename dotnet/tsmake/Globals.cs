@@ -27,12 +27,11 @@ public static class ExtensionMethods
     }
 }
 
-public class SyntaxException(string message, int line, int lineStart, int start, int end, string fileName = "", Stack<string> stack = null) : Exception(message)
+public class SyntaxException(string message, int line, int lineStart, int start, int end, ISourceLine sourceLine = null) : Exception(message)
 {
     public int LineNumber { get; } = line;
-    public string FileName { get; } = fileName;     // SORT of a hack: https://overachieverllc.atlassian.net/browse/TSM-19
+    public ISourceLine SourceLine { get; } = sourceLine;
     public int LineOffsetStart { get; } = lineStart;
     public int OffsetStart { get; } = start;
     public int OffsetEnd { get; } = end;
-    public Stack<string> Stack { get; } = stack;
 }

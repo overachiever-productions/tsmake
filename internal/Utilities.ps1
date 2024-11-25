@@ -1,5 +1,11 @@
 ﻿Set-StrictMode -Version 3.0;
 
+# ====================================================================================================
+# Intrinsics:
+# ====================================================================================================	
+$global:TsmFormatter = [tsmake.Formatter]::Instance;
+$TsmFormatter.SetCurrentHostInfo($($Host.Name));
+
 filter New-ConfigurationError {
 	param (
 		[Parameter(Mandatory)]
@@ -26,7 +32,16 @@ filter New-ConfigurationError {
 }
 
 filter New-SyntaxError {
+	param (
+		[Parameter(Mandatory)]
+		[System.Management.Automation.ErrorRecord]$ErrorRecord,
+		[Parameter(Mandatory)]
+		[string]$Phase,
+		[string]$Facet,
+		[string]$Detail
+	);
 	
+	return [tsmake.Error]::NewSyntaxError($ErrorRecord.Exception.SourceLine, $Phase, $ErrorRecord.Exception.Message, $Facet, $Detail);
 }
 
 filter New-RuntimeError {

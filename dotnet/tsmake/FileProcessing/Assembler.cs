@@ -2,6 +2,9 @@
 
 public static class StackExtensions
 {
+    // REFACTOR: ... actually, I could probably make this an EXTENSION of my own EXCEPTIONs (SyntaxException) and so on
+    //      and then have the .PrintStack do all of the 'work' of burrowing down into exceptions' .ISourceLine -> .Stack. 
+    //  that'd be a LOT easier to call from within POWERSHELL. 
     public static string PrintStack(this Stack<string> stack)
     {
         var copyOfStack = new Stack<string>(stack);
@@ -41,6 +44,7 @@ public class SourceLine(int lineNumber, string text, Stack<string> stack) : ISou
 
 public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactory)
 {
+    private ISourceLine _currentSourceLine;
     private Stack<string> Stack = new Stack<string>();
     private IFileSystem FileSystem = fileSystem;
     private ITokenizerFactory TokenizerFactory = tokenizerFactory;
@@ -116,11 +120,12 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
             foreach (var line in rawCodeLines)
             {
                 lineNumber++;
-                
+
+                this._currentSourceLine = new SourceLine(lineNumber, line, new Stack<string>(this.Stack));
+
                 if (DirectivesParser.IsIncludeDirective(line))
                 {
-                    var includeLine = new SourceLine(lineNumber, line, new Stack<string>(this.Stack));
-                    var include = DirectivesParser.GetFileSystemDirective(includeLine, this.FileSystem);
+                    var include = DirectivesParser.GetFileSystemDirective(this._currentSourceLine, this.FileSystem);
 
                     foreach (var child in include.GetChildren())
                     {
@@ -129,7 +134,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     }
                 }
                 else 
-                    output.Add(new SourceLine(lineNumber, line, new Stack<string>(this.Stack)));
+                    output.Add(this._currentSourceLine);
 
                 string fileContents = this.FileSystem.GetFileContent(fullFilePath);
                 var tokenizer = this.TokenizerFactory.FromString(fileContents);
@@ -139,8 +144,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         }
         catch (SyntaxException sex)
         {
-            // addition of the current fileName is a HACK: https://overachieverllc.atlassian.net/browse/TSM-19
-            throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, fullFilePath, new Stack<string>(this.Stack));
+            throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, this._currentSourceLine);
         }
         finally
         {

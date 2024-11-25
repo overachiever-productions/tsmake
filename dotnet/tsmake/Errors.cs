@@ -67,10 +67,10 @@ public class Error : IError
         return new Error(ErrorType.Syntax, sourceLine, phase, message, facet, detail);
     }
 
-    public static Error FakeError(ErrorRecord errorRecord)
-    {
-        return new Error(ErrorType.Runtime, null, "fake", "doh", "doh2", "doh3");
-    }
+    //public static Error FakeError(ErrorRecord errorRecord)
+    //{
+    //    return new Error(ErrorType.Runtime, null, "fake", "doh", "doh2", "doh3");
+    //}
 
     //public static Error NewBuildError()
     //{

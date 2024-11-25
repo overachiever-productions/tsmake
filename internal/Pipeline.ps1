@@ -42,31 +42,10 @@ function Execute-Pipeline {
 		try {
 			$assembler.LoadContents($BuildFile);
 		}
-		catch [tsmake.SyntaxException]{
-			
-			# create a new ... SYNTAX error 
-			# vs ... runtime error, validation error, etc. 
-			
-			# and add it to $result.Errors... 
-			# then return.
-			
-			Write-Host "SYNTAX ERROR`r`n$_";
-			#Write-Host "	Line: $($_.Exception.LineNumber)"
-			#Write-Host "	LineOffset: $($_.Exception.LineOffsetStart)"
-			#Write-Host "	StartOffset: $($_.Exception.OffsetStart)"
-			#Write-Host "	EndOffset: $($_.Exception.OffsetEnd)"
-			Write-Host "	File: $($_.Exception.FileName)"; # this is a hack - see https://overachieverllc.atlassian.net/browse/TSM-19
-			$stack = [tsmake.StackExtensions]::PrintStack($_.Exception.Stack);
-			Write-Host "	$stack"
+		catch [tsmake.SyntaxException] {
+			$result.AddError((New-SyntaxError -ErrorRecord $_ -Phase "Pipeline::Assembly" -Facet "Bundling File Contents" -Detail "Assembler.LoadContents(`$BuildFile);" ));
 			return;
 		}
-#		catch [tsmake.Error] {
-#			# syntax error or whatever... 
-#			# 	should be able to just bind it to $results and then:
-#			
-#			Write-Host "tsmake.error of: $($_) "
-#			return;
-#		}
 		catch {
 			# runtime error unless the error is of a specific type... 
 			#  bind it to $results and then...
@@ -120,6 +99,19 @@ foreach ($line in $codeLines) {
 	};
 	
 	end {
+		
+<# 
+	Ghetto formatting: 
+					Write-Host "SYNTAX ERROR`r`n$_";
+						#Write-Host "	Line: $($_.Exception.LineNumber)"
+						#Write-Host "	LineOffset: $($_.Exception.LineOffsetStart)"
+						#Write-Host "	StartOffset: $($_.Exception.OffsetStart)"
+						#Write-Host "	EndOffset: $($_.Exception.OffsetEnd)"
+						Write-Host "	File: $($_.Exception.SourceLine.FileName)"; # bug: https://overachieverllc.atlassian.net/browse/TSM-20 
+					$stack = [tsmake.StackExtensions]::PrintStack($_.Exception.SourceLine.Stack);
+					Write-Host "	$stack"
+#>		
+		
 		$result.SetComplete();
 		return $result;
 	};
