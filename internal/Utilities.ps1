@@ -49,5 +49,16 @@ filter New-RuntimeError {
 }
 
 filter New-ValidationError {
+	param (
+		[Parameter(Mandatory)]
+		[string]$Message,
+		[Parameter(Mandatory)]
+		[string]$Phase,
+		[tsmake.SourceLine]$SourceLine,
+		[string]$Facet,
+		[string]$Detail
+	);
 	
+	
+	return [tsmake.Error]::NewValidationError($SourceLine, $Phase, $Message, $Facet, $Detail);
 } 

@@ -56,10 +56,10 @@ function Execute-Pipeline {
 		
 		
 		# HACK / TESTING: 
-$codeLines = $assembler.CodeLines;
-foreach ($line in $codeLines) {
-	Write-Host "$($line.LineText)		=> $($line.FileName) : $($line.LineNumber) ($($line.Start), $($line.End))";
-}
+#$codeLines = $assembler.CodeLines;
+#foreach ($line in $codeLines) {
+#	Write-Host "$($line.LineText)		=> $($line.FileName) : $($line.LineNumber)";
+#}
 		
 # PICKUP / NEXT: 
 		# 1. check for any errors or invalid files. 
@@ -99,6 +99,10 @@ foreach ($line in $codeLines) {
 	};
 	
 	end {
+		
+		
+		# HACK: 
+		#$result.AddError((New-ValidationError -Message "this is a fake error" -Phase "PRetend::END"));
 		
 <# 
 	Ghetto formatting: 

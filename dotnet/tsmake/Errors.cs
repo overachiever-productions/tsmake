@@ -57,10 +57,10 @@ public class Error : IError
         return new Error(errorRecord, ErrorType.Configuration, sourceLine, phase, message, facet, detail);
     }
 
-    //public static Error NewValidationError()
-    //{
-
-    //}
+    public static Error NewValidationError(SourceLine sourceLine, string phase, string message, string facet = "", string detail = "")
+    {
+        return new Error(ErrorType.Validation, sourceLine, phase, message, facet, detail);
+    }
 
     public static Error NewSyntaxError(SourceLine sourceLine, string phase, string message, string facet = "", string detail = "")
     {
@@ -79,6 +79,11 @@ public class Error : IError
     //public static Error NewDocumentationError()
     //{
     //}
+
+    public string GetErrorTitle()
+    {
+        return $"{this.ErrorType.ToString().ToUpperInvariant()} ERROR";
+    }
 
     public string Summarize()
     {

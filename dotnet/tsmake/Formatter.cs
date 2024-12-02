@@ -20,12 +20,12 @@ public class Formatter
         }
     }
 
-    public string SizedDash(int length)
+    public string SizedDash(int length, string color = "cyan")
     {
         string output = new String('-', length);
 
         if (this.HostSupportsColor)
-            output = $"{PSStyle.Instance.Foreground.BrightCyan}{output}{PSStyle.Instance.Reset}";
+            output = $"{this.ParseColor(color)}{output}{PSStyle.Instance.Reset}";
 
         return output;
     }
@@ -44,14 +44,14 @@ public class Formatter
         return output;
     }
 
-    public string SimpleString(string content, int indent = 0)
-    {
-        string padding = "";
-        if (indent > 0)
-            padding += new String(' ', indent);
+    //public string SimpleString(string content, int indent = 0)
+    //{
+    //    string padding = "";
+    //    if (indent > 0)
+    //        padding += new String(' ', indent);
 
-        return $"{padding}{content}";
-    }
+    //    return $"{padding}{content}";
+    //}
 
     public string ColoredString(string content, string color, int indent = 0)
     {
@@ -67,15 +67,15 @@ public class Formatter
         return output;
     }
 
-    public string GetBuildWrapperOutcome(BuildWrapper wrapper)
-    {
-        // if all results pass or .HasErrors = false... then ... green. 
-        // if all results fail or there are ... ugly kinds of exceptions (runtime?)
-        //      then ... red. 
-        // if some passed, some failed... then yellow? 
+    //public string GetBuildWrapperOutcome(BuildWrapper wrapper)
+    //{
+    //    // if all results pass or .HasErrors = false... then ... green. 
+    //    // if all results fail or there are ... ugly kinds of exceptions (runtime?)
+    //    //      then ... red. 
+    //    // if some passed, some failed... then yellow? 
 
-        return this.ColoredString("TBD", "yellow");
-    }
+    //    return this.ColoredString("TBD", "yellow");
+    //}
 
     private string ParseColor(string color)
     {
@@ -83,7 +83,7 @@ public class Formatter
         switch (color.ToLowerInvariant())
         {
             case "red":
-                return PSStyle.Instance.Foreground.Red;
+                return PSStyle.Instance.Foreground.BrightRed;
             case "green":
                 return PSStyle.Instance.Foreground.Green;
             case "yellow":
@@ -95,5 +95,52 @@ public class Formatter
         }
 
         // i.e., need to just add some logic to PARSE an enum of the type in questi8on
+    }
+
+    public string FormatBuildWrapper(BuildWrapper wrapper)
+    {
+        if (wrapper.Results.Count > 1)
+            return this.GetMultiResultBuildWrapper(wrapper);
+
+        if (wrapper.Errors.Count > 0)
+            return GetErroringSimpleBuildWrapperSummary(wrapper.Results[0]);
+
+        return GetSimpleBuildWrapperSummary(wrapper.Results[0]);
+    }
+
+    private string GetSimpleBuildWrapperSummary(IResult result)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.AppendLine(this.SizedDash(118));
+        sb.AppendLine(this.ColoredString("BUILD RESULTS: ", "red", 2));
+        sb.AppendLine(this.ColoredString($"NO ERRORS", "green", 4));
+        sb.AppendLine(this.SizedDash(118));
+
+        return sb.ToString();
+    }
+
+    private string GetErroringSimpleBuildWrapperSummary(IResult result)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.AppendLine(this.SizedDash(118, "red"));
+        sb.AppendLine(this.ColoredString("BUILD RESULTS: ", "red", 2));
+        sb.AppendLine(this.ColoredString($"ERRORS: {result.Errors.Count}", "red", 4));
+        sb.AppendLine(this.SizedDash(118, "red"));
+
+        return sb.ToString();
+    }
+
+    private string GetMultiResultBuildWrapper(BuildWrapper wrapper)
+    {
+        StringBuilder sb = new StringBuilder();
+
+        sb.AppendLine(this.SizedDash(118));
+        sb.AppendLine(this.ColoredString("BUILD RESULTS: ", "cyan", 2));
+        sb.AppendLine(this.ColoredString($"NO ERRORS", "green", 4));
+        sb.AppendLine(this.SizedDash(118));
+
+        return sb.ToString();
     }
 }

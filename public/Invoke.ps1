@@ -208,6 +208,11 @@ function Invoke-TsmBuild {
 	};
 	
 	end {
+		
+		Write-Host "BuildResults: $($buildResult.Results.Count)"
+		Write-Host " Build[0].HasErrors: $($buildResult.Results[0].HasErrors)"
+		
+		
 		return $buildResult;
 	};
 }
