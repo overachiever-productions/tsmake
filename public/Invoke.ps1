@@ -29,9 +29,10 @@
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 			$global:VerbosePreference = "Continue";				
 				# point to 2x .build files (in the test_files folder): 
-				$testFilesBase = (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files");
-				$files = @("$($testFilesBase)\simple1\basic.build.sql", "$($testFilesBase)\simple2\my.build.sql");
-			
+				
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files");
+				$testFilesRoot = (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files");
+				$files = @("$testFilesRoot\simple1\basic.build.sql", "$testFilesRoot\simple2\my.build.sql");
 				$files | Invoke-TsmBuild;
 			
 	MULTI-BUILD VIA PARAMTERS (send in an array of paths as -BuildFile):
@@ -57,6 +58,7 @@ function Invoke-TsmBuild {
 		[Parameter(ValueFromPipeline)]
 		[string[]]$BuildFile,
 		[string]$ConfigFile,
+		# REFACTOR: this should probably end up being changed to -OutputPath (and... this is another parameter that's problematic if/when attempting multiple builds, right?)
 		[string]$Output,  			# need to account for the option/fact that I can specify an OUTPUT directory and... the BUILD will build something like admindb_latest.sql (oh wait, that's hard-coded)
 									# actually, what I need to account for in the ABOVE is that there IS some sort of way to embed the VERSION info into the file name. I don't / won't use that for things like dda, admindb, etc... but for 'runners' and other users ... this'll be a big deal.
 
@@ -138,6 +140,8 @@ function Invoke-TsmBuild {
 		# TODO: Implement logic for: 
 		# 		a. checking for .config file based on -BuildFile name/pattern. 
 		# 		b. checking for the same as above BUT when there are MULTIPLE files. 
+		# 					AND, BEFORE I get too far into trying to scope this out, TEST it via the PIPELINE, cuz that's the only way 'multiple' files could even 'be a thing'
+		# 						AND, i need to see what that looks like before getting too far into what I THINK the handlers for all of this will end up being. 
 		# 			at which point ... ... I'm going to have to 'bind' a -BuildFile and its corresponding -ConfigFile together... 
 		# 				i.e., i certainly don't want to have the proj1.build.sql (being built at same time as proj2.build.sql) getting BOUND/'multiplexed' to
 		# 					proj2.config.build.sql or whatever... 
@@ -197,7 +201,6 @@ function Invoke-TsmBuild {
 		# 				2. load base/stock/core tokens. 
 		# 				3. add in any tokens provided by the command-line and/or via the .config. 
 		
-		
 		foreach ($file in $buildFiles) {
 			Write-Verbose "Starting Build Pipeline. Verb: [$verb]. File: [$file]";
 			
@@ -211,7 +214,6 @@ function Invoke-TsmBuild {
 		
 		Write-Host "BuildResults: $($buildResult.Results.Count)"
 		Write-Host " Build[0].HasErrors: $($buildResult.Results[0].HasErrors)"
-		
 		
 		return $buildResult;
 	};

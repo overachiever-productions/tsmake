@@ -43,15 +43,32 @@ function Execute-Pipeline {
 			$assembler.LoadContents($BuildFile);
 		}
 		catch [tsmake.SyntaxException] {
+	Write-Host "syntax EXCEPTION (not an error, an EXCEPTION): $_"
 			$result.AddError((New-SyntaxError -ErrorRecord $_ -Phase "Pipeline::Assembly" -Facet "Bundling File Contents" -Detail "Assembler.LoadContents(`$BuildFile);" ));
 			return;
 		}
 		catch {
 			# runtime error unless the error is of a specific type... 
 			#  bind it to $results and then...
-			Write-Host "generic error $_"
+	Write-Host "generic error $_"
 			return;
 		}
+		 
+		$codeLines = $assembler.CodeLines;
+		foreach ($line in $codeLines) {
+			Write-Host "$($line.LineText)		=> $($line.FileName) : $($line.LineNumber)  => Stack Depth: $($line.Depth)";
+		}
+		
+		
+		
+		# when I'm done with 'assembly' ... I should have a collection of .Lines - i.e., every, single, line in the 'assembled' output
+		# 		at which point I can: 
+		# 		a. run the validations and such (outlined in comments below)
+		# 		b. run through each line, one at a time, and process directives. 
+		# 			etc... 
+		# 			and if I run into any problems - I can - by means of EACH line, report to the user WHICH line it was on - from which FILE ... and the 'stack' or lineage. 
+		# 		which means the assembler NEEDs a List<ISourceLine> where ... every, single, ISourceLine can trace its lineage AND 'report on' whether it is: 
+		# 			a Directive, has tokens, is a comment ... and/or is a 'header comment' or whatever I'm going to use/allow for 'inline docs'
 		
 		
 		
@@ -63,7 +80,7 @@ function Execute-Pipeline {
 		
 # PICKUP / NEXT: 
 		# 1. check for any errors or invalid files. 
-		# 		i.e., the $manifest should track these and provide decent context for each problem. 
+		# 		i.e., the $assembler should track these and provide decent context for each problem. 
 		# 			e.g., 	 "improper X found here, or there. "
 		# 			or, most likely: "file such and such, referenced in blah (where blah is the 'lineage'/stack) ... is not found or not valid/etc. "
 		

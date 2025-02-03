@@ -2,9 +2,6 @@
 
 public static class StackExtensions
 {
-    // REFACTOR: ... actually, I could probably make this an EXTENSION of my own EXCEPTIONs (SyntaxException) and so on
-    //      and then have the .PrintStack do all of the 'work' of burrowing down into exceptions' .ISourceLine -> .Stack. 
-    //  that'd be a LOT easier to call from within POWERSHELL. 
     public static string PrintStack(this Stack<string> stack)
     {
         var copyOfStack = new Stack<string>(stack);
@@ -31,15 +28,34 @@ public interface ISourceLine
     string FileName { get; }  // name of the current file. 
     Stack<string> Stack { get; }
     string LineText { get; }
+
+    string PrintStack();
 }
 
 public class SourceLine(int lineNumber, string text, Stack<string> stack) : ISourceLine
 {
     public int LineNumber { get; } = lineNumber;
     public int Depth => this.Stack.Count;
-    public string FileName => this.Stack.Peek(); 
+
+    //BOGGLE: No idea why returning this.Stack.Peek() doesn't work. But it does NOT. So, I implemented via copy.pop().
+    //public string FileName => this.Stack.Peek(); 
+    public string FileName
+    {
+        get
+        {
+            var copy = new Stack<string>(this.Stack);
+            return copy.Pop();
+        }
+    }
+
+
     public Stack<string> Stack { get; } = stack;
     public string LineText { get; } = text;
+
+    public string PrintStack()
+    {
+        return this.Stack.PrintStack();
+    }
 }
 
 public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactory)
@@ -48,7 +64,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
     private Stack<string> Stack = new Stack<string>();
     private IFileSystem FileSystem = fileSystem;
     private ITokenizerFactory TokenizerFactory = tokenizerFactory;
-    
+
     public RootDirective RootDirective { get; private set; } 
     public OutputDirective OutputDirective { get; private set; }
 
@@ -109,7 +125,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
         try
         {
-            // TODO: make sur the file EXISTS before attempting to push it into the stack. 
+            // TODO: make sure the file EXISTS before attempting to push it into the stack. 
             //  MIGHT even make sense to do this ... from within the caller... (which is self after a point, but is initially .LoadContents()).
 
             this.Stack.Push(fullFilePath);
@@ -144,6 +160,11 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
         }
         catch (SyntaxException sex)
         {
+            // TODO: ... Syntax Exceptions should probably NOT be fatal - i.e., if/when I run into them, instead of THROWING ... I should add them 
+            //      to a LIST of 'validation' errors that are part of the Assembler - then, from PowerShell (i.e., the caller), I need to check 
+            //      for validation Errors ... copy them into processing errors, and then if/when there are > 0 Valdiation Errors, throw + stop processing. 
+            //     i.e., think of this a bit like a compiler - in c# if there's a syntax error on xyz.cs ... the compiler doesn't STOP compiling when it
+            //      finds that SINGLE error - it ... finds all errors, reports on those and prevents the build. 
             throw new SyntaxException(sex.Message, sex.LineNumber, sex.LineOffsetStart, sex.OffsetStart, sex.OffsetEnd, this._currentSourceLine);
         }
         finally
@@ -156,8 +177,8 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
     private void ProcessCoreDirectives(List<string> rawCodeLines, string filePath)
     {
-        bool rooted = false;
-        bool outputed = false;
+        bool isRootSet = false;
+        bool isOutputSet = false;
 
         int lineNumber = 0;
         foreach (string line in rawCodeLines)
@@ -169,13 +190,13 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                 var manifestLine = new SourceLine(lineNumber, line, new Stack<string>(this.Stack));
                 this.RootDirective = (RootDirective)DirectivesParser.GetFileSystemDirective(manifestLine, this.FileSystem);
 
-                rooted = true;
+                isRootSet = true;
             }
 
             if (DirectivesParser.IsOutputDirective(line))
-                outputed = true;
+                isOutputSet = true;
 
-            if (rooted && outputed)
+            if (isRootSet && isOutputSet)
                 return;
         }
     }

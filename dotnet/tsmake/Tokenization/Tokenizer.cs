@@ -187,6 +187,7 @@ public class Comment(int startIndex, int endIndex, int lineStart, int lineStartO
     }
 }
 
+// MIGHT need to rename this. This is a USE [xxxx]; ... directive. i.e., a USE...Directive.
 public class UseDirective(string text)
 {
     // should I also pass in locations? ... if so, they need to be relative to the ... batch not the original document, right? 

@@ -4,7 +4,7 @@ public class Formatter
 {
     private Formatter() { }
 
-    public bool HostSupportsColor { get; set; }
+    public bool HostSupportsColor { get; private set; }
 
     public static Formatter Instance => new Formatter();
 
