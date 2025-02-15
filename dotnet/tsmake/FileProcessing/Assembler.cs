@@ -19,6 +19,14 @@ public static class StackExtensions
 
         return builder.ToString().TrimEnd();
     }
+
+    public static string PrintStackTopFileName(this Stack<string> stack)
+    {
+        var copyOfStack = new Stack<string>(stack);
+        var topFile = copyOfStack.Pop();
+
+        return Path.GetFileName(topFile);
+    }
 }
 
 public interface ISourceLine
@@ -153,7 +161,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
                     output.Add(this._currentSourceLine);
 
                 string fileContents = this.FileSystem.GetFileContent(fullFilePath);
-                var tokenizer = this.TokenizerFactory.FromString(fileContents);
+                var tokenizer = this.TokenizerFactory.FromString(fileContents, new Stack<string>(this.Stack));
 
                 tokenizer.Tokenize(); // we're NOT interested in tokenized results - just checking that we DON'T have an open strings/comments... 
             }

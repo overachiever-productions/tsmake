@@ -8,7 +8,7 @@ public class BlockCommentTests
     public void BlockCommentHandlers_Match_Simple_Single_Line_BlockComment()
     {
         string text = "SELECT @@SERVERNAME [server_name] /* some comments */\r\rGO";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
@@ -26,7 +26,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Match_Simple_Comments_Across_Multiple_Lines()
     {
-        var sut = Tokenizer.StringTokenizer("   /* comments */ SELECT TOP 200\r\n    /*firstname */ last_name   \r\n FROM\r\n/*oldTable*/NewTable;");
+        var sut = Tokenizer.StringTokenizer("   /* comments */ SELECT TOP 200\r\n    /*firstname */ last_name   \r\n FROM\r\n/*oldTable*/NewTable;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(3));
@@ -39,7 +39,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Ignore_Stray_Asterixes()
     {
-        var sut = Tokenizer.StringTokenizer("/* SELECT * FROM blah;*/\r\nSELECT TOP 200 * FROM blah;");
+        var sut = Tokenizer.StringTokenizer("/* SELECT * FROM blah;*/\r\nSELECT TOP 200 * FROM blah;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
@@ -49,7 +49,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Ignore_Stray_Slashes()
     {
-        var sut = Tokenizer.StringTokenizer("\t/* xx /* nested with / and another //// */ */\r\nSELECT @@SERVERNAME [server_name];");
+        var sut = Tokenizer.StringTokenizer("\t/* xx /* nested with / and another //// */ */\r\nSELECT @@SERVERNAME [server_name];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
@@ -59,7 +59,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Can_Handle_Simple_Nested_BlockComments()
     {
-        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest */ */\r\nSELECT @@SERVERNAME [server_name];");
+        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest */ */\r\nSELECT @@SERVERNAME [server_name];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
@@ -70,7 +70,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Can_Handle_Multiple_Nested_BlockComments()
     {
-        var sut = Tokenizer.StringTokenizer("\t/* comment /* sub-comment1 /* sub-comment2 */ */ */\r\nSELECT @@SERVERNAME [server_name];\t/* multi\r\nline block /* sub\r\n comment */\r\n*/");
+        var sut = Tokenizer.StringTokenizer("\t/* comment /* sub-comment1 /* sub-comment2 */ */ */\r\nSELECT @@SERVERNAME [server_name];\t/* multi\r\nline block /* sub\r\n comment */\r\n*/", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(2));
@@ -82,7 +82,7 @@ public class BlockCommentTests
     public void BlockCommentHandlers_Can_Handle_Adjacent_Nested_Terminators()
     {
         // just a sanity check to make sure code doesn't choke on "*/*/" etc... 
-        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest /* nest 2 */*/*/\r\n\tSELECT @@SERVERNAME [server_name];");
+        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest /* nest 2 */*/*/\r\n\tSELECT @@SERVERNAME [server_name];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
@@ -91,14 +91,14 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Throw_On_Non_Completed_BlockComments()
     {
-        var sut = Tokenizer.StringTokenizer("/* this comment is not even close to valid\r\nSELECT TOP 200 * FROM something;");
+        var sut = Tokenizer.StringTokenizer("/* this comment is not even close to valid\r\nSELECT TOP 200 * FROM something;", new Stack<string>());
         Assert.Throws<SyntaxException>(sut.Tokenize);
     }
 
     [Test]
     public void BlockCommentHandlers_Throw_On_Incomplete_Nested_BlockComments()
     {
-        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest (but no-nested-close) */ \r\nSELECT @@SERVERNAME [server_name];");
+        var sut = Tokenizer.StringTokenizer("\t/* xx /* nest (but no-nested-close) */ \r\nSELECT @@SERVERNAME [server_name];", new Stack<string>());
         Assert.Throws<SyntaxException>(sut.Tokenize);
     }
 
@@ -112,7 +112,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Identify_Comment_Start_Line()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a comment */\r\ndbo.someTable;");
+        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a comment */\r\ndbo.someTable;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
@@ -123,7 +123,7 @@ public class BlockCommentTests
     [Test]
     public void BlockCommentHandlers_Identify_Comment_Start_Line_Offset()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a \r\n multiline comment */\r\ndbo.someTable;");
+        var sut = Tokenizer.StringTokenizer("SELECT * \r\nFROM /* this is a \r\n multiline comment */\r\ndbo.someTable;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(4));

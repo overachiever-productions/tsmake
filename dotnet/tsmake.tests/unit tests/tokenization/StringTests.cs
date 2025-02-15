@@ -5,7 +5,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Very_Simple_String()
     {
-        var sut = Tokenizer.StringTokenizer("This has a 'string' in it.");
+        var sut = Tokenizer.StringTokenizer("This has a 'string' in it.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(1));
@@ -20,7 +20,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Ascii_String_As_Ascii()
     {
-        var sut = Tokenizer.StringTokenizer("This is 'ascii'.");
+        var sut = Tokenizer.StringTokenizer("This is 'ascii'.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -30,7 +30,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Unicode_String_As_Unicode()
     {
-        var sut = Tokenizer.StringTokenizer("This is not N'ascii'.");
+        var sut = Tokenizer.StringTokenizer("This is not N'ascii'.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -40,7 +40,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Strings_Spanning_Multiple_Lines()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case];");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -52,7 +52,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Multiple_Strings_In_Single_Line()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'Simple String' as [test1], N'unicode' [test2];");
+        var sut = Tokenizer.StringTokenizer("SELECT 'Simple String' as [test1], N'unicode' [test2];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(2));
@@ -61,7 +61,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Multiple_Strings_Across_Many_Lines()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case], N'And another string\r\ntoo' [test_case2], N'test 3' [single_line_test];");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case], N'And another string\r\ntoo' [test_case2], N'test 3' [single_line_test];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(3));
@@ -77,7 +77,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_Strings_At_End_Of_Text()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'this is a simple string.'");
+        var sut = Tokenizer.StringTokenizer("SELECT 'this is a simple string.'", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -87,7 +87,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Can_Handle_Simple_Escaped_Tick()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'There''s a tick in here.'");
+        var sut = Tokenizer.StringTokenizer("SELECT 'There''s a tick in here.'", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -97,7 +97,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Can_Handle_Escaped_Strings()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'This has a ''nested string'' in it.'");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This has a ''nested string'' in it.'", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -107,7 +107,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Can_Handle_Nesting_And_Other_Strings()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case], N'So does this string but ''with\r\nnested'' ticks' [test_case2], N'test 3' [single_line_test];");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This \r\nstring spans\r\nmultiple lines' [test_case], N'So does this string but ''with\r\nnested'' ticks' [test_case2], N'test 3' [single_line_test];", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(3));
@@ -120,7 +120,9 @@ public class StringTests
     [Test]
     public void StringHandlers_Throw_Exception_On_Non_Completed_String()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 'This has a bad string in it");
+        var stack = new Stack<string>();
+        stack.Push(@"D:\repos\my-project\some_file.sql");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This has a bad string in it", new Stack<string>(stack));
 
         Assert.Throws<SyntaxException>(sut.Tokenize);
     }
@@ -128,7 +130,7 @@ public class StringTests
     [Test] 
     public void StringHandlers_Identify_LineNumber_Of_Strings()
     {
-        var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n'4'");
+        var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n'4'", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));
@@ -143,7 +145,7 @@ public class StringTests
     [Test]
     public void StringHandlers_Identify_ColumnStart_Of_Strings()
     {
-        var sut = Tokenizer.StringTokenizer("--1\r\nSELECT 'some string' [output]");
+        var sut = Tokenizer.StringTokenizer("--1\r\nSELECT 'some string' [output]", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Strings.Count, Is.EqualTo(1));

@@ -133,9 +133,22 @@ public class StringFinalizer(int stringStart, bool isUnicode, int startLine, int
             var end = tokenizer.CurrentIndex;
 
             var errorString = tokenizer.RawText.Substring(this._stringStart, end - this._stringStart);
+            if (errorString.Length > 60)
+                errorString = errorString.Substring(0, 59) + "...";
+            else
+                errorString += " <-- !";
+
+            errorString = errorString.Replace("\r\n", "\r\n\t\t");
+
             var index = 1 + this._stringStart - this._startLineOffset;
 
-            var message = $"String starting on line {this._startLine} (Col: {index}) is not closed => {errorString}";
+            var x = tokenizer.Stack.PrintStackTopFileName();
+
+            var message = $"Unclosed string on line {this._startLine} (Col: {index}) of file [{x}]: \r\n\t=> {errorString}";
+            if (tokenizer.Stack.Count > 1)
+            {
+                message += $"\r\n\r\n\tStack: {tokenizer.Stack.PrintStack()}";
+            }
 
             throw new SyntaxException(message, this._startLine, this._startLineOffset, this._stringStart, end);
         }
