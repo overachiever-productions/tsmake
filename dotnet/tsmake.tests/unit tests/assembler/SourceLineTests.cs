@@ -75,4 +75,19 @@ public class SourceLineTests
         StringAssert.AreEqualIgnoringCase(expectedOutput, printedStack);
         Assert.That(sut.Depth, Is.EqualTo(2));
     }
+
+    [Test]
+    public void SourceLine_Failure_Correctly_Identifies_Source_File()
+    {
+        var stack = new Stack<string>();
+        stack.Push(@"D:\repos\my-project\ParentFile.build.sql");
+        stack.Push(@"D:\repos\my-project\Sub-File.sql");
+        stack.Push(@"D:\repos\my-project\Sub-Sub-File.sql");
+        var sut = Tokenizer.StringTokenizer("SELECT 'This has a bad string in it", new Stack<string>(stack));
+
+        var exception = Assert.Throws<SyntaxException>(() => sut.Tokenize());
+
+        StringAssert.Contains("(Col: 8) of file [Sub-Sub-File.sql]:", exception.Message);
+
+    }
 }
