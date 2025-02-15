@@ -5,30 +5,36 @@ filter Import-Types {
 		[string]$ScriptRoot = $PSScriptRoot
 	);
 	
-	# NOTE: Import order can/does impact BUILD operations
 	$classFiles = @(
-		"$ScriptRoot\clr\tsmake\Globals.cs";
-		"$ScriptRoot\clr\tsmake\Enums.cs";
-		"$ScriptRoot\clr\tsmake\Errors.cs";
-		"$ScriptRoot\clr\tsmake\Extensions.cs";
+		"$ScriptRoot\dotnet\tsmake\Globals.cs";
+		"$ScriptRoot\dotnet\tsmake\Enums.cs";
+		"$ScriptRoot\dotnet\tsmake\Errors.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\Lines.cs";
-		"$ScriptRoot\clr\tsmake\models\Tokens.cs";
-		"$ScriptRoot\clr\tsmake\models\Directives.cs";
+		"$ScriptRoot\dotnet\tsmake\Tokenization\Tokenizer.cs";
+		"$ScriptRoot\dotnet\tsmake\Tokenization\Handlers.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\Files.cs";
-		"$ScriptRoot\clr\tsmake\Results.cs";
+		"$ScriptRoot\dotnet\tsmake\Directives.cs";
 		
-		"$ScriptRoot\clr\tsmake\Formatter.cs";
+		"$ScriptRoot\dotnet\tsmake\FileProcessing\FileSystem.cs";
+		"$ScriptRoot\dotnet\tsmake\FileProcessing\Assembler.cs";
+		
+#		"$ScriptRoot\dotnet\tsmake\models\Lines.cs";
+#		"$ScriptRoot\dotnet\tsmake\models\Tokens.cs";
+#		"$ScriptRoot\dotnet\tsmake\models\Directives.cs";
+#		
+#		"$ScriptRoot\dotnet\tsmake\models\Files.cs";
+		"$ScriptRoot\dotnet\tsmake\Results.cs";
+#		
+		"$ScriptRoot\dotnet\tsmake\Formatter.cs";
 	);
 	
 	Add-Type -Path $classFiles;
 }
 
-# Import CLR objects: 
+# Objects: 
 Import-Types;
 
-# Import Private Funcs: 
+# Private Funcs: 
 foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'internal/*.ps1') -Recurse -ErrorAction Stop))) {
 	try {
 		. $file.FullName;
@@ -38,7 +44,7 @@ foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPa
 	}
 }
 
-# Import Public Funcs: 
+# Public Funcs: 
 foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'public/*.ps1') -Recurse -ErrorAction Stop))) {
 	try {
 		. $file.FullName;

@@ -1,118 +1,64 @@
-﻿Set-StrictMode -Version 1.0;
+﻿Set-StrictMode -Version 3.0;
 
-function Write-TsmDebug {
-	[CmdletBinding()]
-	param (
-		[string]$Message #,
-		#[switch]$Debug
-	);
-	
-	# ACTUALLY. Might make this public?
-	
-	# spits stuff out to the console if -Debug
-	# always spits stuff out to the PvLog. 
-	
-}
+# ====================================================================================================
+# Intrinsics:
+# ====================================================================================================	
+$global:TsmFormatter = [tsmake.Formatter]::Instance;
+$TsmFormatter.SetCurrentHostInfo($($Host.Name));
 
-function Write-TsmVerbose {
-	[CmdletBinding()]
-	param (
-		[string]$Message #,
-		#[switch]$Verbose
-	);
-	
-	# TODO: add a 'Verboser' object that is, effectively, an IDENTITY/SEQUENCE - calling it increments. 
-	# 		and ... with that, verbose will prefix all calls with # ... as in: 
-	# 		0001. Starting up blah blah blah
-	# 		0002. doing yada yada
-	# 		0003. Compiling xyz... 
-	
-	
-	# ACTUALLY. Might make this public?
-	
-	# spits stuff out to the console if -Verbose
-	# always spits stuff out to the PvLog. 	
-}
-
-filter Is-Empty {
-	param (
-		[Parameter(Position = 0)]
-		[string]$Value
-	);
-	
-	return [string]::IsNullOrWhiteSpace($Value);
-}
-
-filter Has-Value {
-	param (
-		[Parameter(Position = 0)]
-		[string]$Value
-	);
-	
-	return (-not ([string]::IsNullOrWhiteSpace($Value)));
-}
-
-filter Has-ArrayValue {
-	param (
-		[Parameter(Position = 0)]
-		[string[]]$Value # NOTE: any STRING passed in will... be converted to @("string") 
-	)
-	
-	if ($null -eq $Value) {
-		return $false;
-	}
-	
-	foreach ($s in $Value) {
-		if (Has-Value $s) {
-			return $true;
-		}
-	}
-	
-	return $false
-}
-
-filter Collapse-Arguments {
-	param (
-		[object]$Arg1,
-		[object]$Arg2,
-		[switch]$IgnoreEmptyStrings = $false # need to determine IF "" should be output when found... 
-	);
-	
-	if ($Arg1) {
-		return $Arg1;
-	}
-	elseif (-not $IgnoreEmptyStrings) {
-		if ((Is-Empty $Arg1)) {
-			return $Arg1;
-		}
-	}
-	
-	return $Arg2;
-}
-
-filter New-ParserError {
+filter New-ConfigurationError {
 	param (
 		[Parameter(Mandatory)]
-		[tsmake.models.Location]$Location,
+		[System.Management.Automation.ErrorRecord]$ErrorRecord,
 		[Parameter(Mandatory)]
-		[string]$ErrorMessage
+		[string]$Message,
+		[Parameter(Mandatory)]
+		[string]$Phase,
+		[tsmake.SourceLine]$SourceLine,
+		[string]$Facet,
+		[string]$Detail
 	);
 	
-	return New-Object tsmake.ParserError($ErrorMessage, $Location);
-}
-
-filter New-BuildError {
-	param (
-		[Parameter(Mandatory)]
-		[string]$ErrorMessage,
-		[System.Management.Automation.ErrorRecord]$Exception,
-		[tsmake.models.Location]$Location
-	)
-	
-	[string]$context = $null;
-	if ($null -ne $Location) {
-		$context = "Source: [$($Location.FileName)]($($Location.LineNumber), $($Location.ColumnNumber)).";
+	if ($null -eq $SourceLine) {
+		Write-Host "empty source line"
+# TODO: need to do something quite a bit different here... 
+# and it might, actually, make more sense to new-up a fake 'sourceLine' in the FEW areas where i won't, obviously/naturally, have an ISourceLine. 		
+		$stack = New-Object System.Collections.Generic.Stack[string];
+		$SourceLine = New-Object tsmake.SourceLine(11, "fake file", "some text as the body", 3, $stack);
 	}
 	
-	return New-Object tsmake.BuildError($ErrorMessage, $Exception, $context);
+	return [tsmake.Error]::FakeError($ErrorRecord);
+	##return [tsmake.Error]::NewConfigurationError($ErrorRecord, $SourceLine, $Phase, $Message, $Facet, $Detail);
 }
+
+filter New-SyntaxError {
+	param (
+		[Parameter(Mandatory)]
+		[System.Management.Automation.ErrorRecord]$ErrorRecord,
+		[Parameter(Mandatory)]
+		[string]$Phase,
+		[string]$Facet,
+		[string]$Detail
+	);
+	
+	return [tsmake.Error]::NewSyntaxError($ErrorRecord.Exception.SourceLine, $Phase, $ErrorRecord.Exception.Message, $Facet, $Detail);
+}
+
+filter New-RuntimeError {
+	
+}
+
+filter New-ValidationError {
+	param (
+		[Parameter(Mandatory)]
+		[string]$Message,
+		[Parameter(Mandatory)]
+		[string]$Phase,
+		[tsmake.SourceLine]$SourceLine,
+		[string]$Facet,
+		[string]$Detail
+	);
+	
+	
+	return [tsmake.Error]::NewValidationError($SourceLine, $Phase, $Message, $Facet, $Detail);
+} 

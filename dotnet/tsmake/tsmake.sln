@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.10.35027.167
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tsmake", "tsmake.csproj", "{2A4A418A-1705-493D-BC4C-B67C59D7C05C}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tsmake.tests", "..\tsmake.tests\tsmake.tests.csproj", "{B07DDC8E-BDFF-4C5F-BB0E-F5CD37AC3421}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{2A4A418A-1705-493D-BC4C-B67C59D7C05C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2A4A418A-1705-493D-BC4C-B67C59D7C05C}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2A4A418A-1705-493D-BC4C-B67C59D7C05C}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2A4A418A-1705-493D-BC4C-B67C59D7C05C}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B07DDC8E-BDFF-4C5F-BB0E-F5CD37AC3421}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B07DDC8E-BDFF-4C5F-BB0E-F5CD37AC3421}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B07DDC8E-BDFF-4C5F-BB0E-F5CD37AC3421}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B07DDC8E-BDFF-4C5F-BB0E-F5CD37AC3421}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {B4B4B120-D218-49DD-8D59-CB32AF09DFA5}
+	EndGlobalSection
+EndGlobal
