@@ -6,7 +6,7 @@ public class CommentTests
     public void CommentHandlers_Capture_Simple_End_Of_Line_Comments()
     {
         var text = "SELECT 42 [answer]; -- witty comment here.\r\n";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(1));
@@ -24,7 +24,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Can_Handle_Comments_At_End_Of_String()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT 42 [answer]; -- comment text");
+        var sut = Tokenizer.StringTokenizer("SELECT 42 [answer]; -- comment text", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(1));
@@ -33,7 +33,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Can_Capture_Multiple_Comments()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT TOP 200 -- name, last_name\r\nfirst_name, last_name -- FROM users\r\nFROM dbo.super_users\r\n-- WHERE is_super_user = 1\r\nWHERE is_active = 1;");
+        var sut = Tokenizer.StringTokenizer("SELECT TOP 200 -- name, last_name\r\nfirst_name, last_name -- FROM users\r\nFROM dbo.super_users\r\n-- WHERE is_super_user = 1\r\nWHERE is_active = 1;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(3));
@@ -46,7 +46,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Can_Handle_CR_Only_NewLines()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME; -- comment here\rSELECT @@VERSION;");
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME; -- comment here\rSELECT @@VERSION;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(1));
@@ -56,7 +56,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Can_Handle_LF_Only_NewLines()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME; -- comment here\nSELECT @@VERSION;");
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME; -- comment here\nSELECT @@VERSION;", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(1));
@@ -66,7 +66,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Treat_Dashed_Lines_As_Single_Comment()
     {
-        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(3));
@@ -77,7 +77,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Identify_Line_Numbers()
     {
-        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(3));
@@ -90,7 +90,7 @@ public class CommentTests
     [Test]
     public void CommentHandlers_Identify_Line_Start_Offsets()
     {
-        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------");
+        var sut = Tokenizer.StringTokenizer("----------------------\r\n-- Flower Pot!\r\n(\"----------------------", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.Comments.Count, Is.EqualTo(3));

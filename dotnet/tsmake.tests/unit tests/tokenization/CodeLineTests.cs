@@ -5,12 +5,12 @@ public class CodeLineTests
     [Test]
     public void CodeLines_Correctly_Track_Line_Counts()
     {
-        var sut = Tokenizer.StringTokenizer("-- Single Line");
+        var sut = Tokenizer.StringTokenizer("-- Single Line", new Stack<string>());
         sut.Tokenize();
         
         Assert.That(sut.CodeLines.Count, Is.EqualTo(1));
 
-        sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n--4");
+        sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n--4", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(4));
@@ -19,7 +19,7 @@ public class CodeLineTests
     [Test]
     public void CodeLines_Correctly_Track_Line_Numbers()
     {
-        var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n--4");
+        var sut = Tokenizer.StringTokenizer("--1\r\n--2\r\n--3\r\n--4", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(4));

@@ -15,7 +15,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_String_By_CrLf()
     {
-        var sut = Tokenizer.StringTokenizer(SUPER_SIMPLE_MULTI_LINE_STRING);
+        var sut = Tokenizer.StringTokenizer(SUPER_SIMPLE_MULTI_LINE_STRING, new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(2));
@@ -30,7 +30,7 @@ Line.
     [Test]
     public void NewLineHandlers_Do_Not_Add_Extra_Blank_Lines_At_EoString()
     {
-        var sut = Tokenizer.StringTokenizer(SIMPLE_MULTI_LINE_STRING_WITH_CRLF_TERMINATOR);
+        var sut = Tokenizer.StringTokenizer(SIMPLE_MULTI_LINE_STRING_WITH_CRLF_TERMINATOR, new Stack<string>());
         sut.Tokenize();
 
         // should be 3x lines - cuz that's how many there are (NOT 4 lines - i.e., the 'native' CRLF + a bogus/terminator from code/processing.
@@ -42,7 +42,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_On_LineFeed_Only()
     {
-        var sut = Tokenizer.StringTokenizer("This is a\nterrible newline (in windows)\r\n.");
+        var sut = Tokenizer.StringTokenizer("This is a\nterrible newline (in windows)\r\n.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
@@ -55,7 +55,7 @@ Line.
     [Test]
     public void NewLineHandlers_Split_On_CarriageReturn_Only()
     {
-        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.");
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
@@ -68,7 +68,7 @@ Line.
     [Test]
     public void LineHandlers_Identify_Line_Numbers()
     {
-        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.");
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(3));
@@ -81,7 +81,7 @@ Line.
     [Test]
     public void LineHandlers_Identify_Line_StartOffset()
     {
-        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.but this is fine\r\nalso fine.");
+        var sut = Tokenizer.StringTokenizer("This is a\rterrible newline (in windows)\r\n.but this is fine\r\nalso fine.", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.CodeLines.Count, Is.EqualTo(4));

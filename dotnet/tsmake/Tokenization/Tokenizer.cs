@@ -229,6 +229,7 @@ public class ParsedBatch(int start, int end, string text, TextSources sources)
 public interface ITokenizer
 {
     string RawText { get; }
+    Stack<string> Stack { get; }
     int CurrentIndex { get; }
     NewLineStatus NewLineStatus { get; set; }
     StringStatus StringStatus { get; set; }
@@ -290,7 +291,8 @@ public class Tokenizer : ITokenizer
     public List<Comment> Comments { get; internal set; } = new();
     public int BlockCommentNestingLevel { get; set; }
 
-    public string RawText { get; private set; } = string.Empty;
+    public string RawText { get; private set; }
+    public Stack<string> Stack { get; private set; }
     public int CurrentIndex { get; private set; } = -1;
 
     public void EnlistInitializer(ITokenInitializer initializer)
@@ -351,9 +353,10 @@ public class Tokenizer : ITokenizer
         return new CodeLine(currentLine, start, end);
     }
 
-    internal Tokenizer(string rawText)
+    internal Tokenizer(string rawText, Stack<string> stack)
     {
         this.RawText = rawText;
+        this.Stack = stack;
         this.Initialize();
     }
 
@@ -368,9 +371,9 @@ public class Tokenizer : ITokenizer
 
     // EVENTUALLY: public static Tokenizer StreamTokenizer(Stream stream) ... for perf reasons?
 
-    public static Tokenizer StringTokenizer(string rawText)
+    public static Tokenizer StringTokenizer(string rawText, Stack<string> stack)
     {
-        return new Tokenizer(rawText);
+        return new Tokenizer(rawText, stack);
     }
 
     public void Tokenize()
@@ -559,14 +562,14 @@ public static class TokenizerExtensions
 
 public interface ITokenizerFactory
 {
-    Tokenizer FromString(string rawText);
+    Tokenizer FromString(string rawText, Stack<string> stack);
     // Might make sense to implement this: Tokenizer FromStream(Stream stream);
 }
 
 public class TokenizerFactory : ITokenizerFactory {
 
-    public Tokenizer FromString(string rawText)
+    public Tokenizer FromString(string rawText, Stack<string> stack)
     {
-        return new Tokenizer(rawText);
+        return new Tokenizer(rawText, stack);
     }
 }

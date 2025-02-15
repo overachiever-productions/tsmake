@@ -7,7 +7,7 @@ public class BatchRetrievalTests
     [Test]
     public void GetTokenizedBatches_Returns_Simple_Batches()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT TOP 200 * FROM sys.objects;\r\nGO\r\nUSE [admindb];\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO");
+        var sut = Tokenizer.StringTokenizer("SELECT TOP 200 * FROM sys.objects;\r\nGO\r\nUSE [admindb];\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(3));
@@ -24,7 +24,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Returns_Trailing_Batches()
     {
         var text = "SELECT * FROM sys.server_principals;\r\nGO\r\n\r\nSELECT @@SERVERNAME [server_name];\r\nGO";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         // Expect 2x GO statements, and 2x batches:
@@ -58,7 +58,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Returns_Source_Text()
     {
         string text = "SELECT TOP 200 * FROM sys.objects;\r\nGO\r\nUSE [admindb];\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         var batches = sut.GetParsedBatches();
@@ -87,7 +87,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Splits_Correctly_Without_A_Terminating_Go_Statement()
     {
         var text = "SELECT @@SERVERNAME [server_name];\r\nGO\r\nUSE admindb;\r\nSELECT TOP 200 * FROM dbo.number;\r\n";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         // EXPECT only 1x "GO", but 2x full-on batches:
@@ -110,7 +110,7 @@ public class BatchRetrievalTests
     [Test]
     public void GetTokenizedBatches_Processes_Comments_Without_Problems()
     {
-        var sut = Tokenizer.StringTokenizer("USE [admindb];-- even a comment\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO");
+        var sut = Tokenizer.StringTokenizer("USE [admindb];-- even a comment\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(2));
@@ -125,7 +125,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Returns_Comments_As_Collection()
     {
         var text = "USE [admindb]; -- comment here\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(2));
@@ -145,7 +145,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Returns_BlockComments_As_Collection()
     {
         var text = "/* Some \r\n multi-line comments with a \r\n\r\nUSE [master]\r\nGO\r\n\r\n nested inside*/USE [admindb]; /* more\r\ncomments\r\nhere*/\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(2));
@@ -168,7 +168,7 @@ public class BatchRetrievalTests
     [Test]
     public void GetTokenizedBatches_Remove_UseOnly_Does_Not_Break_Normal_Batches()
     {
-        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\nGO\r\nUSE admindb;\r\nSELECT TOP 200 * FROM dbo.number;\r\nGO");
+        var sut = Tokenizer.StringTokenizer("SELECT @@SERVERNAME [server_name];\r\nGO\r\nUSE admindb;\r\nSELECT TOP 200 * FROM dbo.number;\r\nGO", new Stack<string>());
         sut.Tokenize();
 
         Assert.That(sut.GoStatements.Count, Is.EqualTo(2));
@@ -184,7 +184,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Handles_Multiple_UseOnly_Batches_And_Comments()
     {
         var text = "SELECT @@SERVERNAME [server];\r\nGO\r\n\r\nUSE [admindb]; -- comment here\r\nGO\r\nSELECT * FROM dbo.[numbers];\r\nGO\r\n USE master;\r\nGO\r\nSELECT TOP 200 * FROM sys.objects\r\nWHERE something = 2;";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         var batches = sut.GetParsedBatches(true);
@@ -199,7 +199,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Does_Not_Lose_UseXxx_Go_At_Script_End()
     {
         var text = "USE [master];\r\nGO\r\nSELECT @@SERVERNAME;\r\nGO\r\nUSE [admindb];\r\nGO\r\n";
-        var sut = Tokenizer.StringTokenizer(text);
+        var sut = Tokenizer.StringTokenizer(text, new Stack<string>());
         sut.Tokenize();
 
         var batches = sut.GetParsedBatches(true);
@@ -224,7 +224,7 @@ public class BatchRetrievalTests
     public void GetTokenizedBatches_Removes_Blank_Batches()
     {
         // actual lines from tSQLt.database.sql - i.e., 2x 'bogus' GO statements. 
-        var sut = Tokenizer.StringTokenizer("DECLARE @Msg NVARCHAR(MAX);SELECT @Msg = 'Installed at '+CONVERT(NVARCHAR,GETDATE(),121);RAISERROR(@Msg,0,1);\r\nGO\r\n\r\n\r\nGO\r\n\r\n\r\n\r\nGO\r\n\r\nIF EXISTS (SELECT 1 FROM sys.assemblies WHERE name = 'tSQLtCLR')\r\n    DROP ASSEMBLY tSQLtCLR;\r\nGO");
+        var sut = Tokenizer.StringTokenizer("DECLARE @Msg NVARCHAR(MAX);SELECT @Msg = 'Installed at '+CONVERT(NVARCHAR,GETDATE(),121);RAISERROR(@Msg,0,1);\r\nGO\r\n\r\n\r\nGO\r\n\r\n\r\n\r\nGO\r\n\r\nIF EXISTS (SELECT 1 FROM sys.assemblies WHERE name = 'tSQLtCLR')\r\n    DROP ASSEMBLY tSQLtCLR;\r\nGO", new Stack<string>());
         sut.Tokenize();
 
         var batches = sut.GetParsedBatches(true);
