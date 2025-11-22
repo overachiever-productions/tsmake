@@ -47,6 +47,16 @@
 
 	TOKENS (without explicit build-file) 
 
+
+
+
+
+
+	S4 Build: 
+			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+
+			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql"
+
 	
 #>
 
@@ -71,11 +81,13 @@ function Invoke-TsmBuild {
 		# 		- could I accomplish this in some other way - like with a -Token ???   (not really - cuz of the FILE names - outputs. But... how are outputs LINKED to version numbers?)
 		[string]$Version, 				# TODO: Pass -Version in as a string and have C# code parse it to determing if Semantic, FourPart, or Organic/Custom...
 		[string[]]$Tokens,
+		
+		# REFACTOR: SKIP is a stupid negative ... So. $GenerateDocumentation = $true
 		[switch]$SkipDocumentation = $false
 		# options/switches: 
-		# -SkipFileMarker (default is to include one?)
-		# -StopOnFirstErrorOrWhatever
-		# -NoStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)	
+		# -IncludeFileMarker (default is to include one?)
+		# -ErrorBehavior { TRY_EVERYTHING | FAIL_FAST (STOP_ON_FIRST) }  i.e., something along the lines of 'try everything' = attempt to BUILD like VS or even T-SQL where we try to parse everything and throw as many errors as possible at the end. vs ... fail_fast ... which is ... barf/stop on the first error. 
+		# -NoBuildStats (i.e., skip build/outcome stats like # of lines and # of directives/tokens processed in amount of time processed...)	
 		# -CommentRemovalOptions (going to be semi complex (i.e., non boolean) - some sort of enum or whatever... )
 	);
 	
@@ -86,13 +98,12 @@ function Invoke-TsmBuild {
 		# TODO: build up an 'Options' object - which will track options for things like: 
 		# 		- skip/process file-marker, 
 		# 		- remove all /* header comments */ or just the FIRST set. 
-		# 		- StopOnFirstError or whatever I'm going to call that feature/option.
-		$verb = "BuildAndDocs";
+		# 		- StopOnFirstError (or FAIL_FAST) or whatever I'm going to call that feature/option.
+		$verb = "BuildAndDocs";  # probably makes more sense to have a [string[]]$verbs and ... add in the various verbs as needed. 
 		if ($SkipDocumentation) {
 			$verb = "Build";
 		}
 		
-		#$results = @();
 		$buildResult = New-Object tsmake.BuildWrapper;
 	};
 	
@@ -204,7 +215,6 @@ function Invoke-TsmBuild {
 		foreach ($file in $buildFiles) {
 			Write-Verbose "Starting Build Pipeline. Verb: [$verb]. File: [$file]";
 			
-			#$results += Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
 			$result = Execute-Pipeline -Verb $verb -BuildFile $file -Output $Output -WorkingDirectory $pwd;
 			$buildResult.AddResult($result);
 		}
@@ -212,9 +222,21 @@ function Invoke-TsmBuild {
 	
 	end {
 		
+		## simulated:
 		Write-Host "BuildResults: $($buildResult.Results.Count)"
 		Write-Host " Build[0].HasErrors: $($buildResult.Results[0].HasErrors)"
 		
 		return $buildResult;
 	};
 }
+
+
+
+$x = "1`n22`n333`n4444`n`n666666`n7777777\r\n".ToCharArray();
+$n = 1;
+Clear-Host;
+foreach ($z in $x) {
+	Write-Host "$($n) -> |$($z)|";
+	$n = $n + 1;
+}
+

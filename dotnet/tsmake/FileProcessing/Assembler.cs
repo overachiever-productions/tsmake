@@ -109,7 +109,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
                 foreach (var child in include.GetChildren())
                 {
-                    var manifestLines = RecurseSubFile(child);
+                    var manifestLines = this.RecurseSubFile(child);
                     foreach (var line in manifestLines)
                     {
                         // TODO: if it's illegal (i.e., an illegal directive)... ignore or throw...  (probably ignore. I don't care about missed directives)
@@ -153,7 +153,7 @@ public class Assembler(IFileSystem fileSystem, ITokenizerFactory tokenizerFactor
 
                     foreach (var child in include.GetChildren())
                     {
-                        List<ISourceLine> nestedManifestLines = RecurseSubFile(child);
+                        List<ISourceLine> nestedManifestLines = this.RecurseSubFile(child);
                         output.AddRange(nestedManifestLines);
                     }
                 }
