@@ -2,7 +2,7 @@
 
 public interface IError
 {
-    //Exception? Exception { get; }
+    ErrorRecord ErrorRecord { get; }
 
     string Message { get; }
     
@@ -12,6 +12,8 @@ public interface IError
 public interface INormalizer
 {
     List<IError> Errors { get; }
+    bool HasErrors { get; }
+
     int[] LineEndings { get; }
     List<string> Lines { get; }
 
