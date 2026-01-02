@@ -11,3 +11,8 @@ public enum GoOptions {
     Force,
     Throw
 }
+
+//public enum CommentType {
+//    SingleLine,
+//    MultiLine
+//}
