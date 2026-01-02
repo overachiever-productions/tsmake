@@ -7,7 +7,8 @@ filter Import-Types {
 	
 	$classFiles = @(
 		"$ScriptRoot\dotnet\tsmake\Globals.cs";
-#		"$ScriptRoot\dotnet\tsmake\Enums.cs";
+		"$ScriptRoot\dotnet\tsmake\Enums.cs";
+		"$ScriptRoot\dotnet\tsmake\Interfaces.cs";
 #		"$ScriptRoot\dotnet\tsmake\Errors.cs";
 #		
 #		"$ScriptRoot\dotnet\tsmake\Tokenization\Tokenizer.cs";
