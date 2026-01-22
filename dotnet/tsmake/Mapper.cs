@@ -14,9 +14,9 @@ public class Mapper : IMapper
                     - comments (single-line and multi-line)
                     - GO statements 
                     - CREATE/ALTER statements (for procs, functions, views, triggers)   
-            - for each match, create an object (CommentBatch, GoBatch, ObjectBatch) and add to the appropriate List<x>. 
+            - for each match, create an object (Comment, Go/Batch, ObjectDef) and add to the appropriate List<x>. 
             - I don't NEED heavy-duty details on each match. 
-                Just enough to know the type (so I can put it in the correct List<x>), the start/end offsets, and the text.
+                Just enough to know the type (so I can put it in the correct List<x>), the start/end offsets, and the text. Could even call this a fuzzy mapper. 
 
     */
 
@@ -28,7 +28,8 @@ public class Mapper : IMapper
     public List<IBlockComment> BlockComments { get; }
     public List<IObjectDeclaration> ObjectDeclarations { get; }
 
-    // 'normalizedText' is _expected_ to be pre-processed by a Normalizer instance (i.e., by CONVENTION only). I could 'enforce' this by means of an INormalizedString interface ... which'd have a .String and a .CrLfEndingOptions ... similar to an 'HtmlString' in MVC.
+    // TODO: enforce normalization via INormalizedString.
+    // 'normalizedText' is _expected_ to be pre-processed by a Normalizer instance (i.e., by CONVENTION only). I WILL (eventually) 'enforce' this by means of an INormalizedString interface ... which'd have a .String and a .CrLfEndingOptions ... similar to an 'HtmlString' in MVC.
     public Mapper(string normalizedText)
     {
         this._rawText = normalizedText;
@@ -49,7 +50,7 @@ public class Mapper : IMapper
 
     private void ValidateClosures()
     {
-        // https://overachieverllc.atlassian.net/browse/TSM-26
+        // IGNORING unclosed strings (for now):  https://overachieverllc.atlassian.net/browse/TSM-26
         var pattern = @"(?s)(?<UnclosedBlockComment>/\*(?:(?!\*/).)*$)|(?<UnclosedBrackets>\[(?:(?!\]).)*$)";
 
         var regex = new Regex(pattern, Global.BatchSplittingOptions);
@@ -99,15 +100,16 @@ public class Mapper : IMapper
                             this.ObjectDeclarations.Add(new ObjectDeclaration(g.Value, g.Index, g.Index + g.Length));
                             break;
                         case "string":
-                            // do nothing ... we don't care about strings. They ONLY 'exist' to make sure we don't mis-interpret GO, CREATE/ALTER, or comments, etc. inside them.
+                            // Do Nothing. Strings ONLY 'exist' to make sure we don't mis-interpret GO, CREATE/ALTER, or comments, etc. inside them.
                             break;
                     }
                 }
             }
         }
 
-        // TODO: if previousBatchStart < text.Length, then we have a final batch to add.
-
+        // NOTE: This accounts for any remaining text AFTER the last GO statement (or the ENTIRE text, if no GO statements were found).
+        if (previousBatchStart < text.Length)
+            this.Batches.Add(new Batch(this._rawText.Substring(previousBatchStart, text.Length - previousBatchStart), string.Empty, previousBatchStart, text.Length));
     }
 
     private string TranslateNonClosedType(string matchName)
