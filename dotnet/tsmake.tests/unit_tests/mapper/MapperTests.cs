@@ -2,18 +2,214 @@
 
 public class MapperTests
 {
-    #region Closure Validations
-    // it 'has' syntaxerrors when there are unclosed 'strings
-    // it 'has' syntaxerrors when there are unclosed /* block comments 
-    // it 'has' syntaxerrors when there are unclosed [brackets
+
+    #region Conventions
+    // it requires INormalizedString for input... (MKC: actually, not sure this needs to be a test. if I change the .ctor ... then ... there's no test in question).
     #endregion
 
-    #region Token Matches in Strings are Ignored
-    // it_can_handle_escaped_ticks_in_strings
+    #region Closure Validations
+    [Test]
+    public void It_Has_SyntaxErrors_When_There_Are_Unclosed_Strings()
+    {
+        var text = "PRINT 'Hello World!; -- note the misssing end-tick... ";
+        var sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(1));
+        StringAssert.Contains("Non-Terminated String.", sut.SyntaxErrors[0].Message);
+    }
 
-    // it does not get GO inside strings or comments
+    [Test]
+    public void It_Does_Not_Have_Syntax_Errors_For_Correctly_Formed_Strings()
+    {
+        // all of the following are correctly formed: 
+        var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';";
+        var sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+    }
 
-    // it does not collect DDL within comments or strings. 
+    [Test]
+    public void It_Correctly_Identifies_Location_Of_Unclosed_Strings()
+    {
+        var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';\r\nDECLARE @butThisisBad sysname = N'total fail\r\n-- closing comment. ";
+        var sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(1));
+        StringAssert.Contains("Non-Terminated String.", sut.SyntaxErrors[0].Message);
+
+        Assert.That(sut.SyntaxErrors[0].StartOffset, Is.EqualTo(276));
+    }
+
+    [Test]
+    public void It_Has_SyntaxErrors_When_There_Are_Unclosed_Block_Comments()
+    {
+        var text = "/* This is an unclosed block comment\r\nPRINT 'Hello World!';";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(1));
+        StringAssert.Contains("Non-Terminated Block-Comment", sut.SyntaxErrors[0].Message);
+    }
+
+    [Test]
+    public void It_Ignores_Unclosed_BlockComments_Within_Strings()
+    {
+        var text = "DECLARE @anotherString nvarchar(max) = N'this is not an unclosed block comment /* ';";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Has_SyntaxErrors_When_There_Are_Unclosed_BracketIdentifiers()
+    {
+        var text = "SELECT * FROM [MyTable;\r\nGO";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(1));
+        StringAssert.Contains("Non-Terminated", sut.SyntaxErrors[0].Message);
+    }
+
+    [Test]
+    public void It_Ignores_Unclosed_BracketIdentifiers_Within_Strings()
+    {
+        var text = "DECLARE @mytext nvarchar(MAX) = N'this is not [a real identifier';\r\nGO";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+    }
+
+    #endregion
+
+    #region Matches are ignored within strings
+    [Test]
+    public void It_Ignores_EOL_Comments_Within_Strings()
+    {
+        var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an EOL comment -- but it should be ignored';\r\nSET @string = N'some value'; -- this is a legit EOL comment.";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.EolComments.Count , Is.EqualTo(1));
+    }
+
+    [Test]
+    public void It_Ignores_Block_Comments_Within_Strings()
+    {
+        var text = "DECLARE @string nvarchar(MAX) = N'this is a string with a block comment /* but it should be ignored */';\r\n/* but this is a legit block \r\n comment */\r\nSET @string = N'some value';";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void It_Ignores_Escaped_Ticks_Within_Strings()
+    {
+        var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an escaped tick '' and it should''t cause an error';";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Ignores_GO_Within_Strings()
+    {
+        var text = "DECLARE @string nvarchar(MAX) = N'this is a string with GO in it, but it should be ignored';\r\n\r\n/* this is a comment with GO in it - but it should be ignored */\r\nGO\r\nPRINT 'This is batch 2';";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.Batches.Count, Is.EqualTo(2));
+
+        StringAssert.AreEqualIgnoringCase("DECLARE @string nvarchar(MAX) = N'this is a string with GO in it, but it should be ignored';\r\n\r\n/* this is a comment with GO in it - but it should be ignored */\r\nGO", sut.Batches[0].BatchText);
+        StringAssert.AreEqualIgnoringCase("GO", sut.Batches[0].GoStatement);
+        StringAssert.AreEqualIgnoringCase("", sut.Batches[1].GoStatement);
+    }
+
+    //  TODO:
+    // It_Ignores_BracketedIdentifiers_Within_Strings() - e.g.,  SELECT 'this is not an identifier [so ignore me]' AS [columnName];
+    #endregion
+
+    #region Matches are ignored within Comments
+    [Test]
+    public void It_Ignores_EOL_Comments_Within_Block_Comments()
+    {
+        var text = "/* this is a block comment with an EOL comment -- but it should be ignored */\r\nPRINT 'Hello World!';";
+        var sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
+        Assert.That(sut.EolComments.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Ignores_GO_Within_Comments()
+    {
+        var text = "/* this is a block comment with GO in it - but it should be ignored */\r\nGO\r\nPRINT 'This is batch 2';";
+        var sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(1));
+        Assert.That(sut.Batches.Count, Is.EqualTo(2));  // i.e., there are 2 batches but NOT 3. 
+
+        text = "DECLARE @oink int = 2;\r\n--GO";
+        sut = new Mapper(text);
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.EolComments.Count, Is.EqualTo(1));
+        Assert.That(sut.Batches.Count, Is.EqualTo(1));
+    }
+
+    // TODO:
+    // It_Ignores_BracketedIdentifiers_Within_Comments() - e.g.,  /* this is a comment with [bracketed identifiers] in it - but ignore them */\r\nGO\r\nSELECT 1;
+    #endregion
+
+    #region Syntax Edge Cases 
+    [Test]
+    public void It_Ignores_Escaped_Brackets_Within_Identifiers()
+    {
+        var text = "SELECT 127 [kinda [weird]]];";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Ignores_Go_Within_Bracketed_Identifiers()
+    {
+        var text = "SELECT 'I''m not even mad, bro.' [Go go go];";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.Batches.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void It_Ignores_EOL_comments_Within_Bracketed_Identifiers()
+    {
+        var text = "SELECT 'But, why?' AS [this is a --comment]";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.Batches.Count, Is.EqualTo(1));
+        Assert.That(sut.EolComments.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Ignores_Block_Comments_Within_Bracketed_Identifiers()
+    {
+        var text = "SELECT N'text' [this is /* nuts */]";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.Batches.Count, Is.EqualTo(1));
+        Assert.That(sut.BlockComments.Count, Is.EqualTo(0));
+    }
+
+    [Test]
+    public void It_Ignores_Strings_Within_Bracketed_Identifiers()
+    {
+        var text = "SELECT 'wth?' [for 'realz'?]";
+        var sut = new Mapper(text);
+
+        Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
+        Assert.That(sut.Batches.Count, Is.EqualTo(1));
+    }
+
     #endregion
 
     #region Batch Splitting / Mapping
@@ -113,5 +309,30 @@ public class MapperTests
     //{
     //    var text = "\r\n/* this is terrible - but valid */  USE admindb;  -- no semi-colon after the USE ...  \r\nGO";
     //}
+    #endregion
+
+    #region DDL Mapping
+    // it captures CREATE PROC statements
+
+    // it captures CREATE FUNCTION statements
+
+    // it captures CREATE VIEW statements
+
+    // it captures CREATE TRIGGER statements
+
+    // it captures CREATE TYPE statements
+
+    // it captures CREATE AGGREGATE statements
+
+    // it captures CREATE ASSEMBLY statements
+
+    // it captures create TABLE statements
+
+    // etc... 
+
+    // it captures ALTER statements
+
+    // it captures create or alter statements. 
+
     #endregion
 }

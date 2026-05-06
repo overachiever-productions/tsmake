@@ -6,7 +6,6 @@ public interface ILocation
     // lineNumber  
 }
 
-
 // REFACTOR: Might collapse ISyntaxError and IRuntimeError into a single IError interface.
 public interface ISyntaxError 
 {
