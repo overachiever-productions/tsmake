@@ -160,6 +160,5 @@ public class NormalizerTests
         Assert.That(sut.Lines[5].Length, Is.EqualTo(6));
         Assert.That(sut.Lines[6].Length, Is.EqualTo(7));
         Assert.That(sut.Lines[7].Length, Is.EqualTo(1));
-
     }
 }

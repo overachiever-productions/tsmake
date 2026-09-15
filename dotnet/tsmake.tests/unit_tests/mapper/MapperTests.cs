@@ -4,7 +4,7 @@ public class MapperTests
 {
 
     #region Conventions
-    // it requires INormalizedString for input... (MKC: actually, not sure this needs to be a test. if I change the .ctor ... then ... there's no test in question).
+    // TODO: it requires INormalizedString for input... (MKC: actually, not sure this needs to be a test. if I change the .ctor ... then ... there's no test in question).
     #endregion
 
     #region Closure Validations
@@ -20,7 +20,7 @@ public class MapperTests
     [Test]
     public void It_Does_Not_Have_Syntax_Errors_For_Correctly_Formed_Strings()
     {
-        // all of the following are correctly formed: 
+        // NOTE: All of the following are correctly formed: 
         var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';";
         var sut = new Mapper(text);
         Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
@@ -312,27 +312,27 @@ public class MapperTests
     #endregion
 
     #region DDL Mapping
-    // it captures CREATE PROC statements
+    // TODO: it captures CREATE PROC statements
 
-    // it captures CREATE FUNCTION statements
+    // TODO: it captures CREATE FUNCTION statements
 
-    // it captures CREATE VIEW statements
+    // TODO: it captures CREATE VIEW statements
 
-    // it captures CREATE TRIGGER statements
+    // TODO: it captures CREATE TRIGGER statements
 
-    // it captures CREATE TYPE statements
+    // TODO: it captures CREATE TYPE statements
 
-    // it captures CREATE AGGREGATE statements
+    // TODO: it captures CREATE AGGREGATE statements
+    
+    // TODO: it captures CREATE ASSEMBLY statements
 
-    // it captures CREATE ASSEMBLY statements
-
-    // it captures create TABLE statements
+    // TODO: it captures CREATE TABLE statements
 
     // etc... 
 
-    // it captures ALTER statements
+    // TODO: it captures ALTER statements
 
-    // it captures create or alter statements. 
+    // TODO: it captures CREATE OR ALTER statements
 
     #endregion
 }
