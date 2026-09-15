@@ -14,9 +14,9 @@ public class Mapper : IMapper
                     - comments (single-line and multi-line)
                     - GO statements 
                     - CREATE/ALTER statements (for procs, functions, views, triggers)   
-            - for each match, create an object (CommentBatch, GoBatch, ObjectBatch) and add to the appropriate List<x>. 
+            - for each match, create an object (Comment, Go/Batch, ObjectDef) and add to the appropriate List<x>. 
             - I don't NEED heavy-duty details on each match. 
-                Just enough to know the type (so I can put it in the correct List<x>), the start/end offsets, and the text.
+                Just enough to know the type (so I can put it in the correct List<x>), the start/end offsets, and the text. Could even call this a fuzzy mapper. 
 
     */
 
@@ -28,7 +28,8 @@ public class Mapper : IMapper
     public List<IBlockComment> BlockComments { get; }
     public List<IObjectDeclaration> ObjectDeclarations { get; }
 
-    // 'normalizedText' is _expected_ to be pre-processed by a Normalizer instance (i.e., by CONVENTION only). I could 'enforce' this by means of an INormalizedString interface ... which'd have a .String and a .CrLfEndingOptions ... similar to an 'HtmlString' in MVC.
+    // TODO: enforce normalization via INormalizedString.
+    // 'normalizedText' is _expected_ to be pre-processed by a Normalizer instance (i.e., by CONVENTION only). I WILL (eventually) 'enforce' this by means of an INormalizedString interface ... which'd have a .String and a .CrLfEndingOptions ... similar to an 'HtmlString' in MVC.
     public Mapper(string normalizedText)
     {
         this._rawText = normalizedText;
@@ -49,11 +50,14 @@ public class Mapper : IMapper
 
     private void ValidateClosures()
     {
-        // https://overachieverllc.atlassian.net/browse/TSM-26
-        var pattern = @"(?s)(?<UnclosedBlockComment>/\*(?:(?!\*/).)*$)|(?<UnclosedBrackets>\[(?:(?!\]).)*$)";
+        if (string.IsNullOrEmpty(this._rawText))
+            return;
 
+        var validEntitiesReplacedWithPlaceHolders = Regex.Replace(this._rawText, @"(?s)(?<String>N?'.*?')|(?<BlockComment>/\*.*?\*/)|(?<BracketedText>\[([^\]]|\]\])*\])", m => new string('x', m.Length), Global.BatchSplittingOptions);
+
+        var pattern = @"(?m)(?i)(?<UnclosedString>'(?:[^']|'')*$)|(?<UnclosedBlockComment>/\*(?:(?!\*/).)*$)|(?<UnclosedBrackets>\[(?:(?!\]).)*$)";
         var regex = new Regex(pattern, Global.BatchSplittingOptions);
-        var matches = regex.Matches(this._rawText);
+        var matches = regex.Matches(validEntitiesReplacedWithPlaceHolders);
 
         if (matches.Count > 0)
         {
@@ -61,7 +65,7 @@ public class Mapper : IMapper
             {
                 foreach (Group g in m.Groups)
                 {
-                    if (g.Success && "_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
+                    if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                         this.SyntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Index, g.Index + g.Length));
                 }
             }
@@ -70,7 +74,7 @@ public class Mapper : IMapper
 
     private void Map(string text)
     {
-        var pattern = @"(?i)(?s)(?<GoStatement>(?<=\s*)(GO[ \t]+\d+|GO)(?=(\s+|$)))|(?<BlockComment>/\*.*?\*/)|(?<EndOfLineComment>--[^\n\r]*)|(?<String>N?'.*?')|(?<DDLStart>(CREATE|ALTER)\s+)";
+        var pattern = @"(?i)(?s)(?<GoStatement>(?<=\s*)(GO[ \t]+\d+|GO)(?=(\s+|$)))|(?<BlockComment>/\*.*?\*/)|(?<EndOfLineComment>--[^\n\r]*)|(?<String>N?'.*?')|(?<BracketedText>\[([^\]]|\]\])*\])|(?<DDLStart>(CREATE|ALTER)\s+)";
 
         var regex = new Regex(pattern, Global.BatchSplittingOptions);
         var matches = regex.Matches(this._rawText);
@@ -80,7 +84,7 @@ public class Mapper : IMapper
         {
             foreach (Group g in m.Groups)
             {
-                if (g.Success && "_GoStatement_BlockComment_EndOfLineComment_String_DDLStart".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
+                if (g.Success && "_GoStatement_BlockComment_EndOfLineComment_String_BracketedText_DDLStart".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                 {
                     switch (g.Name)
                     {
@@ -99,15 +103,19 @@ public class Mapper : IMapper
                             this.ObjectDeclarations.Add(new ObjectDeclaration(g.Value, g.Index, g.Index + g.Length));
                             break;
                         case "string":
-                            // do nothing ... we don't care about strings. They ONLY 'exist' to make sure we don't mis-interpret GO, CREATE/ALTER, or comments, etc. inside them.
+                            // Do Nothing. Strings ONLY 'exist' to make sure we don't mis-interpret GO, CREATE/ALTER, or comments, etc. inside them.
+                            break;
+                        case "BracketedText":
+                            // at this stage (and as of 2026-05-06) ... do nothing. Just like strings, bracketed-text ONLY 'exists' to make sure we don't mis-interpret GO, CREATE/ALTER, or comments, etc. inside them.
                             break;
                     }
                 }
             }
         }
 
-        // TODO: if previousBatchStart < text.Length, then we have a final batch to add.
-
+        // Account for any remaining text AFTER the last GO statement (or the ENTIRE text, if no GO statements were found):
+        if (previousBatchStart < text.Length)
+            this.Batches.Add(new Batch(this._rawText.Substring(previousBatchStart, text.Length - previousBatchStart), string.Empty, previousBatchStart, text.Length));
     }
 
     private string TranslateNonClosedType(string matchName)
@@ -119,7 +127,7 @@ public class Mapper : IMapper
             case "UnclosedBlockComment":
                 return "Non-Terminated Block-Comment.";
             case "UnclosedBrackets":
-                return "Non-Terminated [object-identifier-within-square-brackets].";
+                return "Non-Terminated [Identifier].";
             default:
                 throw new NotImplementedException();
         }
