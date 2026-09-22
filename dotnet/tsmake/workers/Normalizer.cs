@@ -115,7 +115,7 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                         // TODO: https://overachieverllc.atlassian.net/browse/TSM-33
                         // ALSO: bolster the above with the match? if possible? 
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), "TODO: FILENAME HERE", -99));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), stack.Peek().FilePath, -99));
                 }
             }
         }
