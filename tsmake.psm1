@@ -8,24 +8,21 @@ filter Import-Types {
 	$classFiles = @(
 		"$ScriptRoot\dotnet\tsmake\Globals.cs";
 		"$ScriptRoot\dotnet\tsmake\Enums.cs";
-		"$ScriptRoot\dotnet\tsmake\Interfaces.cs";
-#		"$ScriptRoot\dotnet\tsmake\Errors.cs";
-#		
-#		"$ScriptRoot\dotnet\tsmake\Tokenization\Tokenizer.cs";
-#		"$ScriptRoot\dotnet\tsmake\Tokenization\Handlers.cs";
-#		
-#		"$ScriptRoot\dotnet\tsmake\Directives.cs";
-#		
-#		"$ScriptRoot\dotnet\tsmake\FileProcessing\FileSystem.cs";
-#		"$ScriptRoot\dotnet\tsmake\FileProcessing\Assembler.cs";
-#		
-#		#		"$ScriptRoot\dotnet\tsmake\models\Lines.cs";
-#		#		"$ScriptRoot\dotnet\tsmake\models\Tokens.cs";
-#		#		"$ScriptRoot\dotnet\tsmake\models\Directives.cs";
-#		#		
-#		#		"$ScriptRoot\dotnet\tsmake\models\Files.cs";
-#		"$ScriptRoot\dotnet\tsmake\Results.cs";
-#		#		
+		"$ScriptRoot\dotnet\tsmake\FileSystem.cs";
+		
+		"$ScriptRoot\dotnet\tsmake\data_models\Tokens.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Errors.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\CodeLines.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\AssemblerOptions.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Results.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Artifacts.cs";
+		
+		"$ScriptRoot\dotnet\tsmake\workers\Assembler.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\Normalizer.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\DocumentationExtractor.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\DirectiveProcessor.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\TokenTransformer.cs";
+
 #		"$ScriptRoot\dotnet\tsmake\Formatter.cs";
 	);
 	

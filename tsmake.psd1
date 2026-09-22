@@ -19,7 +19,7 @@
 	TypesToProcess		   = @()
 	FormatsToProcess	   = @()
 	NestedModules		   = @()
-	FunctionsToExport	   = @('Import-Types') #For performance, list functions explicitly
+	FunctionsToExport	   = '*'
 	CmdletsToExport	       = '*'
 	VariablesToExport	   = '*'
 	AliasesToExport	       = '*' #For performance, list alias explicitly
