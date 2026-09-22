@@ -5,6 +5,7 @@ namespace tsmake.workers;
 public interface INormalizer
 {
     void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack);
+    string NormalizedText { get; }
 }
 
 public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.CrLf) : INormalizer
@@ -12,11 +13,15 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
     private string _input = string.Empty;
     private readonly LineEndingOptions _lineEndingOptions = lineEndingOptions;
 
+    public string NormalizedText { get; private set; } = string.Empty;
+
     public void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
     {
         this._input = fileContent;
         var current = stack.Peek();
         var currentFileName = current.FilePath;
+
+        // TODO: MIGHT make sense to set a variable HERE that keeps tabs on the current Length/Count (of lines) in codeLines. 
 
         var regex = new Regex(@"\r\n|\r|\n", Global.SingleLineRegexOptions);
         var matches = regex.Matches(fileContent);
@@ -60,30 +65,7 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
         this.ValidateClosures(syntaxErrors, stack);
     }
 
-    //private string SerializeLines()
-    //{
-    //    var lineEnding = this._lineEndingOptions switch
-    //    {
-    //        LineEndingOptions.CrLf => "\r\n",
-    //        LineEndingOptions.Lf => "\n",
-    //        LineEndingOptions.Cr => "\r",
-    //        _ => throw new InvalidEnumArgumentException()
-    //    };
-
-    //    var sb = new StringBuilder();
-    //    int i = 0;
-    //    foreach (var line in this.Lines)
-    //    {
-    //        sb.Append(line.Text);
-
-    //        if (i != this.Lines.Count - 1)
-    //            sb.Append(lineEnding);
-
-    //        i++;
-    //    }
-
-    //    return sb.ToString();
-    //}
+    
 
     private void ValidateClosures(List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
     {
@@ -96,6 +78,7 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
         };
 
         string normalizedText = Regex.Replace(this._input, @"\r\n|\r|\n", lineEnding, Global.SingleLineRegexOptions);
+        this.NormalizedText = normalizedText;
 
         if (string.IsNullOrEmpty(normalizedText))
             return;
@@ -115,6 +98,8 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                         // TODO: https://overachieverllc.atlassian.net/browse/TSM-33
                         // ALSO: bolster the above with the match? if possible? 
+
+                        // TODO: need to map/extract the line-number against ... this.codeLines.offsets ... 
                         syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), stack.Peek().FilePath, -99));
                 }
             }
