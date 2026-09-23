@@ -22,14 +22,16 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
         var currentFileName = current.FilePath;
 
         // TODO: MIGHT make sense to set a variable HERE that keeps tabs on the current Length/Count (of lines) in codeLines. 
-
         var regex = new Regex(@"\r\n|\r|\n", Global.SingleLineRegexOptions);
         var matches = regex.Matches(fileContent);
 
         int lineNumber = 1;
         int previousStart = 0;
+
         if (matches.Count < 1)
+        {
             codeLines.Add(new CodeLine(fileContent, currentFileName, 1, 1, fileContent.Length, stack));
+        }
         else
         {
             foreach (Match match in matches)
@@ -62,10 +64,10 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
                 codeLines.Add(new CodeLine(this._input.Substring(previousStart, this._input.Length - previousStart), currentFileName, lineNumber, previousStart + 1, this._input.Length, stack));
         }
 
-        this.ValidateClosures(syntaxErrors, stack);
+        this.ValidateClosures(syntaxErrors, codeLines, currentFileName, stack);
     }
 
-    private void ValidateClosures(List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
+    private void ValidateClosures(List<ISyntaxError> syntaxErrors, List<ICodeLine> codeLines, string currentFileName, Stack<IStackEntry> stack)
     {
         var lineEnding = this._lineEndingOptions switch
         {
@@ -94,11 +96,10 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
                 foreach (Group g in m.Groups)
                 {
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
-                        // TODO: https://overachieverllc.atlassian.net/browse/TSM-33
-                        // ALSO: bolster the above with the match? if possible? 
-
-                        // TODO: need to map/extract the line-number against ... this.codeLines.offsets ... 
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), stack.Peek().FilePath, -99));
+                    {
+                        var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == currentFileName) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, currentFileName, syntaxErrorLine?.LineNumber ?? -99, stack));
+                    }
                 }
             }
         }
