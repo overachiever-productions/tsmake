@@ -16,6 +16,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -30,6 +31,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -44,6 +46,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -59,6 +62,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -74,6 +78,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -88,6 +93,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -103,6 +109,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -117,6 +124,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -132,6 +140,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer(LineEndingOptions.Cr);
         sut.Normalize(text, lines, errors, stack);
@@ -147,6 +156,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -162,6 +172,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -177,6 +188,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -192,6 +204,7 @@ public class NormalizerTests
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
+        stack.Push(new StackEntry("file-name.sql", 0, 0));
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, stack);
@@ -220,9 +233,9 @@ public class NormalizerTests
         Assert.That(lines[1].Content.Length, Is.EqualTo(2));
         Assert.That(lines[2].Content.Length, Is.EqualTo(3));
         Assert.That(lines[3].Content.Length, Is.EqualTo(4));
-        Assert.That(lines[4].Content.Length, Is.EqualTo(1));
+        Assert.That(lines[4].Content.Length, Is.EqualTo(0));
         Assert.That(lines[5].Content.Length, Is.EqualTo(6));
         Assert.That(lines[6].Content.Length, Is.EqualTo(7));
-        Assert.That(lines[7].Content.Length, Is.EqualTo(1));
+        Assert.That(lines[7].Content.Length, Is.EqualTo(0));
     }
 }

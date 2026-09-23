@@ -55,7 +55,7 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
             }
 
             var finalMatch = matches[^1];
-            if (finalMatch.Index + finalMatch.Length == this._input.Length) // non-obvious logic here, but it's _NEEDED_.
+            if (finalMatch.Index + finalMatch.Length == this._input.Length) // non-obvious logic here, but it's _NEEDED_ for trailing "empty lines".
                 codeLines.Add(new CodeLine("", currentFileName, lineNumber, previousStart, previousStart, stack));
 
             if (previousStart < this._input.Length)
@@ -64,8 +64,6 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
 
         this.ValidateClosures(syntaxErrors, stack);
     }
-
-    
 
     private void ValidateClosures(List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
     {
