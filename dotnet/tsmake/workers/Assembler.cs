@@ -7,30 +7,22 @@ public interface IAssembler
     string BuildRoot { get; }
     string BuildOutput { get; }
     void Assemble(string buildFilePath);
+
     internal void RecursivelyAssemble(string filePath, int parentFileLine);
 }
 
-public class Assembler(IAssemblerOptions options, IFileSystem fileSystem, INormalizer normalizer, ITokenTransformer tokenTransformer, 
-    IDirectiveProcessor directiveProcessor) : IAssembler
+public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResult buildResult) : IAssembler
 {
+    private int _fileCount = 0;
+
+    private IOpsFactory OpsFactory { get; } = opsFactory;
     private IAssemblerOptions Options { get; } = options;
-    private IFileSystem FileSystem { get; } = fileSystem;
-    private INormalizer Normalizer { get; } = normalizer;
-    private ITokenTransformer TokenTransformer { get; } = tokenTransformer;
-    private IDirectiveProcessor DirectiveProcessor { get; } = directiveProcessor;
-    private IDocumentationExtractor DocumentationExtractor { get; } = null!;
+    private IResult BuildResult { get; } = buildResult;
 
     private List<ISyntaxError> SyntaxErrors { get; set; } = new List<ISyntaxError>();
     private List<ICodeLine> CodeLines { get; set; } = new List<ICodeLine>();
     private List<ICodeLine> DocLines { get; set; } = new List<ICodeLine>();
     private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
-
-    public Assembler(IAssemblerOptions options, IFileSystem fileSystem, INormalizer normalizer, ITokenTransformer tokenTransformer,
-        IDirectiveProcessor directiveProcessor, IDocumentationExtractor documentationExtractor) : this(options, fileSystem, normalizer, 
-        tokenTransformer, directiveProcessor)
-    {
-        this.DocumentationExtractor = documentationExtractor;
-    }
 
     public string BuildRoot { get; private set; } = string.Empty;
     public string BuildOutput { get; private set; } = string.Empty;
@@ -44,53 +36,77 @@ public class Assembler(IAssemblerOptions options, IFileSystem fileSystem, INorma
 
         ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
-// NOTE: Caller/PS Pipeline handles logic from here "down":
-        // this.codelines can be serialized to a string-writer or whatever. 
-        // pipeline.buildtransformer TRANSFORMS. These are just simple regex replacements vs the string/body. 
-        //     no ... syntax errors or context needed at this point. (and, if so, roll this up into ... the assembler). 
+        // TODO: serialize this.codelines via a StringBuilder... 
 
-        // PS pipeline checks for syntax errors. If any ... exception/terminate + report. 
-        // if no errors: 
-        //     REMOVE any remaining comments - regex.replace vs body/string. 
-        // write artifact/body to disk. 
+        // TODO: pass the serialized-string into a new IBuildTransformer. 
+        //    and have it run transforms ... (which can/will include options for replacing UseONlyBatches, EmptyBatches, etc.)
+
+        // TODO: the IBuildTransformer can/will ALSO address any 'remaining' CommentRemovalDirectives. 
+        //      i.e., those are 'just' REGEX replaces as well. 
+
+        // TODO:  ARTIFACTS will be different based on .Document or .Build ... 
+        //    IF .Build: 
+        //         we have 1-2 artifacts: the ##output and an optional ##filemarker (version-marker) file.
+        //    IF .Document:
+        //        we'll have 1 artifact PER each DocTransformer/Writer. 
+
+        this.BuildResult.SetErrors(this.SyntaxErrors);
+        this.BuildResult.SetStatistics(this._fileCount, this.CodeLines.Count);
+        this.BuildResult.SetComplete();
     }
 
     void IAssembler.RecursivelyAssemble(string filePath, int parentFileLine)
     {
-// TODO: add a try/catch around ... all of this? 
-        var buildFile = new StackEntry(filePath, parentFileLine, this.Stack.Count);
-        this.Stack.Push(buildFile);
-
-        string fileContent = this.FileSystem.GetFileContent(filePath);
-
-        this.Normalizer.Normalize(fileContent, this.CodeLines, this.SyntaxErrors, this.Stack);
-
-        if(this.DocumentationExtractor != null)  // TODO: ask claude about this... 
-            this.DocumentationExtractor.ExtractDocumentation(this.CodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
-
-        if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveHeaderComments))
+        try
         {
-            // TODO: use a REGEX vs .Normalizer.NormalizedText ... to identify the start/end-line of header-comments. 
-            //      can, obviously be 1 (i.e., 0) or ... N. 
-        }
+            var buildFile = new StackEntry(filePath, parentFileLine, this.Stack.Count);
+            this.Stack.Push(buildFile);
+            this._fileCount++;
 
-        if(this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
+            string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
+
+            var normalizer = this.OpsFactory.NewNormalizer();
+            normalizer.Normalize(fileContent, this.CodeLines, this.SyntaxErrors, this.Stack);
+
+            if (this.Options.OperationType == OperationType.Document)
+            {
+                var docExtractor = this.OpsFactory.NewDocumentationExtractor();
+                docExtractor.ExtractDocumentation(this.CodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
+            }
+            else
+            {
+                if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveHeaderComments))
+                {
+                    // TODO: use a REGEX vs .Normalizer.NormalizedText ... to identify the start/end-line of header-comments. 
+                    //      can, obviously be 1 (i.e., 0) or ... N. 
+                }
+
+                if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
+                {
+                    // TODO: similar to the above ... but get a list of ALL lines with DocContent in them. ... 
+
+                    // TODO: Need a REGEX for DocComments that can find / address 2x scenarios: 
+                    //   1. ENTIRE block-comment is, effectively, a DocComment ... i.e., /* <whitespace> DOC_CONTENT <whitespace> */ ...
+                    //        i.e., replace the entire block-comment.
+                    //   2. ... there are lines with DocContent in the ... but they're NOT the only content in the block-comment itself. 
+                    //       just replace the matching LINES. 
+                }
+            }
+
+            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
+            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors, this.Stack, this.BuildRoot, this.BuildOutput);
+
+        // TODO: at this point we NEED to have the ##output (##root was already needed within .ProcessDirectives() ... to resolve any relative paths).
+        // TODO: we should also have/know if we have a ##filemarker(version-marker) or whatever as well. 
+
+            var tokenTransformer = this.OpsFactory.NewTokenTransformer();
+            tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+
+            this.Stack.Pop();
+        }
+        catch (Exception ex)
         {
-            // TODO: similar to the above ... but get a list of ALL lines with DocContent in them. ... 
-            
-            // TODO: Need a REGEX for DocComments that can find / address 2x scenarios: 
-            //   1. ENTIRE block-comment is, effectively, a DocComment ... i.e., /* <whitespace> DOC_CONTENT <whitespace> */ ...
-            //        i.e., replace the entire block-comment.
-            //   2. ... there are lines with DocContent in the ... but they're NOT the only content in the block-comment itself. 
-            //       just replace the matching LINES. 
+            this.BuildResult.AddException(ex);
         }
-
-        this.DirectiveProcessor.ProcessDirectives(this, this.FileSystem, this.CodeLines, this.SyntaxErrors, this.Stack, this.BuildRoot, this.BuildOutput);
-        
-        this.TokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenReplacementDirectives);
-
-        this.Stack.Pop();
     }
-
-
 }

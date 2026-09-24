@@ -23,11 +23,11 @@ public class DirectiveProcessor : IDirectiveProcessor
         // b. check for conditional-include directives ... if found (convert to FILE|DIRECTORY) 
         // c. check for conditional-include conditions  .. and process BUILD or DEPLOY-TIME logic as needed. 
         // d. process INCLUDES (FILE|DIRECTORY) ... 
-        //      and for each INCLUDED file ... recurse (against the parent). 
-        string newChildFilePath = "";
-        int lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile = -99;
-        parent.RecursivelyAssemble(newChildFilePath, lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile);
+        //      and FOREACH INCLUDED file ... recurse (against the parent). 
+        //          string newChildFilePath = "";
+        //          int lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile = -99;
+        //          parent.RecursivelyAssemble(newChildFilePath, lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile);
 
-        throw new NotImplementedException();
+        //throw new NotImplementedException();
     }
 }

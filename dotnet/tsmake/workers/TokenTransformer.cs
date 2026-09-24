@@ -5,20 +5,20 @@ namespace tsmake.workers;
 public interface ITokenTransformer
 {
     // IMPLEMENTATION: https://overachieverllc.atlassian.net/browse/TSM-34
-    void TransformTokens(List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack, ITokenDefinitionRegistry optionsTokenDefinitionRegistry, TokenReplacementDirectives optionsTokenReplacementDirectives);
+    void TransformTokens(List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack, ITokenDefinitionRegistry optionsTokenDefinitionRegistry, TokenExclusionDirectives optionsTokenExclusionDirectives);
 }
 
-public class TokenTransformer(TokenReplacementDirectives directives) : ITokenTransformer
+public class TokenTransformer(TokenExclusionDirectives directives) : ITokenTransformer
 {
-    private TokenReplacementDirectives Directives { get; } = directives;
+    private TokenExclusionDirectives Directives { get; } = directives;
     
     // IMPLEMENTATION: https://overachieverllc.atlassian.net/browse/TSM-34
 
-    public void TransformTokens(List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack, ITokenDefinitionRegistry optionsTokenDefinitionRegistry, TokenReplacementDirectives optionsTokenReplacementDirectives)
+    public void TransformTokens(List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack, ITokenDefinitionRegistry optionsTokenDefinitionRegistry, TokenExclusionDirectives optionsTokenExclusionDirectives)
     {
         // NOTE: tokens may/may-not be transformed within 'strings', --comments, or /* comments */ - depending upon directives. 
 
 
-        throw new NotImplementedException();
+        //throw new NotImplementedException();
     }
 }

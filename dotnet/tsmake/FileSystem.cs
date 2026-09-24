@@ -1,4 +1,6 @@
-﻿namespace tsmake;
+﻿using tsmake.data_models;
+
+namespace tsmake;
 
 public interface IFileSystem
 {
@@ -13,6 +15,8 @@ public interface IFileSystem
     PathType GetPathType(string filePath, bool strict = false);
     bool IsValidFilePath(string filePath);
     string GetFileContent(string filePath);
+
+    void WriteArtifact(IArtifact artifact);
 }
 
 public class FileSystem (string workingDirectory) : IFileSystem
@@ -177,5 +181,44 @@ public class FileSystem (string workingDirectory) : IFileSystem
         // TODO: ARGUABLY, could/should look for additional problems like: NULL byte, ASCII 0 - 31, reserved filenames (windows), and other rules
 
         return false;
+    }
+
+    public void WriteArtifact(IArtifact artifact)
+    {
+        // NOTE: MIGHT pass in PART of an IAssemblerOptions that ... defines
+        //      - whether to overwrite existing files OR attempts to use a 'safe' write as outlined below. 
+
+
+        /*
+# ====================================================================================================
+# Output:
+# ====================================================================================================	
+# TODO: move the logic below into IFileSystem ... it needs to be able to handle the backup/write and other (similar) logic. 
+# and... honestly, no real reason to CHECK/validate -OutputPath at this point as ... it might NOT be specified at all. 		
+# 	UGH... need to move this into the BuildPipeline ... since -OutputPath can/will be NULL at this point. 
+# 	TODO: 
+# 		if -OutputPath is a FOLDER ... and there are multiple -BuildFiles ... we're fine. 
+# 			HOWEVER: the above ONLY works IF each .build.sql file in question has an OUTPUT directive OR a CONFIG-VALUE ... set for the file-name. 
+# 		if -OutputPath is a FILENAME 
+# 			the INTENTION of a BUILD is to ... replace whatever is already in place - i.e., I do this all the time with admindb_latest.sql .. 
+# 				I just overwrite it. 
+# 			So, I'm not sure that there's any justification for:
+# 				- THROW if the file exists. 
+# 				- Requiring something like -Force 
+# 				- Prompting the user to overwrite. 
+# 			BUT, FEATURE-CREEP:
+# 				I can see that if a file already exists...
+# 					 i rename it to xxxx.sql.backup. 
+# 				IF the build fails ... 
+# 					i could revert? 
+# 						or tell users there's a copy.
+# 				IF the build succeeds, then delete .backup... 
+*/
+
+        // Implementation for writing the artifact
+
+        // i.e., attempt to write the file - using the logic above... 
+        //  and if there are failures, ... 
+        //     - catch the exception and hand it off/into the IArtifact for reporting.
     }
 }

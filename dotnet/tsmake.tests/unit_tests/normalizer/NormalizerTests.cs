@@ -143,7 +143,7 @@ public class NormalizerTests
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
-        var sut = new Normalizer(LineEndingOptions.Cr);
+        var sut = new Normalizer(LineEndingsType.Cr);
         sut.Normalize(text, lines, errors, stack);
 
         Assert.That(lines.Count, Is.EqualTo(4));

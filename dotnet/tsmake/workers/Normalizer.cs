@@ -8,10 +8,10 @@ public interface INormalizer
     string NormalizedText { get; }
 }
 
-public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.CrLf) : INormalizer
+public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) : INormalizer
 {
     private string _input = string.Empty;
-    private readonly LineEndingOptions _lineEndingOptions = lineEndingOptions;
+    private readonly LineEndingsType _lineEndingsType = lineEndingsType;
 
     public string NormalizedText { get; private set; } = string.Empty;
 
@@ -21,7 +21,6 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
         var current = stack.Peek();
         var currentFileName = current.FilePath;
 
-        // TODO: MIGHT make sense to set a variable HERE that keeps tabs on the current Length/Count (of lines) in codeLines. 
         var regex = new Regex(@"\r\n|\r|\n", Global.SingleLineRegexOptions);
         var matches = regex.Matches(fileContent);
 
@@ -69,11 +68,11 @@ public class Normalizer(LineEndingOptions lineEndingOptions = LineEndingOptions.
 
     private void ValidateClosures(List<ISyntaxError> syntaxErrors, List<ICodeLine> codeLines, string currentFileName, Stack<IStackEntry> stack)
     {
-        var lineEnding = this._lineEndingOptions switch
+        var lineEnding = this._lineEndingsType switch
         {
-            LineEndingOptions.CrLf => "\r\n",
-            LineEndingOptions.Lf => "\n",
-            LineEndingOptions.Cr => "\r",
+            LineEndingsType.CrLf => "\r\n",
+            LineEndingsType.Lf => "\n",
+            LineEndingsType.Cr => "\r",
             _ => throw new InvalidEnumArgumentException()
         };
 

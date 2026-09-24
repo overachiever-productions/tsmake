@@ -19,8 +19,10 @@
 				Invoke-TsmBuild; 
 
 	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
+				xxxx
 
 	TOKENS (without explicit build-file):
+				xxxxx
 
 	S4 Build: 
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
@@ -91,29 +93,7 @@ function Invoke-TsmBuild {
 # ONCE I've found (or not) a .config file ... .then use a PowerShell FUNC to load it. 
 #    instead of all of the 'stuff' I've listed below in terms of what to grab - i.e., isolate that into it's own UoW. 
 		
-		# ====================================================================================================
-		# Output:
-		# ====================================================================================================	
-# TODO: move the logic below into IFileSystem ... it needs to be able to handle the backup/write and other (similar) logic. 
-		# and... honestly, no real reason to CHECK/validate -OutputPath at this point as ... it might NOT be specified at all. 		
-		# 	UGH... need to move this into the BuildPipeline ... since -OutputPath can/will be NULL at this point. 
-		# 	TODO: 
-		# 		if -OutputPath is a FOLDER ... and there are multiple -BuildFiles ... we're fine. 
-		# 			HOWEVER: the above ONLY works IF each .build.sql file in question has an OUTPUT directive OR a CONFIG-VALUE ... set for the file-name. 
-		# 		if -OutputPath is a FILENAME 
-		# 			the INTENTION of a BUILD is to ... replace whatever is already in place - i.e., I do this all the time with admindb_latest.sql .. 
-		# 				I just overwrite it. 
-		# 			So, I'm not sure that there's any justification for:
-		# 				- THROW if the file exists. 
-		# 				- Requiring something like -Force 
-		# 				- Prompting the user to overwrite. 
-		# 			BUT, FEATURE-CREEP:
-		# 				I can see that if a file already exists...
-		# 					 i rename it to xxxx.sql.backup. 
-		# 				IF the build fails ... 
-		# 					i could revert? 
-		# 						or tell users there's a copy.
-		# 				IF the build succeeds, then delete .backup... 
+
 		
 		# ====================================================================================================
 		# Tokens:
@@ -140,44 +120,64 @@ function Invoke-TsmBuild {
 		# 			and then INJECT them into $Tokens. 		
 		
 		# ====================================================================================================
-		# Comment-Removal Options
+		# Comment-Removal Options:
+		# Can be set via .config OR via $CommentDirectives. $CommentDirectives (i.e., CLI) trumps any values from config. 
 		# ====================================================================================================		
-		#  if ... passed in, then ... they overwrite anything found in .config. 
-		# 		but ... if nothing was passed in ... look for them in .config... etc. 
-		$buildCommentRemovalDirectives = @();
+		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::None;
+		# TODO: load from config and/or squash via $CommentDirectives
 		
 		# ====================================================================================================
 		# GO Removal/Cleanup Options
-		# ====================================================================================================			
+		# ====================================================================================================	
+# TODO: think this could be a BuildTRANSFORM option ... i.e., most BUILD transforms are simple REGEXes ... this could be one too. 
 		# 		these can NOT be specified via command-line. 
 		# 		so if they exist in the config ... copy them over. 
-		$buildGoRemovalDirectives = @();
+#		$buildGoRemovalDirectives = @();
+		
+		# ====================================================================================================
+		# TokenExclusionDirectives:
+		# 		CAN ONLY be set via .config values. 
+		# ====================================================================================================			
+		[tsmake.TokenExclusionDirectives]$tokenExclusionDirectives = [tsmake.TokenExclusionDirectives]::None;
+# TODO: map any value other than ::NONE from the .config if provided... 
 		
 		# ====================================================================================================
 		# LineEndingOptions:
+		# 		CAN ONLY be set via .config values. 
 		# ====================================================================================================	
-		# this is a vNext ... if ... at all. 
-		# 		but... can only be specified within the .config.
+		[tsmake.LineEndingsType]$lineEndingsType = [tsmake.LineEndingsType]::CrLf;
+# TODO: map any value other than ::NONE from the .config if provided... 
 		
 		Write-Verbose "Starting BUILD. BUILD File: [$file]";
 		
-# TODO: might as well turn this into a C# object ... so that I can pass it in to my other models/objects.
-		[pscustomobject]$buildOptions = [pscustomobject] @{
-			Tokens 							= $buildTokens
-			CommentRemovalOptions			= $buildCommentRemovalDirectives
-			GoRemovalOptions 				= $buildGoRemovalDirectives
-			
-			# All of these can be specified via the .Config ... so need to account for them here. 
-			#RootPath
-			#OutputPath 				# er ... well, if this is in the CONFIG ... then bubble it up to $OutputPath
-			#CrLfOptions
-		}
+		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tsmTokenRegistry, [tsmake.OperationType]::Build);
+		$assemblerOptions.SetOutputPath($OutputPath);
+		$assemblerOptions.SetDirectives($commentRemovalDirectives, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
-		$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $buildOptions -OutputPath $OutputPath -WorkingDirectory $pwd;
+		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions -WorkingDirectory $pwd;
 	};
 	
 	end {
-		Write-Host " Build.HasErrors: $($buildResult.HasErrors)"
+		Write-Host " Build.Exception: $($buildResult.Exception)";
+		Write-Host " Build.HasErrors: $($buildResult.HasErrors)";
+		
+		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount)"
+		
+		#  ... at this point I've got:
+		# 		syntax errors and/or an EXCEPTION. 
+		# 		or 
+		# 		- syntax errors
+		# 		- ##root-path and ##output-path directives ... (if they weren't already defined by the config)
+		#   	- an ASSEMBLED 'code base'
+		# 				all includes inlined. 
+		# woah ... i don't need to collect these IF I'm JUST BUILDING. 
+		# 				all DOC comments captured
+		# 				header comments removed. 
+		# 			directives identified
+		# 			tokens identified? (think so)
+		# 			conditionals identified (yeah - they're tokens)
+		# 			full object model interaction with all of the above. 		
+		
 		
 		return $buildResult;
 	};

@@ -1,6 +1,6 @@
 ﻿namespace tsmake;
 
-public enum LineEndingOptions
+public enum LineEndingsType
 {
     CrLf,
     Lf,
@@ -36,7 +36,7 @@ public enum CommentRemovalDirectives
 }
 
 [Flags]
-public enum TokenReplacementDirectives
+public enum TokenExclusionDirectives
 {
     None = 0,
     ExcludeStrings = 1, 
