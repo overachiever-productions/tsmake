@@ -1,4 +1,6 @@
-﻿namespace tsmake.data_models;
+﻿using tsmake.workers;
+
+namespace tsmake.data_models;
 
 public interface IResult
 {
@@ -9,18 +11,21 @@ public interface IResult
     DateTime Start { get; }
     DateTime End { get; }
 
-    List<ISyntaxError> Errors { get; }
+    List<IError> Errors { get; }
     List<IArtifact> Artifacts { get; }
+    IAssembler Assembler { get; }
 
     int FileCount { get; }
     int CodeLineCount { get; }
-
+    int DirectivesCount { get; }
+    
+    void AddAssembler(IAssembler assembler);    
     void SetComplete();
-    void SetErrors(List<ISyntaxError> errors);
+    void SetErrors(List<IError> errors);
     void AddArtifact(IArtifact artifact);
 
     void AddException(Exception ex);
-    void SetStatistics(int fileCount, int codeLineCount);   
+    void SetStatistics(int fileCount, int codeLineCount, int directivesCount);   
 }
 
 public class BaseResult : IResult
@@ -28,9 +33,12 @@ public class BaseResult : IResult
     public bool HasErrors => this.Errors.Count > 0;
     public Exception Exception { get; private set; }
     public OperationType OperationType { get; }
-    public List<ISyntaxError> Errors { get; private set; } = new List<ISyntaxError>();
+    public List<IError> Errors { get; private set; } = new List<IError>();
+    public IAssembler Assembler { get; private set; } = null!;
+
     public int FileCount { get; private set; }
     public int CodeLineCount { get; private set; }
+    public int DirectivesCount { get; private set; }
     public List<IArtifact> Artifacts { get; } = new List<IArtifact>();
     public DateTime Start { get; }
     public DateTime End { get; protected set; }
@@ -42,12 +50,12 @@ public class BaseResult : IResult
         this.Exception = null!;
     }
 
-    public void AddError(ISyntaxError error)
+    public void AddError(IError error)
     {
         this.Errors.Add(error);
     }
 
-    public void SetErrors(List<ISyntaxError> errors)
+    public void SetErrors(List<IError> errors)
     {
         this.Errors = errors;
     }
@@ -62,10 +70,16 @@ public class BaseResult : IResult
         this.Exception = ex;
     }
     
-    public void SetStatistics(int fileCount, int codeLineCount)
+    public void SetStatistics(int fileCount, int codeLineCount, int directivesCount)
     {
         this.FileCount = fileCount;
         this.CodeLineCount = codeLineCount;
+        this.DirectivesCount = directivesCount;
+    }
+
+    public void AddAssembler(IAssembler assembler)
+    {
+        this.Assembler = assembler;
     }
 
     public void SetComplete()

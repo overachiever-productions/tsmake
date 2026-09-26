@@ -8,12 +8,13 @@ public interface IFileSystem
     string RootDirectory { get; }
     void SetRootDirectory(string rootDirectory);
 
-    string TranslatePath(string path, PathType pathType);
-    List<string> GetDirectoryFiles(string directory);
+    PathType GetPathType(string filePath);
+    string TranslatePath(string path);
+    
     bool DirectoryExists(string path);
-    bool FileExists(string path);
-    PathType GetPathType(string filePath, bool strict = false);
-    bool IsValidFilePath(string filePath);
+    bool FileExists(string filePath);
+
+    List<string> GetDirectoryFiles(string directory);
     string GetFileContent(string filePath);
 
     void WriteArtifact(IArtifact artifact);
@@ -22,17 +23,24 @@ public interface IFileSystem
 public class FileSystem (string workingDirectory) : IFileSystem
 {
     public string WorkingDirectory { get; } = workingDirectory;
-    public string RootDirectory { get; private set; } = null!;
+    public string RootDirectory { get; private set; } = string.Empty;
 
     public void SetRootDirectory(string rootDirectory)
     {
         this.RootDirectory = rootDirectory;
     }
 
-    public string TranslatePath(string path, PathType pathType)
+    public PathType GetPathType(string filePath)
+    {
+        return filePath.GetPathType();
+    }
+
+    public string TranslatePath(string path)
     {
         if (this.RootDirectory == string.Empty)
-            throw new Exception("tsmake Workflow Exception: ROOTDirectory has not been set.");
+            throw new Exception("tsmake Workflow Exception: ROOT Directory has not been set.");
+
+        PathType pathType = GetPathType(path);
 
         switch (pathType)
         {
@@ -55,93 +63,18 @@ public class FileSystem (string workingDirectory) : IFileSystem
 
     public bool DirectoryExists(string path)
     {
-        return FileOrDirectoryExists(path);
+        return Directory.Exists(path);
     }
 
-    public bool FileExists(string path)
+    public bool FileExists(string filePath)
     {
-        // NOTE:  This func attempts to white-list known valid patterns - anything else is going to drop-out as FALSE.
-
-        // Absolute Path - local machine.
-        if (Regex.IsMatch(path, @"^[A-Za-z]{1}:\\", Global.SingleLineRegexOptions))
-        {
-            if (FileOrDirectoryExists(path))
-                return true;
-
-            if (PathContainsIllegalCharacters(path))
-                return false;
-
-            return true;
-        }
-
-        // Absolute Path - but against a UNC share:
-        if (path.StartsWith(@"//"))
-        {
-            if (FileOrDirectoryExists(path))
-                return true;
-
-            if (PathContainsIllegalCharacters(path))
-                return false;
-
-            return true;
-        }
-
-        // Relative Path - but from the current directory (i.e., no / in the path):
-        if (!path.ToLowerInvariant().Contains("/"))
-        {
-            if (PathContainsIllegalCharacters(path))
-                return false;
-
-            return true;
-        }
-
-        // Relative Path - but 'up' from current directory. 
-        if (path.StartsWith(@"../"))
-        {
-            if (PathContainsIllegalCharacters(path))
-                return false;
-
-            return true;
-        }
-
-        // Relative Path - but in child directory: 
-        if (path.ToLowerInvariant().Contains("/"))
-        {
-            if (PathContainsIllegalCharacters(path))
-                return false;
-
-            return true;
-        }
-
-        return false;
+        return File.Exists(filePath);
     }
 
-    public PathType GetPathType(string filePath, bool strict = false)
-    {
-        if (strict)
-        {
-            if (!this.IsValidFilePath(filePath))
-                throw new InvalidOperationException("tsmake Workflow Exception: Can not evaluate PathType when Path is deemed invalid.");
-        }
-
-        if (filePath.StartsWith(@"\\\"))
-            return PathType.Rooted;
-
-        // Absolute - Local File
-        if (Regex.IsMatch(filePath, @"^[A-Za-z]{1}:\\", Global.SingleLineRegexOptions))
-            return PathType.Absolute;
-
-        // Absolute - UNC Share
-        if (filePath.StartsWith("//"))
-            return PathType.Absolute;
-
-        return PathType.Relative;
-    }
-
-    public bool IsValidFilePath(string filePath)
-    {
-        return FileOrDirectoryExists(filePath);
-    }
+    //public static bool FileOrDirectoryExists(string path)
+    //{
+    //    return (Directory.Exists(path) || File.Exists(path));
+    //}
 
     public string GetFileContent(string filePath)
     {
@@ -161,26 +94,6 @@ public class FileSystem (string workingDirectory) : IFileSystem
 
         string output = Path.Join(newPath, newDirective);
         return output;
-    }
-
-    public static bool FileOrDirectoryExists(string path)
-    {
-        return (Directory.Exists(path) || File.Exists(path));
-    }
-
-    public static bool PathContainsIllegalCharacters(string path)
-    {
-        // MVP: honestly, stop caring about this so much. Either a file/path can be found, or the OS will throw an error. that's on the USER. 
-
-        // See: https://stackoverflow.com/a/31976060/11191 
-
-        // TODO: need to key this against current OS (i.e., Environment.Platform/etc.)
-        if (Regex.IsMatch(path, @"(\<|\>|""|\||\?|\*)+", Global.SingleLineRegexOptions))
-            return true;
-
-        // TODO: ARGUABLY, could/should look for additional problems like: NULL byte, ASCII 0 - 31, reserved filenames (windows), and other rules
-
-        return false;
     }
 
     public void WriteArtifact(IArtifact artifact)

@@ -25,9 +25,12 @@
 				xxxxx
 
 	S4 Build: 
+
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 
-			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql"
+			##Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql";
+
+			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
 	
 #>
 
@@ -42,6 +45,8 @@ function Invoke-TsmBuild {
 		[string]$Version,  
 		[string]$Summary,
 		[string[]]$Tokens,
+		#[???[]]$Build"flags|directives|thingies"   ... e.g., #Azure, #legacy ... etc. 
+		#[???[]]$BuildTransforms ... [regex-like-thingies with their matches... ]
 		[string[]]$CommentDirectives = @('RemoveHeader') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
 	);
 	
@@ -49,32 +54,37 @@ function Invoke-TsmBuild {
 		[bool]$xVerbose = ("Continue" -eq $global:VerbosePreference) -or ($PSBoundParameters["Verbose"] -eq $true);
 		[bool]$xDebug = ("Continue" -eq $global:DebugPreference) -or ($PSBoundParameters["Debug"] -eq $true);
 		
-		# TODO: https://overachieverllc.atlassian.net/browse/TSM-32
-		if ([string]::IsNullOrEmpty($BuildFile)) {
+		if(-not($PSBoundParameters.ContainsKey('BuildFile'))){
 			Write-Verbose "No EXPLICIT -BuildFile specified. Looking for *.build.sql within current working directory.";
 			$potentials = @(Get-ChildItem -Path $pwd -Filter "*.build.sql");
 			
 			switch ($potentials.Count) {
 				0 {
-					throw "-Build file NOT specified and NO file matching the pattern of `"*.build.sql`" was found in the current directory.`n`tPlease Specify a -BuildFile to continue.";
+					throw "-Build file NOT specified and NO file matching the pattern of `"*.build.sql`" was found in the current directory.`n`tPlease Specify -BuildFile to continue.";
 				}
 				1 {
 					Write-Verbose "	Found [$($potentials[0].Name)]. Assigning as -BuildFile parameter.";
 					$BuildFile = $potentials[0].FullName;
 				}
 				default {
-					throw "MULTIPLE files matching the pattern of `"*.build.sql`" were found in the current directory. `n`tPlease Explicitly specify -BuildFile parameter input(s) to continue.";
+					throw "MULTIPLE files matching the pattern of `"*.build.sql`" were found in the current directory. `n`tPlease Explicitly specify -BuildFile parameter to continue.";
 				}
 			}
 		}
 		
 		if ([string]::IsNullOrEmpty($BuildFile)) {
-			throw "Input Error. No -BuildFile input(s) were found or specified."; # I don't think we can even get here with the logic above defined as it is... but... meh.
+			throw "Input Error. No -BuildFile found or specified."; # I don't think we can even get here with the logic above defined as it is... but... meh.
 		}
 		
 		if (-not (Test-Path -Path $BuildFile)) {
 			throw "Input Error. Specified -BuildFile: Path not found for [$BuildFile].";
 		}
+		
+		# TODO: if not $Config / $ConfigFile ... then ... look for one via the convention of <build_file_name>.json... 
+		# 	so that this can be loaded below... (i.e. don't load it here...  ... here we're just establishing params. )
+		# 	unlike -BuildFile ... this can be null/empty but IF specified by the user ... need to run a Test-Path against the path... 
+		
+		
 	};
 	
 	process {
@@ -92,7 +102,6 @@ function Invoke-TsmBuild {
 # REFACTOR: 
 # ONCE I've found (or not) a .config file ... .then use a PowerShell FUNC to load it. 
 #    instead of all of the 'stuff' I've listed below in terms of what to grab - i.e., isolate that into it's own UoW. 
-		
 
 		
 		# ====================================================================================================
@@ -148,12 +157,23 @@ function Invoke-TsmBuild {
 		[tsmake.LineEndingsType]$lineEndingsType = [tsmake.LineEndingsType]::CrLf;
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
-		Write-Verbose "Starting BUILD. BUILD File: [$file]";
 		
+		Write-Verbose "Configuring Assembler Options.";
 		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tsmTokenRegistry, [tsmake.OperationType]::Build);
-		$assemblerOptions.SetOutputPath($OutputPath);
+		
+		[tsmake.data_models.RankedString]$pwdRoot = New-Object tsmake.data_models.RankedString([tsmake.SourceType]::Convention, $pwd);
+		$assemblerOptions.AddRootPath($pwdRoot);
+		
+		# TODO check .config for BOTH root and output paths... 
+		
+		if (-not ([string]::IsNullOrEmpty($OutputPath))) {
+			[tsmake.data_models.RankedString]$cmdLineOutputPath = New-Object tsmake.data_models.RankedString([tsmake.Sourcetype]::CommandLine);
+			$assemblerOptions.AddOutputPath($cmdLineOutputPath);
+		}
+		
 		$assemblerOptions.SetDirectives($commentRemovalDirectives, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
+		Write-Verbose "Starting BUILD. BUILD File: [$file]";
 		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions -WorkingDirectory $pwd;
 	};
 	
@@ -161,23 +181,16 @@ function Invoke-TsmBuild {
 		Write-Host " Build.Exception: $($buildResult.Exception)";
 		Write-Host " Build.HasErrors: $($buildResult.HasErrors)";
 		
-		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount)"
+		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount) Directives: $($buildResult.DirectivesCount)";
 		
-		#  ... at this point I've got:
-		# 		syntax errors and/or an EXCEPTION. 
-		# 		or 
-		# 		- syntax errors
-		# 		- ##root-path and ##output-path directives ... (if they weren't already defined by the config)
-		#   	- an ASSEMBLED 'code base'
-		# 				all includes inlined. 
-		# woah ... i don't need to collect these IF I'm JUST BUILDING. 
-		# 				all DOC comments captured
-		# 				header comments removed. 
-		# 			directives identified
-		# 			tokens identified? (think so)
-		# 			conditionals identified (yeah - they're tokens)
-		# 			full object model interaction with all of the above. 		
+		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";
 		
+		$assembler = $buildResult.Assembler;
+		foreach ($line in $assembler.CodeLines) {
+			if ($null -ne $line.Directive) {
+				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
+			}
+		}
 		
 		return $buildResult;
 	};

@@ -2,8 +2,8 @@
 
 public interface IAssemblerOptions
 {
-    string OutputPath { get; }
-    string RootPath { get; }
+    string GetOutputPath { get; }
+    string GetRootPath { get; }
 
     OperationType OperationType { get; }
     LineEndingsType LineEndingsType { get; }
@@ -13,23 +13,32 @@ public interface IAssemblerOptions
     ITokenDefinitionRegistry TokenDefinitionRegistry { get; }
 
     void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives);
-    void SetOutputPath(string outputPath);
+    void AddOutputPath(IRankedString rankedString);
+    void AddRootPath(IRankedString rankedString);
 }
 
 public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, OperationType operationType) : IAssemblerOptions
 {
-    public string OutputPath { get; private set; } = null!;
-    public string RootPath { get; private set; } = null!;
+    private List<IRankedString> _outputPath { get; set; } = new List<IRankedString>();
+    private List<IRankedString> _rootPath { get; set; } = new List<IRankedString>();
     public OperationType OperationType { get; } = operationType;
+
+    public string GetOutputPath => this._outputPath.OrderBy(p => p.SourceType.Priority()).FirstOrDefault()?.Value ?? string.Empty;
+    public string GetRootPath => this._rootPath.OrderBy(p => p.SourceType.Priority()).FirstOrDefault()?.Value ?? string.Empty;
 
     public LineEndingsType LineEndingsType { get; private set; } = LineEndingsType.CrLf;
     public CommentRemovalDirectives CommentRemovalDirectives { get; private set; } = CommentRemovalDirectives.None;
     public TokenExclusionDirectives TokenExclusionDirectives { get; private set; } = TokenExclusionDirectives.None;
     public ITokenDefinitionRegistry TokenDefinitionRegistry { get; } = tokenDefinitionRegistry;
     
-    public void SetOutputPath(string outputPath)
+    public void AddOutputPath(IRankedString rankedString)
     {
-        this.OutputPath = outputPath;
+        this._outputPath.Add(rankedString);
+    }
+
+    public void AddRootPath(IRankedString rankedString)
+    {
+        this._rootPath.Add(rankedString);
     }
 
     public void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives)

@@ -7,7 +7,6 @@ function Execute-Build {
 		[string]$BuildFile,
 		[Parameter(Mandatory)]
 		[tsmake.data_models.AssemblerOptions]$BuildOptions,
-#		[string]$OutputPath,
 		[Parameter(Mandatory)]
 		[string]$WorkingDirectory
 	);

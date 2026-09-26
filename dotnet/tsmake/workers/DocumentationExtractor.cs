@@ -4,12 +4,12 @@ namespace tsmake.workers;
 
 public interface IDocumentationExtractor
 {
-    void ExtractDocumentation(List<ICodeLine> codeLines, List<ICodeLine> docLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack);
+    void ExtractDocumentation(List<ICodeLine> codeLines, List<ICodeLine> docLines, List<IError> syntaxErrors, Stack<IStackEntry> stack);
 }
 
 public class DocumentationExtractor : IDocumentationExtractor
 {
-    public void ExtractDocumentation(List<ICodeLine> codeLines, List<ICodeLine> docLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
+    public void ExtractDocumentation(List<ICodeLine> codeLines, List<ICodeLine> docLines, List<IError> syntaxErrors, Stack<IStackEntry> stack)
     {
         // NOTE:
         //     codeLines is the SOURCE... 
