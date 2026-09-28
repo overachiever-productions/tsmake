@@ -12,16 +12,16 @@ public interface ICodeLine
     Stack<IStackEntry> Stack { get; } 
 }
 
-public class CodeLine(string content, string fileName, int lineNumber, int startOffset, int endOffset, Stack<IStackEntry> stack) : ICodeLine
+public class CodeLine(string content, int lineNumber, int startOffset, int endOffset, Stack<IStackEntry> stack) : ICodeLine
 {
     public string OriginalContent { get; } = content;
     public string TransformedContent { get; private set; } = string.Empty;
-    public string FileName { get; } = fileName;
+    public string FileName { get; } = "TODO ... this needs to pull from the stack..";
     public int LineNumber { get; } = lineNumber;
     public int StartOffset { get; } = startOffset;
     public int EndOffset { get; } = endOffset;
     public IDirective Directive { get; set; } = null!;
-    public Stack<IStackEntry> Stack { get; } = stack;               
+    public Stack<IStackEntry> Stack { get; } = stack;  
 }
 
 public interface IStackEntry

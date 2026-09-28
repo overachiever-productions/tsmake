@@ -18,8 +18,6 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
     public void Normalize(string fileContent, List<ICodeLine> codeLines, List<IError> syntaxErrors, Stack<IStackEntry> stack)
     {
         this._input = fileContent;
-        var current = stack.Peek();
-        var currentFileName = current.FilePath;
 
         var regex = new Regex(@"\r\n|\r|\n", Global.SingleLineRegexOptions);
         var matches = regex.Matches(fileContent);
@@ -29,7 +27,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
         if (matches.Count < 1)
         {
-            codeLines.Add(new CodeLine(fileContent, currentFileName, 1, 1, fileContent.Length, stack));
+            codeLines.Add(new CodeLine(fileContent, 1, 1, fileContent.Length, stack));
         }
         else
         {
@@ -48,7 +46,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
                 if (oneBasedLineEnd < oneBasedLineStart) oneBasedLineEnd = oneBasedLineStart;
 
-                CodeLine line = new CodeLine(lineText, currentFileName, lineNumber, oneBasedLineStart, oneBasedLineEnd, stack);
+                CodeLine line = new CodeLine(lineText, lineNumber, oneBasedLineStart, oneBasedLineEnd, stack);
                 codeLines.Add(line);
 
                 previousStart = lineEnd + match.Length;
@@ -57,16 +55,16 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
             var finalMatch = matches[^1];
             if (finalMatch.Index + finalMatch.Length == this._input.Length) // non-obvious logic here, but it's _NEEDED_ for trailing "empty lines".
-                codeLines.Add(new CodeLine("", currentFileName, lineNumber, previousStart, previousStart, stack));
+                codeLines.Add(new CodeLine("", lineNumber, previousStart, previousStart, stack));
 
             if (previousStart < this._input.Length)
-                codeLines.Add(new CodeLine(this._input.Substring(previousStart, this._input.Length - previousStart), currentFileName, lineNumber, previousStart + 1, this._input.Length, stack));
+                codeLines.Add(new CodeLine(this._input.Substring(previousStart, this._input.Length - previousStart), lineNumber, previousStart + 1, this._input.Length, stack));
         }
 
-        this.ValidateClosures(syntaxErrors, codeLines, currentFileName, stack);
+        this.ValidateClosures(syntaxErrors, codeLines, stack);
     }
 
-    private void ValidateClosures(List<IError> syntaxErrors, List<ICodeLine> codeLines, string currentFileName, Stack<IStackEntry> stack)
+    private void ValidateClosures(List<IError> syntaxErrors, List<ICodeLine> codeLines, Stack<IStackEntry> stack)
     {
         var lineEnding = this._lineEndingsType switch
         {
@@ -96,8 +94,8 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
                 {
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                     {
-                        var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == currentFileName) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, currentFileName, syntaxErrorLine?.LineNumber ?? -99, stack, ErrorSeverity.Fatal));
+                        var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == stack.Peek().FilePath) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.FileName ?? "Unknown", syntaxErrorLine?.LineNumber ?? -99, stack, ErrorSeverity.Fatal));
                     }
                 }
             }

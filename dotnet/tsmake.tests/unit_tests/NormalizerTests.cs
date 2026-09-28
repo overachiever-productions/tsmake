@@ -590,6 +590,7 @@ public class NormalizerTests
     //    var text = "\r\n/* this is terrible - but valid */  USE admindb;  -- no semi-colon after the USE ...  \r\nGO";
     //}
     #endregion
+
     #region DDL Mapping
     // TODO: it captures CREATE PROC statements
     // TODO: it captures CREATE FUNCTION statements
@@ -603,5 +604,4 @@ public class NormalizerTests
     // TODO: it captures ALTER statements
     // TODO: it captures CREATE OR ALTER statements
     #endregion
-
 }

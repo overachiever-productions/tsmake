@@ -12,7 +12,7 @@ public interface IDirective
 public abstract class BaseDirective(string payload, ICodeLine codeLine) : IDirective
 {
     public string DirectiveName { get; protected set; } = "BaseDirective";
-    public string Payload { get; protected set; } = payload.StripDirectiveComments() ?? string.Empty;
+    public string Payload { get; protected set; } = payload.StripDirectiveComments().Trim() ?? string.Empty;
     public ICodeLine CodeLine { get; protected set; } = codeLine;
     public bool IsValid { get; protected set; } = false;
     public string ValidationMessage { get; protected set; } = string.Empty;
