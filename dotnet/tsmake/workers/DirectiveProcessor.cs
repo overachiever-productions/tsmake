@@ -40,10 +40,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                     parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload));
             }
             else
-            {
-                // REFACTOR: 98% sure that the FILENAME parameter for SyntaxError is redundant and unnecessary.  I can get it from the Stack<>.  So, remove it from the constructor and the interface.
-                syntaxErrors.Add(new SyntaxError($"Invalid ##Directive: {directive.DirectiveName}.", directive.ValidationMessage, "sigh-file-name", codeLine.LineNumber, codeLine.Stack, ErrorSeverity.Fatal));
-            }
+                syntaxErrors.Add(new SyntaxError($"Invalid ##Directive: {directive.DirectiveName}.", directive.ValidationMessage, codeLine.LineNumber, codeLine.Stack, ErrorSeverity.Fatal));
         }
     }
 
@@ -66,8 +63,21 @@ public class DirectiveProcessor : IDirectiveProcessor
             // whereas if these are RUNTIME directives ... I need to use logic to generate dynamic SQL that'll be executed at runtime. 
             //    note that I've got a ROUGH implementation of this logic within my S4BuildPrototype. 
             //    the only wrinkle is ... how to map/create add MORE code-lines. 
-            //    lol... maybe each 'codeline' is a code-snippet instead... 
-            //      yeah... NO. think i just need a CodeLines.InsertAfter(currentLine)... 
+            //      Think i just need a CodeLines.InsertAfter(currentLine)... 
+
+
+            // SPECIFICALLY, the process needs to be: 
+            //  1. find the index of the current line (note that the INDEX is no longer guaranteed to be the current 'LINE NUMBER' ... cuz we're inserting rows/etc. 
+            //      this can be done with, effectively, a .FindIndex() on the CodeLines collection.
+            //              e.g., int currentLineIndex = codeLines.FindIndex(c => c.LineNumber == directive.CodeLine.LineNumber);
+
+            //  2. find the index of the END-CONDITION directive ... which will be the last line of the block.
+
+            //  3. remove all lines from the current line index to the END-CONDITION directive index.
+
+            //  4. insert the new lines (either CONDITION-DEFAULT or whichever CONDITION matched the evaluation) at the current line index.
+            //      e.g., codeLines.InsertRange(currentLineIndex, newLines);
+
         }
 
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveName == "File") || (d.DirectiveName == "Directory") || (d.DirectiveName == "Version-Checker"))))

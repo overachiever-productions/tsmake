@@ -108,7 +108,23 @@ public class FileDirective : BaseDirective
         base.DirectiveName = "FileDirective";
         this.FileSystem = fileSystem;
 
-        this.FilePath = this.Payload;
+        try
+        {
+            this.FilePath = this.FileSystem.TranslatePath(this.Payload);
+            if(this.FileSystem.FileExists(this.FilePath))
+                base.IsValid = true;
+            else
+            {
+                base.IsValid = false;
+                base.ValidationMessage = $"The specified ##FILE path does not exist: {this.FilePath}";
+            }
+        }
+        catch (Exception ex)
+        {
+            this.FilePath = string.Empty;
+            base.IsValid = false;
+            base.ValidationMessage = ex.Message;
+        }
     }
 }
 

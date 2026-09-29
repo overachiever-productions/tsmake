@@ -45,7 +45,7 @@ function Invoke-TsmBuild {
 		[string]$Version,  
 		[string]$Summary,
 		[string[]]$Tokens,
-		#[???[]]$Build"flags|directives|thingies"   ... e.g., #Azure, #legacy ... etc. 
+		#[string[]]$Flags,
 		#[???[]]$BuildTransforms ... [regex-like-thingies with their matches... ]
 		[string[]]$CommentDirectives = @('RemoveHeader') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
 	);
@@ -190,6 +190,10 @@ function Invoke-TsmBuild {
 			if ($null -ne $line.Directive) {
 				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
 			}
+		}
+		
+		foreach ($err in $assembler.Errors) {
+			Write-Host $err.Summarize();
 		}
 		
 		return $buildResult;

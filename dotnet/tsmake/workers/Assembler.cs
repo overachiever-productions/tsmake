@@ -134,7 +134,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                     //   i.e., was it in the build file? (what line) ... was it in the config file? (what line) ... was it in the command-line? (what line) ...
                     //   i don't HAVE to provide line #s for everything ... but this'll be important to know... 
                     //  AND ... maybe: ConfigErrors have a different .ctor - where they take in a RankedString instead? 
-                    this.Errors.Add(new ConfigError($"Invalid root path specified: {buildRoot}", "", buildRoot, 0, this.Stack, ErrorSeverity.Fatal));
+                    this.Errors.Add(new ConfigError($"Invalid root path specified: {buildRoot}", "", 0, this.Stack, ErrorSeverity.Fatal));
 
                 // 2. ##OUTPUT. We MIGHT not have an OUTPUT path. If so, we can't add an ARTIFACT for output, and need to signify this with a SyntaxError.
                 //    or ... maybe a ConfigError. (which could also be used for invalid paths???? )
@@ -146,7 +146,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 }
                 else
                     // DITTO ... as per ROOT ... need to know where this came from ... 
-                    this.Errors.Add(new ConfigError($"Invalid output path specified: {buildOutput}", "", buildOutput, 0, this.Stack, ErrorSeverity.Fatal));
+                    this.Errors.Add(new ConfigError($"Invalid output path specified: {buildOutput}", "", 0, this.Stack, ErrorSeverity.Fatal));
 
                 // 3. ##FILEMARKER. Optional. If we have one, and the path is valid, add a new artifact. 
                 string fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
@@ -156,7 +156,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 }
                 else
                     // DITTO ... as per ROOT ... need to know where this came from ...
-                    this.Errors.Add(new ConfigError($"Invalid file marker path specified: {fileMarkerOutput}", "", fileMarkerOutput, 0, this.Stack, ErrorSeverity.Fatal));
+                    this.Errors.Add(new ConfigError($"Invalid file marker path specified: {fileMarkerOutput}", "", 0, this.Stack, ErrorSeverity.Fatal));
 
                 this._buildFileHandled = true;
             }

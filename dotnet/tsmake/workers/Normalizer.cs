@@ -95,7 +95,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                     {
                         var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == stack.Peek().FilePath) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.FileName ?? "Unknown", syntaxErrorLine?.LineNumber ?? -99, stack, ErrorSeverity.Fatal));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.LineNumber ?? -99, stack, ErrorSeverity.Fatal));
                     }
                 }
             }
