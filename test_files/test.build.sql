@@ -1,4 +1,4 @@
---##OUTPUT: \\Deployment
+--##OUTPUT: \\Deployment\testproject_latest.sql
 --##COMMENT: This is a build file only (i.e., it stores upgrade/install directives + place-holders for code to drop into admindb, etc.)
 /*
 

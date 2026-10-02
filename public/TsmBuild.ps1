@@ -27,8 +27,7 @@
 	S4 Build: 
 
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
-
-			##Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\S4\Deployment\__build\current.build.sql";
+			Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
 
 			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
 	
@@ -157,7 +156,6 @@ function Invoke-TsmBuild {
 		[tsmake.LineEndingsType]$lineEndingsType = [tsmake.LineEndingsType]::CrLf;
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
-		
 		Write-Verbose "Configuring Assembler Options.";
 		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tsmTokenRegistry, [tsmake.OperationType]::Build);
 		
@@ -171,19 +169,44 @@ function Invoke-TsmBuild {
 			$assemblerOptions.AddOutputPath($cmdLineOutputPath);
 		}
 		
-		$assemblerOptions.SetDirectives($commentRemovalDirectives, $commentRemovalDirectives, $tokenExclusionDirectives);
+		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
-		Write-Verbose "Starting BUILD. BUILD File: [$file]";
+		Write-Verbose "Starting BUILD. BUILD FILE: [$file]";
 		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions -WorkingDirectory $pwd;
 	};
 	
 	end {
-		Write-Host " Build.Exception: $($buildResult.Exception)";
-		Write-Host " Build.HasErrors: $($buildResult.HasErrors)";
 		
+		# NOTE: THIS is attempting to simulate what the xml-format of this object's output will be: (i.e., rough and tumble implementation at this point with no real formatting)
 		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount) Directives: $($buildResult.DirectivesCount)";
+		## pretend that this is verbose:
+		Write-Host "		Build Root: $($buildResult.BuildRoot) from => $($buildResult.BuildRootSourceType).";
 		
-		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";
+		if ($null -ne $buildResult.Exception) {
+			Write-Host "Build Exception: $($buildResult.Exception)";
+			return;
+		}
+		
+		if ($buildResult.HasErrors) {
+			Write-Host "BUILD ERRORS: ";
+			
+			$buildErrors = $false; # hack
+			Write-Host "`tCONFIG ERRORS:";
+			foreach ($err in $buildResult.ConfigErrors) {
+				Write-Host "`t`t$($err.Summarize())";
+				$buildErrors = $true;
+			}
+			
+			if (-not ($buildErrors)) {
+				Write-Host "`tSYNTAX ERRORS:";
+				foreach ($err in $buildResult.SyntaxErrors) {
+					Write-Host "`t`t$($err.Summarize())";
+				}
+			}
+			
+			
+			return;
+		}
 		
 		$assembler = $buildResult.Assembler;
 		foreach ($line in $assembler.CodeLines) {
@@ -192,9 +215,7 @@ function Invoke-TsmBuild {
 			}
 		}
 		
-		foreach ($err in $assembler.Errors) {
-			Write-Host $err.Summarize();
-		}
+		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";
 		
 		return $buildResult;
 	};

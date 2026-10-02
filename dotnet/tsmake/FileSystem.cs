@@ -4,9 +4,10 @@ namespace tsmake;
 
 public interface IFileSystem
 {
-    string WorkingDirectory { get; }
     string RootDirectory { get; }
-    void SetRootDirectory(string rootDirectory);
+    SourceType RootSourceType { get; }
+
+    void SetRootDirectory(string rootDirectory, SourceType sourceType);
 
     PathType GetPathType(string filePath);
     string TranslatePath(string path);
@@ -22,12 +23,13 @@ public interface IFileSystem
 
 public class FileSystem (string workingDirectory) : IFileSystem
 {
-    public string WorkingDirectory { get; } = workingDirectory;
-    public string RootDirectory { get; private set; } = string.Empty;
+    public string RootDirectory { get; private set; } = workingDirectory;
+    public SourceType RootSourceType { get; private set; } = SourceType.Convention;
 
-    public void SetRootDirectory(string rootDirectory)
+    public void SetRootDirectory(string rootDirectory, SourceType sourceType)
     {
         this.RootDirectory = rootDirectory;
+        this.RootSourceType = sourceType;
     }
 
     public PathType GetPathType(string filePath)
@@ -47,7 +49,7 @@ public class FileSystem (string workingDirectory) : IFileSystem
             case PathType.Absolute:
                 return path;
             case PathType.Relative:
-                return CollapsePath(this.WorkingDirectory, path);
+                return CollapsePath(this.RootDirectory, path);
             case PathType.Rooted:
                 return CollapsePath(this.RootDirectory, path.Replace(@"\\\", ""));
             default:
@@ -107,12 +109,12 @@ public class FileSystem (string workingDirectory) : IFileSystem
 # Output:
 # ====================================================================================================	
 # TODO: move the logic below into IFileSystem ... it needs to be able to handle the backup/write and other (similar) logic. 
-# and... honestly, no real reason to CHECK/validate -OutputPath at this point as ... it might NOT be specified at all. 		
-# 	UGH... need to move this into the BuildPipeline ... since -OutputPath can/will be NULL at this point. 
+# and... honestly, no real reason to CHECK/validate -BuildRoot at this point as ... it might NOT be specified at all. 		
+# 	UGH... need to move this into the BuildPipeline ... since -BuildRoot can/will be NULL at this point. 
 # 	TODO: 
-# 		if -OutputPath is a FOLDER ... and there are multiple -BuildFiles ... we're fine. 
+# 		if -BuildRoot is a FOLDER ... and there are multiple -BuildFiles ... we're fine. 
 # 			HOWEVER: the above ONLY works IF each .build.sql file in question has an OUTPUT directive OR a CONFIG-VALUE ... set for the file-name. 
-# 		if -OutputPath is a FILENAME 
+# 		if -BuildRoot is a FILENAME 
 # 			the INTENTION of a BUILD is to ... replace whatever is already in place - i.e., I do this all the time with admindb_latest.sql .. 
 # 				I just overwrite it. 
 # 			So, I'm not sure that there's any justification for:

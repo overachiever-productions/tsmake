@@ -2,8 +2,9 @@
 
 public interface IAssemblerOptions
 {
-    string GetOutputPath { get; }
-    string GetRootPath { get; }
+    List<IRankedString> BuildRoot { get; }
+    List<IRankedString> BuildOutput { get; }
+    List<IRankedString> FileMarkerPath { get; }
 
     OperationType OperationType { get; }
     LineEndingsType LineEndingsType { get; }
@@ -15,16 +16,16 @@ public interface IAssemblerOptions
     void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives);
     void AddOutputPath(IRankedString rankedString);
     void AddRootPath(IRankedString rankedString);
+    void AddFileMarkerPath(IRankedString rankedString);
 }
 
 public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, OperationType operationType) : IAssemblerOptions
 {
-    private List<IRankedString> _outputPath { get; set; } = new List<IRankedString>();
-    private List<IRankedString> _rootPath { get; set; } = new List<IRankedString>();
-    public OperationType OperationType { get; } = operationType;
+    public List<IRankedString> BuildRoot { get; set; } = new List<IRankedString>();
+    public List<IRankedString> BuildOutput { get; set; } = new List<IRankedString>();
+    public List<IRankedString> FileMarkerPath { get; set; } = new List<IRankedString>();
 
-    public string GetOutputPath => this._outputPath.OrderBy(p => p.SourceType.Priority()).FirstOrDefault()?.Value ?? string.Empty;
-    public string GetRootPath => this._rootPath.OrderBy(p => p.SourceType.Priority()).FirstOrDefault()?.Value ?? string.Empty;
+    public OperationType OperationType { get; } = operationType;
 
     public LineEndingsType LineEndingsType { get; private set; } = LineEndingsType.CrLf;
     public CommentRemovalDirectives CommentRemovalDirectives { get; private set; } = CommentRemovalDirectives.None;
@@ -33,12 +34,17 @@ public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, 
     
     public void AddOutputPath(IRankedString rankedString)
     {
-        this._outputPath.Add(rankedString);
+        this.BuildOutput.Add(rankedString);
     }
 
     public void AddRootPath(IRankedString rankedString)
     {
-        this._rootPath.Add(rankedString);
+        this.BuildRoot.Add(rankedString);
+    }
+
+    public void AddFileMarkerPath(IRankedString rankedString)
+    {
+        this.FileMarkerPath.Add(rankedString);
     }
 
     public void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives)

@@ -15,21 +15,16 @@ public enum OperationType
     Deploy
 }
 
-public enum ErrorType
-{
-    Syntax,
-    Config,
-    Runtime
-}
-
-public enum ErrorSeverity
-{
-    Warning,
-    Fatal               // REFACTOR: this isn't fatal ... it doesn't throw an exception or terminate ON THE SPOT. It simply prevents the build from completing successfully.
-}
+//public enum ErrorType
+//{
+//    Syntax,
+//    Config,
+//    Runtime
+//}
 
 public enum SourceType
 {
+    None,
     CommandLine, // 1 
     ConfigFile,  // 2
     BuildFile,     // 3

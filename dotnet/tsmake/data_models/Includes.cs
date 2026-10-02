@@ -5,24 +5,24 @@ public interface IInclude
     List<string> IncludedFiles { get; }
 }
 
-public abstract class BaseInclude(IDirective directive, IFileSystem fileSystem, List<IError> syntaxErrors) : IInclude
+public abstract class BaseInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : IInclude
 {
     internal IDirective Directive { get; } = directive;
     internal IFileSystem FileSystem { get; } = fileSystem;
-    internal List<IError> SyntaxErrors { get; } = syntaxErrors;
+    internal List<ISyntaxError> SyntaxErrors { get; } = syntaxErrors;
 
     public List<string> IncludedFiles { get; protected set; } = new List<string>();
 }
 
-public class FileInclude(IDirective directive, IFileSystem fileSystem, List<IError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+public class FileInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
 
-public class DirectoryInclude(IDirective directive, IFileSystem fileSystem, List<IError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+public class DirectoryInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
 
-public class VersionCheckerInclude(IDirective directive, IFileSystem fileSystem, List<IError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+public class VersionCheckerInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
 
 public class IncludeTranslator
 {
-    public static IInclude LoadInclude(IDirective directive, IFileSystem fileSystem, List<ICodeLine> codeLines, List<IError> syntaxErrors)
+    public static IInclude LoadInclude(IDirective directive, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
         if (directive.DirectiveName == "File")
             return new FileInclude(directive, fileSystem, syntaxErrors);

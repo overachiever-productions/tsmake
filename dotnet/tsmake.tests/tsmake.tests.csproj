@@ -23,10 +23,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="integration_tests\" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\tsmake\tsmake.csproj" />
   </ItemGroup>
 

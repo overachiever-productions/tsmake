@@ -4,7 +4,7 @@ namespace tsmake.workers;
 
 public interface INormalizer
 {
-    void Normalize(string fileContent, List<ICodeLine> codeLines, List<IError> syntaxErrors, Stack<IStackEntry> stack);
+    void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack);
     string NormalizedText { get; }
 }
 
@@ -15,7 +15,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
     public string NormalizedText { get; private set; } = string.Empty;
 
-    public void Normalize(string fileContent, List<ICodeLine> codeLines, List<IError> syntaxErrors, Stack<IStackEntry> stack)
+    public void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
     {
         this._input = fileContent;
 
@@ -64,7 +64,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
         this.ValidateClosures(syntaxErrors, codeLines, stack);
     }
 
-    private void ValidateClosures(List<IError> syntaxErrors, List<ICodeLine> codeLines, Stack<IStackEntry> stack)
+    private void ValidateClosures(List<ISyntaxError> syntaxErrors, List<ICodeLine> codeLines, Stack<IStackEntry> stack)
     {
         var lineEnding = this._lineEndingsType switch
         {
@@ -95,7 +95,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                     {
                         var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == stack.Peek().FilePath) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.LineNumber ?? -99, stack, ErrorSeverity.Fatal));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.LineNumber ?? -99, stack));
                     }
                 }
             }

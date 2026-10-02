@@ -5,7 +5,8 @@ namespace tsmake.workers;
 public interface IAssembler
 {
     List<ICodeLine> CodeLines { get; }
-    List<IError> Errors { get; }
+    List<ISyntaxError> SyntaxErrors { get; }
+    List<IConfigError> ConfigErrors { get; }
     List<ICodeLine> DocLines { get; }
 
     // REFACTOR: pretty sure that these need to pushed down into IAssemblerOptions as they're ... just options until the build file has been looped/processed. 
@@ -33,31 +34,27 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     private IAssemblerOptions Options { get; } = options;
     private IResult BuildResult { get; } = buildResult;
 
-    public List<IError> Errors { get; private set; } = new List<IError>();
+    public List<ISyntaxError> SyntaxErrors { get; private set; } = new List<ISyntaxError>();
+    public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public List<ICodeLine> CodeLines { get; private set; } = new List<ICodeLine>();
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
     private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
 
-    public List<IRankedString> BuildRoot { get; private set; } = new List<IRankedString>();
-    public List<IRankedString> BuildOutput { get; private set; } = new List<IRankedString>();
-    public List<IRankedString> FileMarkerPath { get; private set; } = new List<IRankedString>();
+    public List<IRankedString> BuildRoot { get; private set; } = options.BuildRoot;
+    public List<IRankedString> BuildOutput { get; private set; } = options.BuildOutput;
+    public List<IRankedString> FileMarkerPath { get; private set; } = options.FileMarkerPath;
 
     public void Assemble(string buildFilePath)
     {
         try
         {
-            this.Errors = new List<IError>();
-            this.CodeLines = new List<ICodeLine>();
-            this.DocLines = new List<ICodeLine>();
-            this.Stack = new Stack<IStackEntry>();
-
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
             // TODO: serialize this.codelines via a StringBuilder... 
             //      skipping any ##COMMENTS ... or ##ROOT or ##OUTPUT lines. 
             //      and using CodeLine.TransformedContent unless empty - in which case ... use CodeLine.OriginalContent.
 
-            // IF there are any remaining CommentRemovalDirectives ... add 'stock'/built-in BuildTransforms to remove them. 
+            // IF there are any remaining CommentRemovalDirectives (removeAll, removeEOL, etc.) ... add 'stock'/built-in BuildTransforms to remove them. 
 
             // IF there are any <BuildTransforms> (including comment-removal transforms)... 
             //      then execute each transform in <BuildTransforms> in order ... passing the serialized-string into each one ...
@@ -68,7 +65,9 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //    IF .Document:
             //        we'll have 1 artifact PER each DocTransformer/Writer. 
 
-            this.BuildResult.SetErrors(this.Errors);
+            this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
+            this.BuildResult.SetConfigErrors(this.ConfigErrors);
+            this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
             this.BuildResult.SetStatistics(this._fileCount, this.CodeLines.Count, this._directivesCount);
             this.BuildResult.SetComplete();
 
@@ -91,12 +90,12 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
 
             var normalizer = this.OpsFactory.NewNormalizer();
-            normalizer.Normalize(fileContent, this.CodeLines, this.Errors, this.Stack);
+            normalizer.Normalize(fileContent, this.CodeLines, this.SyntaxErrors, this.Stack);
 
             if (this.Options.OperationType == OperationType.Document)
             {
                 var docExtractor = this.OpsFactory.NewDocumentationExtractor();
-                docExtractor.ExtractDocumentation(this.CodeLines, this.DocLines, this.Errors, this.Stack);
+                docExtractor.ExtractDocumentation(this.CodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
             }
             else
             {
@@ -104,6 +103,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 {
                     // TODO: use a REGEX vs .Normalizer.NormalizedText ... to identify the start/end-line of header-comments. 
                     //      can, obviously be 1 (i.e., 0) or ... N. 
+                    // then remove those lines from this.CodeLines ... via a .RemoveRange() or something similar.
                 }
 
                 if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
@@ -119,52 +119,49 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             }
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
-            directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.Errors);
+            directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
 
             if (!this._buildFileHandled)
             {
-                // 3x specific cases to address here: 
-
                 // 1. ##ROOT. We'll ALWAYS have a ROOT-PATH value - even if it's PWD. 
-                string buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-                if(this.OpsFactory.CurrentFileSystem.DirectoryExists(buildRoot))
-                    this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot);  // NOTE: this might be a NO-OP ... but we're just making sure we've got the most specific root. 
+                IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
+                if(buildRoot.Value.IsWhiteSpace())
+                    this.ConfigErrors.Add(new ConfigError($"No Root-Path specified.", $"SOURCE: {buildRoot.SourceType}", this.BuildRoot));
                 else
-                    // TODO: hmmm ... I'm going to need to know where this BUILD ROOT came from ... 
-                    //   i.e., was it in the build file? (what line) ... was it in the config file? (what line) ... was it in the command-line? (what line) ...
-                    //   i don't HAVE to provide line #s for everything ... but this'll be important to know... 
-                    //  AND ... maybe: ConfigErrors have a different .ctor - where they take in a RankedString instead? 
-                    this.Errors.Add(new ConfigError($"Invalid root path specified: {buildRoot}", "", 0, this.Stack, ErrorSeverity.Fatal));
+                {
+                    if (this.OpsFactory.CurrentFileSystem.DirectoryExists(buildRoot.Value))
+                        this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);  
+                    else
+                        this.ConfigErrors.Add(new ConfigError($"Specified Root Path NOT Found: [{buildRoot.Value}].", $"SOURCE: {buildRoot.SourceType}", this.BuildRoot));
+                }
 
-                // 2. ##OUTPUT. We MIGHT not have an OUTPUT path. If so, we can't add an ARTIFACT for output, and need to signify this with a SyntaxError.
-                //    or ... maybe a ConfigError. (which could also be used for invalid paths???? )
-                string buildOutput = RankedString.GetRankedValue(this.BuildOutput);
-                if (this.OpsFactory.CurrentFileSystem.DirectoryExists(buildOutput))
+                // 2. ##OUTPUT. We MIGHT not have an OUTPUT path. If so, we can't add an ARTIFACT for output, and need to signify this with a ConfigError.
+                IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput); 
+                if (this.OpsFactory.CurrentFileSystem.DirectoryExists(buildOutput.Value))
                 {
                     // create a new artifact with the buildOutput as the path. 
                     // no contents yet... but ... yeah. 
                 }
                 else
-                    // DITTO ... as per ROOT ... need to know where this came from ... 
-                    this.Errors.Add(new ConfigError($"Invalid output path specified: {buildOutput}", "", 0, this.Stack, ErrorSeverity.Fatal));
+                    this.ConfigErrors.Add(new ConfigError($"Invalid output path specified: [{buildOutput.Value}]", $"SOURCE: {buildOutput.SourceType}", this.BuildOutput));
 
                 // 3. ##FILEMARKER. Optional. If we have one, and the path is valid, add a new artifact. 
-                string fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-                if(this.OpsFactory.CurrentFileSystem.DirectoryExists(fileMarkerOutput))
+                IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
+                if(this.OpsFactory.CurrentFileSystem.DirectoryExists(fileMarkerOutput.Value))
                 {
                     // create a new artifact with the fileMarkerOutput as the path. 
                 }
                 else
                     // DITTO ... as per ROOT ... need to know where this came from ...
-                    this.Errors.Add(new ConfigError($"Invalid file marker path specified: {fileMarkerOutput}", "", 0, this.Stack, ErrorSeverity.Fatal));
+                    this.ConfigErrors.Add(new ConfigError($"Invalid file marker path specified: {fileMarkerOutput.Value}", $"SOURCE: {fileMarkerOutput.SourceType}", this.FileMarkerPath));
 
                 this._buildFileHandled = true;
             }
 
-            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.Errors);
+            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-            tokenTransformer.TransformTokens(this.CodeLines, this.Errors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+            tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
             this._directivesCount += directivesProcessor.Directives.Count;
             this.Stack.Pop();

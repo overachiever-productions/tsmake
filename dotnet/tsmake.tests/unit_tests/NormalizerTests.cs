@@ -15,7 +15,7 @@ public class NormalizerTests
     {
         var text = "123456789ABCDEF";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -30,7 +30,7 @@ public class NormalizerTests
     {
         var text = string.Empty;
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -45,7 +45,7 @@ public class NormalizerTests
     {
         var text = "123456789ABCDEF";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -61,7 +61,7 @@ public class NormalizerTests
     {
         var text = "first-line\r\nsecond-line\r\nthird-line";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -77,7 +77,7 @@ public class NormalizerTests
     {
         var text = "first-line\nsecond-line\nthird-line";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -92,7 +92,7 @@ public class NormalizerTests
     {
         var text = "first-line\nsecond-line\nthird-line";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -108,7 +108,7 @@ public class NormalizerTests
     {
         var text = "first-line\rsecond-line\rthird-line";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -123,7 +123,7 @@ public class NormalizerTests
     {
         var text = "first-line\rsecond-line\rthird-line";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -139,7 +139,7 @@ public class NormalizerTests
     {
         var text = "first\r\nsecond\r\nthird\r\nfourth";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -155,7 +155,7 @@ public class NormalizerTests
     {
         var text = "first\r\nsecond\rthird\nfourth";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -171,7 +171,7 @@ public class NormalizerTests
     {
         var text = "line1\r\nline2\r\n";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -187,7 +187,7 @@ public class NormalizerTests
     {
         var text = "line1\rline2\r";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -203,7 +203,7 @@ public class NormalizerTests
     {
         var text = "1\r\n22\r\n333\r\n4444\r\n\r\n666666\r\n7777777\r\n";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -247,7 +247,7 @@ public class NormalizerTests
     {
         var text = "PRINT 'Hello World!; -- note the missing end-tick... ";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -264,7 +264,7 @@ public class NormalizerTests
         // NOTE: All of the following are correctly formed: 
         var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -279,7 +279,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';\r\nDECLARE @butThisisBad sysname = N'total fail\r\n-- closing comment. ";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -300,7 +300,7 @@ public class NormalizerTests
     {
         var text = "/* This is an unclosed block comment\r\nPRINT 'Hello World!';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -316,7 +316,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @anotherString nvarchar(max) = N'this is not an unclosed block comment /* ';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -331,7 +331,7 @@ public class NormalizerTests
     {
         var text = "SELECT * FROM [MyTable;\r\nGO";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -347,7 +347,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @mytext nvarchar(MAX) = N'this is not [a real identifier';\r\nGO";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -364,7 +364,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an EOL comment -- but it should be ignored';\r\nSET @string = N'some value'; -- this is a legit EOL comment.";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -380,7 +380,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with a block comment /* but it should be ignored */';\r\n/* but this is a legit block \r\n comment */\r\nSET @string = N'some value';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -396,7 +396,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an escaped tick '' and it should''t cause an error';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -412,7 +412,7 @@ public class NormalizerTests
     {
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with GO in it, but it should be ignored';\r\n\r\n/* this is a comment with GO in it - but it should be ignored */\r\nGO\r\nPRINT 'This is batch 2';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -433,7 +433,7 @@ public class NormalizerTests
     {
         var text = "/* this is a block comment with an EOL comment -- but it should be ignored */\r\nPRINT 'Hello World!';";
         var lines = new List<ICodeLine>();
-        var errors = new List<IError>();
+        var errors = new List<ISyntaxError>();
         var stack = new Stack<IStackEntry>();
         stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -449,7 +449,7 @@ public class NormalizerTests
     //{
     //    var text = "/* this is a block comment with GO in it - but it should be ignored */\r\nGO\r\nPRINT 'This is batch 2';";
     //    var lines = new List<ICodeLine>();
-    //    var errors = new List<IError>();
+    //    var errors = new List<ISyntaxError>();
     //    var stack = new Stack<IStackEntry>();
     //    stack.Push(new StackEntry("file-name.sql", 0, 0));
 
@@ -461,7 +461,7 @@ public class NormalizerTests
     //    Assert.That(sut.Batches.Count, Is.EqualTo(2));  // i.e., there are 2 batches but NOT 3. 
     //    text = "DECLARE @oink int = 2;\r\n--GO";
     //    sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //    Assert.That(sut.EolComments.Count, Is.EqualTo(1));
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //}
@@ -476,14 +476,14 @@ public class NormalizerTests
     //{
     //    var text = "SELECT 127 [kinda [weird]]];";
     //    var sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //}
     //[Test]
     //public void It_Ignores_Go_Within_Bracketed_Identifiers()
     //{
     //    var text = "SELECT 'I''m not even mad, bro.' [Go go go];";
     //    var sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //}
     //[Test]
@@ -491,7 +491,7 @@ public class NormalizerTests
     //{
     //    var text = "SELECT 'But, why?' AS [this is a --comment]";
     //    var sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //    Assert.That(sut.EolComments.Count, Is.EqualTo(0));
     //}
@@ -500,7 +500,7 @@ public class NormalizerTests
     //{
     //    var text = "SELECT N'text' [this is /* nuts */]";
     //    var sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //    Assert.That(sut.BlockComments.Count, Is.EqualTo(0));
     //}
@@ -509,7 +509,7 @@ public class NormalizerTests
     //{
     //    var text = "SELECT 'wth?' [for 'realz'?]";
     //    var sut = new Mapper(text);
-    //    Assert.That(sut.Errors.Count, Is.EqualTo(0));
+    //    Assert.That(sut.SyntaxErrors.Count, Is.EqualTo(0));
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //}
     //#endregion
