@@ -5,6 +5,7 @@ public interface IRankedString
     SourceType SourceType { get; }
     string Value { get; }
     IDirective SourceDirective { get; }
+    bool IsValid { get; }
 }
 
 // WARNING: This class is defined as a single record type ... but the true 'logic'/power of ranked<anything> comes from being in a List<>
@@ -12,9 +13,23 @@ public interface IRankedString
 //      a BETTER class (e.g., StringRanking - with it's OWN List<>) could prevent such an issue and/or duplicates, etc. 
 public class RankedString(SourceType sourceType, string value) : IRankedString
 {
-    public SourceType SourceType { get; set; } = sourceType;
-    public string Value { get; set; } = value;
-    public IDirective SourceDirective { get; set; } = null!;
+    public SourceType SourceType { get; } = sourceType;
+    public string Value { get; } = value;
+    public IDirective SourceDirective { get; } = null!;
+
+    public bool IsValid
+    {
+        get
+        {
+            if (null != this.SourceDirective)
+            {
+                return this.SourceDirective.IsValid;
+            }
+
+            return !string.IsNullOrEmpty(this.Value);
+        }
+    }
+
 
     // NOTE: C# will likely ONLY use this .ctor. But PowerShell may end up using the 2 parameter .ctor in a number of cases. 
     public RankedString(SourceType sourceType, string value, IDirective sourceDirective) : this(sourceType, value)

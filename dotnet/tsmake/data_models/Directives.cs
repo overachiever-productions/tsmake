@@ -1,9 +1,9 @@
 ﻿namespace tsmake.data_models;
 
 public interface IDirective
-{
-    public string DirectiveName { get; }
-    public string Payload { get; }
+{           
+    public DirectiveType DirectiveType { get; }
+    public string Payload { get; }              
     public ICodeLine CodeLine { get; }
     public bool IsValid { get; }
     public string ValidationMessage { get; }
@@ -11,7 +11,7 @@ public interface IDirective
 
 public abstract class BaseDirective(string payload, ICodeLine codeLine) : IDirective
 {
-    public string DirectiveName { get; protected set; } = "BaseDirective";
+    public DirectiveType DirectiveType { get; protected set; } = DirectiveType.Comment; // default/placeholder - overridden by derived classes
     public string Payload { get; protected set; } = payload.StripDirectiveComments().Trim() ?? string.Empty;
     public ICodeLine CodeLine { get; protected set; } = codeLine;
     public bool IsValid { get; protected set; } = false;
@@ -27,7 +27,7 @@ public class RootDirective : BaseDirective
 
     public RootDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "ROOT";
+        base.DirectiveType = DirectiveType.Root;
         this.FileSystem = fileSystem;
 
         string fullPath = this.FileSystem.TranslatePath(this.Payload);
@@ -56,12 +56,13 @@ public class OutputDirective : BaseDirective
 
     public OutputDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "OUTPUT";
+        base.DirectiveType = DirectiveType.Output;
         this.FileSystem = fileSystem;
 
         string fullPath = this.FileSystem.TranslatePath(this.Payload);
 
-        if(this.FileSystem.FileExists(fullPath))
+        // NOTE: Checking ONLY for directory.exists at this point. ARTIFACT will have to deal with FILE-NAME within the directory-in-question at write-time/etc. 
+        if(this.FileSystem.DirectoryExists(fullPath))
         {
             base.IsValid = true;
             this.Path = fullPath;
@@ -81,7 +82,7 @@ public class FileMarkerDirective : BaseDirective
 
     public FileMarkerDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "FILEMARKER";
+        base.DirectiveType = DirectiveType.FileMarker;
         this.FileSystem = fileSystem;
     }
 }
@@ -90,7 +91,7 @@ public class CommentDirective : BaseDirective
 {
     public CommentDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "COMMENT";
+        base.DirectiveType = DirectiveType.Comment;
         base.IsValid = true;
     }
 }
@@ -103,7 +104,7 @@ public class FileDirective : BaseDirective
 
     public FileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "FILE";
+        base.DirectiveType = DirectiveType.File;
         this.FileSystem = fileSystem;
 
         try
@@ -114,7 +115,7 @@ public class FileDirective : BaseDirective
             else
             {
                 base.IsValid = false;
-                base.ValidationMessage = $"The specified ##FILE path does not exist: {this.FilePath}";
+                base.ValidationMessage = $"Specified ##FILE does not exist: {this.FilePath}";
             }
         }
         catch (Exception ex)
@@ -132,7 +133,7 @@ public class DirectoryDirective : BaseDirective
 
     public DirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "DIRECTORY";
+        base.DirectiveType = DirectiveType.Directory;
         this.FileSystem = fileSystem;
     }
 }
@@ -143,7 +144,7 @@ public class ConditionalFileDirective : BaseDirective
 
     public ConditionalFileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "CONDITIONAL-FILE";
+        base.DirectiveType = DirectiveType.ConditionalFile;
         this.FileSystem = fileSystem;
     }
 }
@@ -154,7 +155,7 @@ public class ConditionalDirectoryDirective : BaseDirective
 
     public ConditionalDirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveName = "CONDITIONAL-DIRECTORY";
+        base.DirectiveType = DirectiveType.ConditionalDirectory;
         this.FileSystem = fileSystem;
     }
 }
@@ -163,7 +164,7 @@ public class ConditionDefaultDirective : BaseDirective
 {
     public ConditionDefaultDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "CONDITION-DEFAULT";
+        base.DirectiveType = DirectiveType.ConditionDefault;
     }
 }
 
@@ -171,7 +172,7 @@ public class ConditionDirective : BaseDirective
 {
     public ConditionDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "CONDITION";
+        base.DirectiveType = DirectiveType.Condition;
     }
 }
 
@@ -179,7 +180,7 @@ public class ConditionEndDirective : BaseDirective
 {
     public ConditionEndDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "CONDITION-END";
+        base.DirectiveType = DirectiveType.ConditionEnd;
     }
 }
 
@@ -187,7 +188,7 @@ public class RunnerDirective : BaseDirective
 {
     public RunnerDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "RUNNER";
+        base.DirectiveType = DirectiveType.Runner;
     }
 }
 
@@ -195,7 +196,7 @@ public class VersionCheckerDirective : BaseDirective
 {
     public VersionCheckerDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
-        base.DirectiveName = "VERSION-CHECKER";
+        base.DirectiveType = DirectiveType.VersionChecker;
     }
 }
 

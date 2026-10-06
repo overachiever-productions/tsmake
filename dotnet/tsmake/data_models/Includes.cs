@@ -14,25 +14,43 @@ public abstract class BaseInclude(IDirective directive, IFileSystem fileSystem, 
     public List<string> IncludedFiles { get; protected set; } = new List<string>();
 }
 
-public class FileInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+public class FileInclude : BaseInclude
+{
+    public FileInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : base(directive, fileSystem, syntaxErrors)
+    {
+        base.IncludedFiles.Add(((FileDirective)directive).FilePath);
+    }
+}   
 
-public class DirectoryInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+public class DirectoryInclude : BaseInclude
+{
+    public DirectoryInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : base(directive, fileSystem, syntaxErrors)
+    {
 
-public class VersionCheckerInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : BaseInclude(directive, fileSystem, syntaxErrors);   
+    }
+}
+
+public class VersionCheckerInclude : BaseInclude
+{
+    public VersionCheckerInclude(IDirective directive, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors) : base(directive, fileSystem, syntaxErrors)
+    {
+
+    }
+}
 
 public class IncludeTranslator
 {
     public static IInclude LoadInclude(IDirective directive, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
-        if (directive.DirectiveName == "File")
+        if (directive.DirectiveType == DirectiveType.File)
             return new FileInclude(directive, fileSystem, syntaxErrors);
 
-        if (directive.DirectiveName == "Directory")
+        if (directive.DirectiveType == DirectiveType.Directory)
             return new DirectoryInclude(directive, fileSystem, syntaxErrors);
 
-        if (directive.DirectiveName == "Version-Checker")
+        if (directive.DirectiveType == DirectiveType.VersionChecker)
             return new VersionCheckerInclude(directive, fileSystem, syntaxErrors);
 
-        throw new Exception($"tsmake Workflow Exception: Unrecognized directive type: {directive.DirectiveName}");
+        throw new Exception($"tsmake Workflow Exception: Unrecognized directive type: {directive.DirectiveType}");
     }
 }

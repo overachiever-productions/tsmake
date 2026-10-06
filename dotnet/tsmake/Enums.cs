@@ -76,6 +76,23 @@ public enum PathType
     Rooted
 }
 
+public enum DirectiveType
+{
+    Root,
+    Output,
+    Runner,
+    FileMarker,
+    VersionChecker,
+    Comment,
+    File,
+    Directory,
+    ConditionalFile,
+    ConditionalDirectory,
+    ConditionDefault,
+    Condition,
+    ConditionEnd
+}
+
 //public enum OrderBy
 //{
 //    Alphabetical,

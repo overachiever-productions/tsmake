@@ -32,15 +32,15 @@ public static class tsmakeExtensions
 
     internal static PathType GetPathType(this string input)
     {
-        if (input.StartsWith(@"\\\"))
+        // Absolute - UNC Share
+        if (input.StartsWith(@"\\\\", StringComparison.OrdinalIgnoreCase) || input.StartsWith(@"UNC\\", StringComparison.OrdinalIgnoreCase))
+            return PathType.Absolute;
+
+        if (input.StartsWith(@"\\", StringComparison.OrdinalIgnoreCase))
             return PathType.Rooted;
 
         // Absolute - Local File
         if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineRegexOptions))
-            return PathType.Absolute;
-
-        // Absolute - UNC Share
-        if (input.StartsWith("//"))
             return PathType.Absolute;
 
         return PathType.Relative;

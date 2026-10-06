@@ -2,10 +2,19 @@
 
 <#
 
+	S4 Build: 
+
+			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+			Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
+
+			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
+
+
+
 	SIMPLEST EXECUTION OPTION (will find/detect a *.build.sql file in the current working directory (or will throw)): 
 		
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
-			$global:VerbosePreference = "Continue";
+		#	$global:VerbosePreference = "Continue";
 				# Set 'current' location = "..\test_files\simple1" 
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\simple1");
 				Invoke-TsmBuild; 
@@ -23,13 +32,6 @@
 
 	TOKENS (without explicit build-file):
 				xxxxx
-
-	S4 Build: 
-
-			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
-			Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
-
-			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
 	
 #>
 
@@ -204,15 +206,22 @@ function Invoke-TsmBuild {
 				}
 			}
 			
-			
 			return;
 		}
 		
 		$assembler = $buildResult.Assembler;
 		foreach ($line in $assembler.CodeLines) {
-			if ($null -ne $line.Directive) {
-				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
-			}
+			Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
+#			if ($null -ne $line.Directive) {
+#				if ("FILE" -eq $line.Directive.DirectiveName) {
+#					Write-Host "`t`t`t$($line.Directive.FilePath)";
+#				}
+#			}
+			
+			
+#			if ($null -ne $line.Directive) {
+#				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
+#			}
 		}
 		
 		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";

@@ -43,7 +43,6 @@ public class FileSystem (string workingDirectory) : IFileSystem
             throw new Exception("tsmake Workflow Exception: ROOT Directory has not been set.");
 
         PathType pathType = GetPathType(path);
-
         switch (pathType)
         {
             case PathType.Absolute:
@@ -51,7 +50,7 @@ public class FileSystem (string workingDirectory) : IFileSystem
             case PathType.Relative:
                 return CollapsePath(this.RootDirectory, path);
             case PathType.Rooted:
-                return CollapsePath(this.RootDirectory, path.Replace(@"\\\", ""));
+                return CollapsePath(this.RootDirectory, path.Replace(@"\\", ""));
             default:
                 throw new Exception($"Invalid Path Type Specified: [{pathType}].");
         }
@@ -65,7 +64,7 @@ public class FileSystem (string workingDirectory) : IFileSystem
 
     public bool DirectoryExists(string path)
     {
-        return Directory.Exists(path);
+        return Directory.Exists(Path.GetDirectoryName(path));
     }
 
     public bool FileExists(string filePath)

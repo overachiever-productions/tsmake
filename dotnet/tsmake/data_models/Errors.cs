@@ -41,6 +41,6 @@ public class ConfigError(string message, string detail, List<IRankedString> rank
     public List<IRankedString> RankedStrings { get; } = rankedStrings;
     public string Summarize()
     {
-        return $"{this.Message}: {this.Detail} => {string.Join(", ", this.RankedStrings.Select(rs => $"[{rs.SourceType}] '{rs.Value}'"))}";
+        return $"{this.Message} {this.Detail} => {string.Join(", ", this.RankedStrings.Select(rs => $"[{rs.SourceType}] '{rs.Value}'"))}";
     }
 }

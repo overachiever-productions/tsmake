@@ -48,6 +48,12 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
+
+            // TODO: normalize buildFilePath (from disk) ... skim/scan for ##ROOT, ##OUTPUT, and ##FILEMARKER directives ... and populate this.BuildRoot, this.BuildOutput, and this.FileMarkerPath accordingly.
+            //          then DISCARD the normalizedLines ... and move to recursively assemble. 
+
+
+
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
             // TODO: serialize this.codelines via a StringBuilder... 
@@ -79,6 +85,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         }
     }
 
+    // NOTE: currentCodeLine was an initial stab at a hack. 99% sure I should get rid of it. 
     void IAssembler.RecursivelyAssemble(string filePath, int parentFileLine)
     {
         try
@@ -120,46 +127,31 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
             directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
+           // currentCodeLine += this.CodeLines.Count;
 
             if (!this._buildFileHandled)
             {
-                // 1. ##ROOT. We'll ALWAYS have a ROOT-PATH value - even if it's PWD. 
-                IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-                if(buildRoot.Value.IsWhiteSpace())
-                    this.ConfigErrors.Add(new ConfigError($"No Root-Path specified.", $"SOURCE: {buildRoot.SourceType}", this.BuildRoot));
-                else
-                {
-                    if (this.OpsFactory.CurrentFileSystem.DirectoryExists(buildRoot.Value))
-                        this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);  
-                    else
-                        this.ConfigErrors.Add(new ConfigError($"Specified Root Path NOT Found: [{buildRoot.Value}].", $"SOURCE: {buildRoot.SourceType}", this.BuildRoot));
-                }
-
-                // 2. ##OUTPUT. We MIGHT not have an OUTPUT path. If so, we can't add an ARTIFACT for output, and need to signify this with a ConfigError.
-                IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput); 
-                if (this.OpsFactory.CurrentFileSystem.DirectoryExists(buildOutput.Value))
-                {
-                    // create a new artifact with the buildOutput as the path. 
-                    // no contents yet... but ... yeah. 
-                }
-                else
-                    this.ConfigErrors.Add(new ConfigError($"Invalid output path specified: [{buildOutput.Value}]", $"SOURCE: {buildOutput.SourceType}", this.BuildOutput));
-
-                // 3. ##FILEMARKER. Optional. If we have one, and the path is valid, add a new artifact. 
-                IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-                if(this.OpsFactory.CurrentFileSystem.DirectoryExists(fileMarkerOutput.Value))
-                {
-                    // create a new artifact with the fileMarkerOutput as the path. 
-                }
-                else
-                    // DITTO ... as per ROOT ... need to know where this came from ...
-                    this.ConfigErrors.Add(new ConfigError($"Invalid file marker path specified: {fileMarkerOutput.Value}", $"SOURCE: {fileMarkerOutput.SourceType}", this.FileMarkerPath));
-
                 this._buildFileHandled = true;
+
+                IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
+                // TODO: should NOT BE EMPTY.
+                if(buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                    this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
+
+                IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput); 
+                // TODO: might be empty... 
+                if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                    this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
+
+                IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
+                // TODO: might be empty ... 
+                if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                    this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
             }
 
             directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
 
+            // TODO: not quite sure that I need to do this here. probably? makes more sense in the .Assemble() method instead - after ALL lines have been loaded. 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
             tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 

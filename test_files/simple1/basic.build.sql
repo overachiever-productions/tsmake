@@ -1,8 +1,8 @@
--- ## ROOT: \
--- ## OUTPUT: basic_latest.sql
+-- ##COMMENT: This is a build file... 
+-- ##OUTPUT: basic_latest.sql
 -- 3
--- ## COMMENT: this will be ignored - as in, there won't be a LINE 3 in the manifest or output.
+-- ##:: Comment also - using alternate comment-syntax.
 -- 5 
--- ## FILE: simple-sixes.sql
+-- ##FILE: simple-sixes.sql
 -- 7
 -- 8

@@ -7,7 +7,7 @@ public interface IDirectiveProcessor
     List<IDirective> Directives { get; }
 
     void IdentifyDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors);
-
+        
     void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors); 
 }
 
@@ -17,41 +17,80 @@ public class DirectiveProcessor : IDirectiveProcessor
 
     public void IdentifyDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
-        foreach (var codeLine in codeLines.Where(c => c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2))
+        // HACK: ... this is just ugly. need to refactor and make some model responsible for managing these details and preventing duplicates. 
+        //          ALSO... it's 'Exponentially ugly' - in that each new INCLUDE file ... resets this ... so, ... yeah: terrible.
+        var rootSet = false;
+        var outputSet = false;
+        var markerSet = false;
+
+        foreach(var codeLine in codeLines.Where(c => !c.Processed))
         {
-            Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
+            codeLine.Processed = true;
 
-            if (!m.Success)
-                continue;
-
-            var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
-            codeLine.Directive = directive;
-            this.Directives.Add(directive);
-
-            if (directive.IsValid)
+            if (codeLine.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && codeLine.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)
             {
-                // TODO: slight bug here ... someone could specify ##ROOT ... 4x in a row and nothing in logic below PREVENTS this. 
-                //      further, IF someone specifies one of these ##directives > 1x ... i need to 'throw' (configError - not terminate) and 
-                //      let the caller know where the fault/problem was (file, line number, etc.).
+                Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
+
+                if (!m.Success)
+                    continue;
+
+                var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
+                codeLine.Directive = directive;
+                this.Directives.Add(directive);
 
                 if (directive is RootDirective rootDirective)
-                    parent.BuildRoot.Add(new RankedString(SourceType.BuildFile, rootDirective.Payload, directive));
+                {
+                    if (rootSet)
+                    {
+                        parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
+                        continue;
+                    }
+
+                    rootSet = true;
+                    if (rootDirective.IsValid)
+                        parent.BuildRoot.Add(new RankedString(SourceType.BuildFile, rootDirective.Payload, directive));
+                    else
+                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
+                }
 
                 if (directive is OutputDirective outputDirective)
-                    parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Payload, directive));
+                {
+                    if (outputSet)
+                    {
+                        parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
+                        continue;
+                    }
+
+                    outputSet = true;
+                    if (outputDirective.IsValid)
+                        parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Payload, directive));
+                    else
+                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
+                }
 
                 if (directive is FileMarkerDirective fileMarkerDirective)
-                    parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload, directive));
+                {
+                    if (fileMarkerDirective.IsValid)
+                    {
+                        if (!markerSet)
+                        {
+                            parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload, directive));
+                            markerSet = true;
+                        }
+                        else
+                            parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
+                    }
+                    else
+                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
+                }
             }
-            else
-                syntaxErrors.Add(new SyntaxError($"Invalid ##{directive.DirectiveName} directive.", directive.ValidationMessage, codeLine.LineNumber, codeLine.Stack));
         }
     }
 
     public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
         // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
-        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveName == "Conditional-File") || (d.DirectiveName == "Conditional-Directory"))))
+        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
         {
             // convert these to FILE|DIRECTORY directives ... to be processed down below... 
 
@@ -60,7 +99,7 @@ public class DirectiveProcessor : IDirectiveProcessor
         }
 
         // PROCESS CONDITIONAL directives
-        foreach(var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveName.StartsWith("Condition")))))
+        foreach(var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.Condition) || (d.DirectiveType == DirectiveType.ConditionDefault) || (d.DirectiveType == DirectiveType.ConditionEnd))))
         {
             // if these are BUILD-time directives ... then the ENTIRE CONDITION-BLOCK gets replaced with either CONDITION-DEFAULT or whichever CONDITION matched the evaluation. 
 
@@ -84,7 +123,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
         }
 
-        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveName == "File") || (d.DirectiveName == "Directory") || (d.DirectiveName == "Version-Checker"))))
+        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.File) || (d.DirectiveType == DirectiveType.Directory) || (d.DirectiveType == DirectiveType.VersionChecker))))
         {
             IInclude include = IncludeTranslator.LoadInclude(directive, fileSystem, codeLines, syntaxErrors);
             foreach(string includedFilePath in include.IncludedFiles)
