@@ -10,9 +10,6 @@ public interface ICodeLine
     int EndOffset { get; }
     IDirective Directive { get; internal set; }
     Stack<IStackEntry> Stack { get; } 
-
-    // HACK:
-    bool Processed { get; set; }
 }
 
 public class CodeLine(string content, int lineNumber, int startOffset, int endOffset, Stack<IStackEntry> stack) : ICodeLine
@@ -25,7 +22,6 @@ public class CodeLine(string content, int lineNumber, int startOffset, int endOf
     public int EndOffset { get; } = endOffset;
     public IDirective Directive { get; set; } = null!;
     public Stack<IStackEntry> Stack { get; } = stack;
-    public bool Processed { get; set; } = false;
 }
 
 public interface IStackEntry

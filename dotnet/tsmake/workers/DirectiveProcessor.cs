@@ -17,78 +17,84 @@ public class DirectiveProcessor : IDirectiveProcessor
 
     public void IdentifyDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
-        // HACK: ... this is just ugly. need to refactor and make some model responsible for managing these details and preventing duplicates. 
-        //          ALSO... it's 'Exponentially ugly' - in that each new INCLUDE file ... resets this ... so, ... yeah: terrible.
         var rootSet = false;
         var outputSet = false;
         var markerSet = false;
 
-        foreach(var codeLine in codeLines.Where(c => !c.Processed))
+        foreach (var codeLine in codeLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
-            codeLine.Processed = true;
+            Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
 
-            if (codeLine.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && codeLine.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)
+            if (!m.Success)
+                continue;
+
+            var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
+            codeLine.Directive = directive;
+            this.Directives.Add(directive);
+
+            if (directive is RootDirective rootDirective)
             {
-                Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
-
-                if (!m.Success)
+                if (rootSet)
+                {
+                    parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
                     continue;
-
-                var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
-                codeLine.Directive = directive;
-                this.Directives.Add(directive);
-
-                if (directive is RootDirective rootDirective)
-                {
-                    if (rootSet)
-                    {
-                        parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
-                        continue;
-                    }
-
-                    rootSet = true;
-                    if (rootDirective.IsValid)
-                        parent.BuildRoot.Add(new RankedString(SourceType.BuildFile, rootDirective.Payload, directive));
-                    else
-                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
                 }
 
-                if (directive is OutputDirective outputDirective)
-                {
-                    if (outputSet)
-                    {
-                        parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
-                        continue;
-                    }
+                rootSet = true;
+                if (rootDirective.IsValid)
+                    parent.BuildRoot.Add(new RankedString(SourceType.BuildFile, rootDirective.Payload, directive));
+                else
+                    parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildRoot));
+            }
 
-                    outputSet = true;
-                    if (outputDirective.IsValid)
-                        parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Payload, directive));
-                    else
-                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
+            if (directive is OutputDirective outputDirective)
+            {
+                if (outputSet)
+                {
+                    parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
+                    continue;
                 }
 
-                if (directive is FileMarkerDirective fileMarkerDirective)
+                outputSet = true;
+                if (outputDirective.IsValid)
+                    parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Payload, directive));
+                else
+                    parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
+            }
+
+            if (directive is FileMarkerDirective fileMarkerDirective)
+            {
+                if (fileMarkerDirective.IsValid)
                 {
-                    if (fileMarkerDirective.IsValid)
+                    if (!markerSet)
                     {
-                        if (!markerSet)
-                        {
-                            parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload, directive));
-                            markerSet = true;
-                        }
-                        else
-                            parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
+                        parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload, directive));
+                        markerSet = true;
                     }
                     else
-                        parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
+                        parent.ConfigErrors.Add(new ConfigError($"Duplicate ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
                 }
+                else
+                    parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
             }
         }
     }
 
     public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
     {
+        // 1. IDENTIFY directives: 
+        foreach (var codeLine in codeLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
+        {
+            Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
+
+            if (!m.Success)
+                continue;
+
+            var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
+            codeLine.Directive = directive;
+            this.Directives.Add(directive);
+        }
+
         // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
         {
@@ -125,6 +131,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.File) || (d.DirectiveType == DirectiveType.Directory) || (d.DirectiveType == DirectiveType.VersionChecker))))
         {
+            // TODO: same thing here ... can I pass in JUST ... localCodeLines or ... do I need to pass in Assembler|Parent.CodeLines too? 
             IInclude include = IncludeTranslator.LoadInclude(directive, fileSystem, codeLines, syntaxErrors);
             foreach(string includedFilePath in include.IncludedFiles)
             {

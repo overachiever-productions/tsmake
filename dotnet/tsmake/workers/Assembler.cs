@@ -24,7 +24,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 {
     private int _fileCount = 0;
     private int _directivesCount = 0;
-    private bool _buildFileHandled = false;
+    //private bool _buildFileHandled = false;
 
     private IOpsFactory OpsFactory { get; } = opsFactory;
 
@@ -48,13 +48,51 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
+            #region REFACTOR
+            // REFACTOR: All logic in this block is a HACK to get ##ROOT, ##OUTPUT, and ##FILEMARKER BEFORE we jump into recursively assembling artifacts/output. 
+            //   also ... I do NOT need ##OUTPUT or ##FILEMARKER if we're doing a DOCUMENT build ... but I do need ##ROOT for INCLUDES. 
 
-            // TODO: normalize buildFilePath (from disk) ... skim/scan for ##ROOT, ##OUTPUT, and ##FILEMARKER directives ... and populate this.BuildRoot, this.BuildOutput, and this.FileMarkerPath accordingly.
-            //          then DISCARD the normalizedLines ... and move to recursively assemble. 
+            // REFACTOR: The logic below is clunky - because of how it was originally isolated/inverted to be solely processed in the IDirectivesProcessor 
+            //     against MEMBERS of the IAssember (i.e., the List<ICodeLine>). But this complexity is NO LONGER NEEDED. 
+            //   ergo: 
+            // REFACTOR IDirectivesProcessor.IdentifyDirectives() to: 
+            //     a) rename it ... it's no longer just identifying directives ... it's ... getting/setting ROOT/OUTPUT/FILEMARKER ... 
+            //     b) don't pass in List<ICodeLine> ... instead, pass in the NormalizedText and run a REGEX. 
+            //     c) and for each match ... 
+            //            convert to an IDirective (via regex text)... 
+            //             and if valid/legal ... set parent.xxxxRoot.Add(new rankedString()) ... accordingly. 
+            //     d) if invalid ... add a ConfigError to parent.ConfigErrors.
+            //            invalid could/would be: SyntaxError: missing or invalid syntax/etc. 
+            //                 or a CONFIG error: duplicate directive, file-not-found / etc. 
 
+            string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
+            var normalizer = this.OpsFactory.NewNormalizer();
+            var buildLines = new List<ICodeLine>();
+            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, this.Stack);
 
+            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
+            directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
+
+            IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
+            // TODO: should NOT BE EMPTY.
+            if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
+
+            IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
+            // TODO: might be empty... 
+            if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
+
+            IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
+            // TODO: might be empty ... 
+            if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+                this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
+            #endregion 
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
+
+            var tokenTransformer = this.OpsFactory.NewTokenTransformer();
+            tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
             // TODO: serialize this.codelines via a StringBuilder... 
             //      skipping any ##COMMENTS ... or ##ROOT or ##OUTPUT lines. 
@@ -85,7 +123,6 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         }
     }
 
-    // NOTE: currentCodeLine was an initial stab at a hack. 99% sure I should get rid of it. 
     void IAssembler.RecursivelyAssemble(string filePath, int parentFileLine)
     {
         try
@@ -97,12 +134,13 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
 
             var normalizer = this.OpsFactory.NewNormalizer();
-            normalizer.Normalize(fileContent, this.CodeLines, this.SyntaxErrors, this.Stack);
+            var normalizedCodeLines = new List<ICodeLine>();
+            normalizer.Normalize(fileContent, normalizedCodeLines, this.SyntaxErrors, this.Stack);
 
             if (this.Options.OperationType == OperationType.Document)
             {
                 var docExtractor = this.OpsFactory.NewDocumentationExtractor();
-                docExtractor.ExtractDocumentation(this.CodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
+                docExtractor.ExtractDocumentation(normalizedCodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
             }
             else
             {
@@ -110,7 +148,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 {
                     // TODO: use a REGEX vs .Normalizer.NormalizedText ... to identify the start/end-line of header-comments. 
                     //      can, obviously be 1 (i.e., 0) or ... N. 
-                    // then remove those lines from this.CodeLines ... via a .RemoveRange() or something similar.
+                    // then remove those lines from normalizedCodeLines ... via a .RemoveRange() or something similar.
                 }
 
                 if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
@@ -126,36 +164,12 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             }
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
-            directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
-           // currentCodeLine += this.CodeLines.Count;
 
-            if (!this._buildFileHandled)
-            {
-                this._buildFileHandled = true;
-
-                IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-                // TODO: should NOT BE EMPTY.
-                if(buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                    this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
-
-                IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput); 
-                // TODO: might be empty... 
-                if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                    this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
-
-                IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-                // TODO: might be empty ... 
-                if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                    this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
-            }
-
-            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, this.CodeLines, this.SyntaxErrors);
-
-            // TODO: not quite sure that I need to do this here. probably? makes more sense in the .Assemble() method instead - after ALL lines have been loaded. 
-            var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-            tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+            // TODO: determine if I need to pass in BOTH normalizedCodeLines AND this.CodeLines ... or if I can just pass in normalizedCodeLines.
+            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, normalizedCodeLines, this.SyntaxErrors);
 
             this._directivesCount += directivesProcessor.Directives.Count;
+
             this.Stack.Pop();
         }
         catch (Exception ex)
