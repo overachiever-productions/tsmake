@@ -1,14 +1,14 @@
--- ## ROOT: ..\ ##:: 
--- ## OUTPUT: \\\piggly_wiggly.sql
+-- ##::  this is a build file... 
+-- ##OUTPUT: \\\piggly_wiggly.sql
 -- 3
 -- 4
 -- 5
---##file: sixes.sql
+-- ##FILE: sixes.sql
 -- 7
 -- 8 
 -- 9
 -- 10
 -- 11
--- ## FILE: twelves.sql
+-- ##FILE: twelves.sql
 -- 13
 -- 14

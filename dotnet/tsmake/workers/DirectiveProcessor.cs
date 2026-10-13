@@ -6,22 +6,23 @@ public interface IDirectiveProcessor
 {    
     List<IDirective> Directives { get; }
 
-    void IdentifyDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors);
+    void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ISyntaxError> syntaxErrors);
         
-    void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors); 
+    void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors); 
 }
 
 public class DirectiveProcessor : IDirectiveProcessor
 {
     public List<IDirective> Directives { get; } = new List<IDirective>();
 
-    public void IdentifyDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
+    // REFACTOR: this is a temporary name while I sort out logic... and BEFORE I totally rewrite this logic.
+    public void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ISyntaxError> syntaxErrors)
     {
         var rootSet = false;
         var outputSet = false;
         var markerSet = false;
 
-        foreach (var codeLine in codeLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
+        foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
             Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
 
@@ -80,10 +81,10 @@ public class DirectiveProcessor : IDirectiveProcessor
         }
     }
 
-    public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors)
+    public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors)
     {
-        // 1. IDENTIFY directives: 
-        foreach (var codeLine in codeLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
+        // IDENTIFY directives: 
+        foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
             Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
 
@@ -94,50 +95,54 @@ public class DirectiveProcessor : IDirectiveProcessor
             codeLine.Directive = directive;
             this.Directives.Add(directive);
         }
-
-        // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
+        
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
         {
-            // convert these to FILE|DIRECTORY directives ... to be processed down below... 
+            // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
 
             // e.g., directive(.type) = directive.ResolveCondition()
             // not EXACTLY sure how to swap out the current directive with a new one ... but ... yeah. 
+            //   BUT ... this has to be done at the CodeLine level ... 
         }
 
-        // PROCESS CONDITIONAL directives
-        foreach(var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.Condition) || (d.DirectiveType == DirectiveType.ConditionDefault) || (d.DirectiveType == DirectiveType.ConditionEnd))))
+        foreach (ICodeLine line in currentLines)
         {
-            // if these are BUILD-time directives ... then the ENTIRE CONDITION-BLOCK gets replaced with either CONDITION-DEFAULT or whichever CONDITION matched the evaluation. 
-
-            // whereas if these are RUNTIME directives ... I need to use logic to generate dynamic SQL that'll be executed at runtime. 
-            //    note that I've got a ROUGH implementation of this logic within my S4BuildPrototype. 
-            //    the only wrinkle is ... how to map/create add MORE code-lines. 
-            //      Think i just need a CodeLines.InsertAfter(currentLine)... 
-
-
-            // SPECIFICALLY, the process needs to be: 
-            //  1. find the index of the current line (note that the INDEX is no longer guaranteed to be the current 'LINE NUMBER' ... cuz we're inserting rows/etc. 
-            //      this can be done with, effectively, a .FindIndex() on the CodeLines collection.
-            //              e.g., int currentLineIndex = codeLines.FindIndex(c => c.LineNumber == directive.CodeLine.LineNumber);
-
-            //  2. find the index of the END-CONDITION directive ... which will be the last line of the block.
-
-            //  3. remove all lines from the current line index to the END-CONDITION directive index.
-
-            //  4. insert the new lines (either CONDITION-DEFAULT or whichever CONDITION matched the evaluation) at the current line index.
-            //      e.g., codeLines.InsertRange(currentLineIndex, newLines);
-
-        }
-
-        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.File) || (d.DirectiveType == DirectiveType.Directory) || (d.DirectiveType == DirectiveType.VersionChecker))))
-        {
-            // TODO: same thing here ... can I pass in JUST ... localCodeLines or ... do I need to pass in Assembler|Parent.CodeLines too? 
-            IInclude include = IncludeTranslator.LoadInclude(directive, fileSystem, codeLines, syntaxErrors);
-            foreach(string includedFilePath in include.IncludedFiles)
+            if(line.Directive != null)
             {
-                int lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile = directive.CodeLine.LineNumber;
-                parent.RecursivelyAssemble(includedFilePath, lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile);
+                if(line.Directive.IsValid)
+                {
+                    switch(line.Directive.DirectiveType)
+                    {
+                        case DirectiveType.File:
+                        case DirectiveType.Directory:
+                            IInclude include = IncludeTranslator.LoadInclude(line.Directive, fileSystem, currentLines, syntaxErrors);
+                            foreach (string includedFilePath in include.IncludedFiles)
+                            {
+                                int lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile = line.LineNumber;
+                                parent.RecursivelyAssemble(includedFilePath, lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile);
+                            }
+                            break;
+                        case DirectiveType.ConditionDefault:
+                            // IF the Directive is a BUILD-TIME directive ... 
+                            //          the process the CASEs and: 
+                            //          for the entire CASE that matches ... 
+                            //                  for EACH line in the CASE ... add to artifactLines.
+                            //        at this point ... we've swapped ##directives and #conditions and #end-condition ... with ... code-lines to be output. 
+                            //          AND ... remove /* */ or -- from the 'case' in question ... so that the code-lines are 'active' and not commented-out.
+
+                            // IF the directive is a RUNTIME directive... 
+                            //      hand off to a FUNC that'll generate the dynamic SQL and so on... 
+                            //      which'll hand-back a LIST<ICodeLine> ... (that'll be 'de-commented')
+                            //     and then ... foreach of those lines ... add to artifactLines.
+                            break;
+                        default:
+                            // for everything that does NOT match (CONDITION, CONDITION-END, COMMENT, ETC...) we simply SKIP the line... 
+                            break;
+                    }
+                }
             }
+            else
+                artifactLines.Add(line);
         }
     }
 }

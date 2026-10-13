@@ -1,7 +1,7 @@
 ﻿namespace tsmake.tests.unit_tests.normalizer;
 
 // TODO: 
-//     need to add a whole SUITE of tests that verify that CodeLines passed IN to a normalizer are preserved and not modified.
+//     need to add a whole SUITE of tests that verify that ArtifactLines passed IN to a normalizer are preserved and not modified.
 //          and that NEW lines are simply ADDED to what was already there. 
 
 // TODO: verify that we're getting syntax errors when/as applicable as well. 

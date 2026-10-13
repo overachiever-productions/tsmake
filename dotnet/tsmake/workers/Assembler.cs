@@ -4,7 +4,7 @@ namespace tsmake.workers;
 
 public interface IAssembler
 {
-    List<ICodeLine> CodeLines { get; }
+    List<ICodeLine> ArtifactLines { get; }
     List<ISyntaxError> SyntaxErrors { get; }
     List<IConfigError> ConfigErrors { get; }
     List<ICodeLine> DocLines { get; }
@@ -24,7 +24,6 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 {
     private int _fileCount = 0;
     private int _directivesCount = 0;
-    //private bool _buildFileHandled = false;
 
     private IOpsFactory OpsFactory { get; } = opsFactory;
 
@@ -36,7 +35,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
     public List<ISyntaxError> SyntaxErrors { get; private set; } = new List<ISyntaxError>();
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
-    public List<ICodeLine> CodeLines { get; private set; } = new List<ICodeLine>();
+    public List<ICodeLine> ArtifactLines { get; private set; } = new List<ICodeLine>();
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
     private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
 
@@ -55,7 +54,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             // REFACTOR: The logic below is clunky - because of how it was originally isolated/inverted to be solely processed in the IDirectivesProcessor 
             //     against MEMBERS of the IAssember (i.e., the List<ICodeLine>). But this complexity is NO LONGER NEEDED. 
             //   ergo: 
-            // REFACTOR IDirectivesProcessor.IdentifyDirectives() to: 
+            // REFACTOR IDirectivesProcessor.ProcessGlobalBuildFileDirectives() to: 
             //     a) rename it ... it's no longer just identifying directives ... it's ... getting/setting ROOT/OUTPUT/FILEMARKER ... 
             //     b) don't pass in List<ICodeLine> ... instead, pass in the NormalizedText and run a REGEX. 
             //     c) and for each match ... 
@@ -71,7 +70,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, this.Stack);
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
-            directivesProcessor.IdentifyDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
+            directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
 
             IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
             // TODO: should NOT BE EMPTY.
@@ -92,11 +91,11 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-            tokenTransformer.TransformTokens(this.CodeLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
-            // TODO: serialize this.codelines via a StringBuilder... 
-            //      skipping any ##COMMENTS ... or ##ROOT or ##OUTPUT lines. 
-            //      and using CodeLine.TransformedContent unless empty - in which case ... use CodeLine.OriginalContent.
+            // TODO: Now that we have a fully 'recursed' and assembled list of lines with conditionals and includes,
+            //      AND we've replaced all tokens ... serialize this.codelines via a StringBuilder... cuz we're only doing 'string' transforms (via REGEX)
+            //      at this point instead of line-by-line operations. 
 
             // IF there are any remaining CommentRemovalDirectives (removeAll, removeEOL, etc.) ... add 'stock'/built-in BuildTransforms to remove them. 
 
@@ -112,7 +111,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
             this.BuildResult.SetConfigErrors(this.ConfigErrors);
             this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
-            this.BuildResult.SetStatistics(this._fileCount, this.CodeLines.Count, this._directivesCount);
+            this.BuildResult.SetStatistics(this._fileCount, this.ArtifactLines.Count, this._directivesCount);
             this.BuildResult.SetComplete();
 
             this.BuildResult.AddAssembler(this);
@@ -127,20 +126,20 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
-            var buildFile = new StackEntry(filePath, parentFileLine, this.Stack.Count);
-            this.Stack.Push(buildFile);
+            var codeFile = new StackEntry(filePath, parentFileLine, this.Stack.Count);
+            this.Stack.Push(codeFile);
             this._fileCount++;
 
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
 
-            var normalizer = this.OpsFactory.NewNormalizer();
-            var normalizedCodeLines = new List<ICodeLine>();
-            normalizer.Normalize(fileContent, normalizedCodeLines, this.SyntaxErrors, this.Stack);
+            var normalizer = this.OpsFactory.NewNormalizer();    
+            var localCodeLines = new List<ICodeLine>();  // REFACTOR: doesn't REALLY matter. But stop passing these by REF. Normalizer.Normalize() should return a List<ICodeLine>. 
+            normalizer.Normalize(fileContent, localCodeLines, this.SyntaxErrors, this.Stack);  // normalizer DOES need syntaxErrors and stack - by reference. 
 
             if (this.Options.OperationType == OperationType.Document)
             {
                 var docExtractor = this.OpsFactory.NewDocumentationExtractor();
-                docExtractor.ExtractDocumentation(normalizedCodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
+                docExtractor.ExtractDocumentation(localCodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
             }
             else
             {
@@ -163,13 +162,15 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 }
             }
 
-            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
+// MKC: the ENTIRE point of a directivesProcessor is that it provides a UoW that can be easily unit-tested for directives identification and ... processing. 
+//     the RUB is that it adds a bit of complexity (well, a decent amount really - because of recursion). 
+//     but ... if you think of directivesProcessor.ProcessDirectives() as logic/code that'd OTHERWISE be in a big old "block of code" inside this method instead of being 
+//          in an 'outside' class/func ... then ... stuff is a bit more logical/obvious... 
 
-            // TODO: determine if I need to pass in BOTH normalizedCodeLines AND this.CodeLines ... or if I can just pass in normalizedCodeLines.
-            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, normalizedCodeLines, this.SyntaxErrors);
+            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();  // Hmmm. Factory should inject NEW DirectivesProcessor() with an IFileSystem. THOUGH ... that does make things a BIT harder to unit test... 
+            directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, localCodeLines, this.ArtifactLines, this.SyntaxErrors);
 
             this._directivesCount += directivesProcessor.Directives.Count;
-
             this.Stack.Pop();
         }
         catch (Exception ex)
