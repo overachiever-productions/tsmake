@@ -102,7 +102,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
             // e.g., directive(.type) = directive.ResolveCondition()
             // not EXACTLY sure how to swap out the current directive with a new one ... but ... yeah. 
-            //   BUT ... this has to be done at the CodeLine level ... 
+            //   BUT ... this has to be done at the CodeLine level ... AND ... i need to 'swap out' whatever .directive I'm currently working on/against with the FILE or DIRECTORY that replaces it. 
         }
 
         foreach (ICodeLine line in currentLines)
@@ -136,7 +136,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                             //     and then ... foreach of those lines ... add to artifactLines.
                             break;
                         default:
-                            // for everything that does NOT match (CONDITION, CONDITION-END, COMMENT, ETC...) we simply SKIP the line... 
+                            // for everything that does NOT match (e.g., ROOT, OUTPUT,  COMMENT, CONDITION, CONDITION-END, ETC...) simply SKIP the line... 
                             break;
                     }
                 }

@@ -93,14 +93,21 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
-            // TODO: Now that we have a fully 'recursed' and assembled list of lines with conditionals and includes,
-            //      AND we've replaced all tokens ... serialize this.codelines via a StringBuilder... cuz we're only doing 'string' transforms (via REGEX)
-            //      at this point instead of line-by-line operations. 
+            // TODO: Signficant Transition Happens Here. 
+            //     until this point, everything has been 'line-based' - where we've: 
+            //          - extracted root/output/filemarker directives, etc. 
+            //          - recursively assembled all artifacts (including includes, conditionals, etc.)
+            //          - handled all CONDITIONALs (including conditional-files > converted to FILE|DIRECTORY then processed with all other FILE|DIRECTORY directives). 
+            //          - and replaced all tokens (via TokenTransformer.TransformTokens()) ...
+            //    FROM here forward, we'll be working against a SERIALIZED copy of ArtifactLines<> ... 
+            //          i.e., at text/file-string level - effectively all via REGEX at this point. 
 
-            // IF there are any remaining CommentRemovalDirectives (removeAll, removeEOL, etc.) ... add 'stock'/built-in BuildTransforms to remove them. 
-
-            // IF there are any <BuildTransforms> (including comment-removal transforms)... 
+            // IF there are any <BuildTransforms> (including comment-removal transforms)...
             //      then execute each transform in <BuildTransforms> in order ... passing the serialized-string into each one ...
+            // NOTE: CommentRemovalDirectives like RemoveAll, RemoveEOL, and a few other 'global' directives WILL be handled as 
+            //       internal/built-in <BuildTransforms> - i.e., if we need to process any Comment-Removal Directives we'll: 
+            //       a) add them as transforms - essentially: regex to match the comment-type and ... empty-string as the replacement. 
+            //       b) then we'll process THOSE before any other transforms (supplied by end-users/callers). 
 
             // TODO:  ARTIFACTS will be different based on .Document or .Build ... 
             //    IF .Build: 
@@ -162,11 +169,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 }
             }
 
-// MKC: the ENTIRE point of a directivesProcessor is that it provides a UoW that can be easily unit-tested for directives identification and ... processing. 
-//     the RUB is that it adds a bit of complexity (well, a decent amount really - because of recursion). 
-//     but ... if you think of directivesProcessor.ProcessDirectives() as logic/code that'd OTHERWISE be in a big old "block of code" inside this method instead of being 
-//          in an 'outside' class/func ... then ... stuff is a bit more logical/obvious... 
-
+            // MKC: Everything done within directiveProcessor.ProcessDirectives COULD 'easily' be done here - inline - with a bunch of additional code blocks. 
+            //      BUT, the point of the DirectiveProcessor is to ISOLATE logic to better enable Unit-Testing, etc. 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();  // Hmmm. Factory should inject NEW DirectivesProcessor() with an IFileSystem. THOUGH ... that does make things a BIT harder to unit test... 
             directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, localCodeLines, this.ArtifactLines, this.SyntaxErrors);
 
