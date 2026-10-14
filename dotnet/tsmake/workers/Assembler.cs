@@ -93,7 +93,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
-            // TODO: Signficant Transition Happens Here. 
+            // TODO: Significant Transition Happens Here. 
             //     until this point, everything has been 'line-based' - where we've: 
             //          - extracted root/output/filemarker directives, etc. 
             //          - recursively assembled all artifacts (including includes, conditionals, etc.)

@@ -83,7 +83,8 @@ public class DirectiveProcessor : IDirectiveProcessor
 
     public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors)
     {
-        // IDENTIFY directives: 
+        ConditionDefaultDirective currentConditionDirective = null;
+
         foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
             Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
@@ -94,8 +95,49 @@ public class DirectiveProcessor : IDirectiveProcessor
             var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
             codeLine.Directive = directive;
             this.Directives.Add(directive);
+
+            switch (directive.DirectiveType)
+            {
+                case DirectiveType.ConditionDefault:
+                    if (currentConditionDirective != null)
+                    {
+                        // oops this is a new condition ... inside of a non-closed condition. 
+                        // syntax error that's fatal... (can't continue the build).
+                    }
+                    currentConditionDirective = (ConditionDefaultDirective)directive;
+                    break;
+                case DirectiveType.Condition:
+                    if(currentConditionDirective == null)
+                    {
+                        // oops this is a condition ... outside of a default condition. 
+                        // syntax error that's fatal... (can't continue the build).
+                    }
+                    else
+                        currentConditionDirective.AddCondition((ConditionDirective)directive);
+                    
+                    break;
+                case DirectiveType.ConditionEnd:
+                    if(currentConditionDirective == null)
+                    {
+                        // oops this is a condition end ... outside of a default condition. 
+                        // syntax error that's fatal... (can't continue the build).
+                    }
+                    else
+                        currentConditionDirective.AddConditionEnd((ConditionEndDirective)directive);
+
+                    currentConditionDirective = null;  // close the current condition... 
+                    break;
+                default:
+                    break;
+            }
         }
-        
+
+        if (currentConditionDirective != null)
+        {
+            // need to check if it's completed or not 
+            // and if not: that's a syntax error or ... config error - i.e., can't proceed until that's closed. 
+        }
+
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
         {
             // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 

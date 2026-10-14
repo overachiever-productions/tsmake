@@ -162,9 +162,22 @@ public class ConditionalDirectoryDirective : BaseDirective
 
 public class ConditionDefaultDirective : BaseDirective
 {
+    private List<ConditionDirective> _conditions { get; set; } = new List<ConditionDirective>();
+    private ConditionEndDirective _conditionEnd { get; set; } = null;
+
     public ConditionDefaultDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
         base.DirectiveType = DirectiveType.ConditionDefault;
+    }
+
+    public void AddCondition(ConditionDirective condition)
+    {
+        this._conditions.Add(condition);
+    }
+
+    public void AddConditionEnd(ConditionEndDirective conditionEnd)
+    {
+        this._conditionEnd = conditionEnd;
     }
 }
 
@@ -202,6 +215,7 @@ public class VersionCheckerDirective : BaseDirective
 
 public class DirectiveParser
 {
+    // REFACTOR: ?? Use a C# Union: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/union
     public static IDirective LoadDirective(string directiveName, string payload, ICodeLine codeLine, IFileSystem fileSystem)
     {
         // ROOT|OUTPUT|RUNNER|FILEMARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|CONDITIONAL-FILE|CONDITIONAL-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END
