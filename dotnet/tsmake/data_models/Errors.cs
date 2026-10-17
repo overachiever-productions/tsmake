@@ -1,5 +1,14 @@
 ﻿namespace tsmake.data_models;
 
+// TODO: 
+//      SINCE I'm going to be able to 'pinpoint' errors down to the FILE and specific LINE where they 'occur'... 
+//       No reason to NOT have logic/functionality similar to admindb's dbo.extract_code_lines ...
+//       Where I:
+//          1. grab the line in question. 
+//          2. and also grab ~4 lines before and after (when present)
+//          3. 'point at'/to the problem line with the whole --> against a left-adjusted do-hickie - like I'm doing with dbo.extract_code_lines. 
+
+
 public interface ISyntaxError
 {
     string FileName { get; }
