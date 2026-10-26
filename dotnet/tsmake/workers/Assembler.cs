@@ -68,12 +68,14 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
             var normalizer = this.OpsFactory.NewNormalizer();
             var buildLines = new List<ICodeLine>();
-            var codeFile = new FileDetail(buildFilePath, 0, 1);
-            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, codeFile);
+            var buildFile = new FileDetail(buildFilePath, 0, 1);
+            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, buildFile);
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
             directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
 
+// REFACTOR: I think the following 3x operations should probably be handled within the <renamed>ProcessGlobalBuildFileDirectives() func
+// LARGELY because a) the logic belongs there - instead of cluttering up this func. and b) because I'll be able to test that easily. 
             IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
             // TODO: should NOT BE EMPTY.
             if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
@@ -92,10 +94,10 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
+            // MKC - NOTE: Any syntax errors or other problems that are found from this point forward ... 
+            //          need to pull file/source information from the [ArtifactLines] collection - which has this info - per assembled code-line. 
+
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-// MKC - NOTE: I BELIEVE that I no longer have access to original source-file paths at this point ... 
-//     i.e., identifying LINES with problems is going to be hard-ish ... 
-//      ah... unless each this.ArtifactLine[s] has it's source ... which it does, right? 
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
             // TODO: Significant Transition Happens Here. 

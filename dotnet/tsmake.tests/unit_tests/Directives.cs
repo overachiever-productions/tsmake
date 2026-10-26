@@ -90,7 +90,7 @@ public class Directives
         Assert.That(directive, Is.TypeOf<FileDirective>());
         Assert.That(directive.IsValid, Is.False);
         Assert.That(directive.ValidationMessage, Is.Not.Null.And.Not.Empty);
-        StringAssert.Contains("specified ##FILE path does not", directive.ValidationMessage);
+        StringAssert.Contains("Specified ##FILE does not", directive.ValidationMessage);
         StringAssert.Contains("D:\\Repositories\\myProject\\Common\\Types", directive.ValidationMessage);
     }
     #endregion
