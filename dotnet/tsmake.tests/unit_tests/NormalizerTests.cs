@@ -16,11 +16,10 @@ public class NormalizerTests
         var text = "123456789ABCDEF";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(1));
     }
@@ -31,11 +30,10 @@ public class NormalizerTests
         var text = string.Empty;
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         Assert.That(lines.Count, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase(string.Empty, sut.NormalizedText);
     }
@@ -46,11 +44,10 @@ public class NormalizerTests
         var text = "123456789ABCDEF";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(1));
         StringAssert.AreEqualIgnoringCase(text, sut.NormalizedText);
@@ -62,11 +59,10 @@ public class NormalizerTests
         var text = "first-line\r\nsecond-line\r\nthird-line";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
         StringAssert.AreEqualIgnoringCase(text, sut.NormalizedText);
@@ -78,11 +74,10 @@ public class NormalizerTests
         var text = "first-line\nsecond-line\nthird-line";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
     }
@@ -93,11 +88,10 @@ public class NormalizerTests
         var text = "first-line\nsecond-line\nthird-line";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
         StringAssert.AreEqualIgnoringCase("first-line\r\nsecond-line\r\nthird-line", sut.NormalizedText);
@@ -109,11 +103,10 @@ public class NormalizerTests
         var text = "first-line\rsecond-line\rthird-line";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
     }
@@ -124,11 +117,10 @@ public class NormalizerTests
         var text = "first-line\rsecond-line\rthird-line";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
         StringAssert.AreEqualIgnoringCase("first-line\r\nsecond-line\r\nthird-line", sut.NormalizedText);
@@ -140,11 +132,10 @@ public class NormalizerTests
         var text = "first\r\nsecond\r\nthird\r\nfourth";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer(LineEndingsType.Cr);
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(4));
         StringAssert.AreEqualIgnoringCase("first\rsecond\rthird\rfourth", sut.NormalizedText);
@@ -156,11 +147,10 @@ public class NormalizerTests
         var text = "first\r\nsecond\rthird\nfourth";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(4));
         StringAssert.AreEqualIgnoringCase("first\r\nsecond\r\nthird\r\nfourth", sut.NormalizedText);
@@ -172,11 +162,10 @@ public class NormalizerTests
         var text = "line1\r\nline2\r\n";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
         StringAssert.AreEqualIgnoringCase(text, sut.NormalizedText);
@@ -188,11 +177,10 @@ public class NormalizerTests
         var text = "line1\rline2\r";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(3));
         StringAssert.AreEqualIgnoringCase("line1\r\nline2\r\n", sut.NormalizedText);
@@ -204,11 +192,10 @@ public class NormalizerTests
         var text = "1\r\n22\r\n333\r\n4444\r\n\r\n666666\r\n7777777\r\n";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(lines.Count, Is.EqualTo(8));
 
@@ -248,11 +235,10 @@ public class NormalizerTests
         var text = "PRINT 'Hello World!; -- note the missing end-tick... ";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
 
         Assert.That(errors.Count, Is.EqualTo(1));
         StringAssert.Contains("Non-Terminated String.", errors[0].Message);
@@ -265,11 +251,10 @@ public class NormalizerTests
         var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
     }
@@ -280,11 +265,10 @@ public class NormalizerTests
         var text = "DECLARE @simple sysname = N'this is simple';\r\nDECLARE @complex sysname = N'this is complex with a comment /* and a string '' and an unclosed string '' and an unclosed comment /*';\r\nDECLARE @multiline sysname = N'this spans\r\nmultiple\r\nlines';\r\nDECLARE @butThisisBad sysname = N'total fail\r\n-- closing comment. ";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(1));
         StringAssert.Contains("Non-Terminated String.", errors[0].Message);
@@ -301,11 +285,10 @@ public class NormalizerTests
         var text = "/* This is an unclosed block comment\r\nPRINT 'Hello World!';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(1));
         StringAssert.Contains("Non-Terminated Block-Comment", errors[0].Message);
@@ -317,11 +300,10 @@ public class NormalizerTests
         var text = "DECLARE @anotherString nvarchar(max) = N'this is not an unclosed block comment /* ';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
     }
@@ -332,11 +314,10 @@ public class NormalizerTests
         var text = "SELECT * FROM [MyTable;\r\nGO";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(1));
         StringAssert.Contains("Non-Terminated", errors[0].Message);
@@ -348,11 +329,10 @@ public class NormalizerTests
         var text = "DECLARE @mytext nvarchar(MAX) = N'this is not [a real identifier';\r\nGO";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
     }
@@ -365,11 +345,10 @@ public class NormalizerTests
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an EOL comment -- but it should be ignored';\r\nSET @string = N'some value'; -- this is a legit EOL comment.";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
        
         Assert.That(errors.Count, Is.EqualTo(0));
         Assert.That(lines.Count, Is.EqualTo(2));
@@ -381,11 +360,10 @@ public class NormalizerTests
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with a block comment /* but it should be ignored */';\r\n/* but this is a legit block \r\n comment */\r\nSET @string = N'some value';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
         Assert.That(lines.Count, Is.EqualTo(4));
@@ -397,11 +375,10 @@ public class NormalizerTests
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with an escaped tick '' and it should''t cause an error';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
         Assert.That(lines.Count, Is.EqualTo(1));
@@ -413,11 +390,10 @@ public class NormalizerTests
         var text = "DECLARE @string nvarchar(MAX) = N'this is a string with GO in it, but it should be ignored';\r\n\r\n/* this is a comment with GO in it - but it should be ignored */\r\nGO\r\nPRINT 'This is batch 2';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
         Assert.That(lines.Count, Is.EqualTo(5));
@@ -434,11 +410,10 @@ public class NormalizerTests
         var text = "/* this is a block comment with an EOL comment -- but it should be ignored */\r\nPRINT 'Hello World!';";
         var lines = new List<ICodeLine>();
         var errors = new List<ISyntaxError>();
-        var stack = new Stack<IStackEntry>();
-        stack.Push(new StackEntry("file-name.sql", 0, 0));
+        var codeFile = new FileDetail("file-name.sql", 0, 0);
 
         var sut = new Normalizer();
-        sut.Normalize(text, lines, errors, stack);
+        sut.Normalize(text, lines, errors, codeFile);
         
         Assert.That(errors.Count, Is.EqualTo(0));
         Assert.That(lines.Count, Is.EqualTo(2));

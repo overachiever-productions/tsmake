@@ -4,7 +4,7 @@ namespace tsmake.workers;
 
 public interface INormalizer
 {
-    void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack);
+    void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, IFileDetail fileDetail);
     string NormalizedText { get; }
 }
 
@@ -15,7 +15,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
     public string NormalizedText { get; private set; } = string.Empty;
 
-    public void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, Stack<IStackEntry> stack)
+    public void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, IFileDetail fileDetail)
     {
         this._input = fileContent;
 
@@ -27,7 +27,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
         if (matches.Count < 1)
         {
-            codeLines.Add(new CodeLine(fileContent, 1, 1, fileContent.Length, stack));
+            codeLines.Add(new CodeLine(fileContent, 1, 1, fileContent.Length, fileDetail));
         }
         else
         {
@@ -46,7 +46,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
                 if (oneBasedLineEnd < oneBasedLineStart) oneBasedLineEnd = oneBasedLineStart;
 
-                CodeLine line = new CodeLine(lineText, lineNumber, oneBasedLineStart, oneBasedLineEnd, stack);
+                CodeLine line = new CodeLine(lineText, lineNumber, oneBasedLineStart, oneBasedLineEnd, fileDetail);
                 codeLines.Add(line);
 
                 previousStart = lineEnd + match.Length;
@@ -55,16 +55,16 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
             var finalMatch = matches[^1];
             if (finalMatch.Index + finalMatch.Length == this._input.Length) // non-obvious logic here, but it's _NEEDED_ for trailing "empty lines".
-                codeLines.Add(new CodeLine("", lineNumber, previousStart, previousStart, stack));
+                codeLines.Add(new CodeLine("", lineNumber, previousStart, previousStart, fileDetail));
 
             if (previousStart < this._input.Length)
-                codeLines.Add(new CodeLine(this._input.Substring(previousStart, this._input.Length - previousStart), lineNumber, previousStart + 1, this._input.Length, stack));
+                codeLines.Add(new CodeLine(this._input.Substring(previousStart, this._input.Length - previousStart), lineNumber, previousStart + 1, this._input.Length, fileDetail));
         }
 
-        this.ValidateClosures(syntaxErrors, codeLines, stack);
+        this.ValidateClosures(syntaxErrors, codeLines, fileDetail);
     }
 
-    private void ValidateClosures(List<ISyntaxError> syntaxErrors, List<ICodeLine> codeLines, Stack<IStackEntry> stack)
+    private void ValidateClosures(List<ISyntaxError> syntaxErrors, List<ICodeLine> codeLines, IFileDetail fileDetail)
     {
         var lineEnding = this._lineEndingsType switch
         {
@@ -94,8 +94,8 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
                 {
                     if (g.Success && "_UnclosedString_UnclosedBlockComment_UnclosedBrackets".IndexOf(g.Name, StringComparison.InvariantCultureIgnoreCase) > 0)
                     {
-                        var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileName == stack.Peek().FilePath) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
-                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.LineNumber ?? -99, stack));
+                        var syntaxErrorLine = codeLines.FirstOrDefault(cl => (cl.FileDetail.FilePath == fileDetail.FilePath) && (cl.StartOffset <= g.Index) && (cl.EndOffset >= g.Index));
+                        syntaxErrors.Add(new SyntaxError(this.TranslateNonClosedType(g.Name), g.Value, syntaxErrorLine?.LineNumber ?? -99, fileDetail));
                     }
                 }
             }

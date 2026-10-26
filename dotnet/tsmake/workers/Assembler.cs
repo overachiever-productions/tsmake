@@ -22,6 +22,7 @@ public interface IAssembler
 
 public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResult buildResult) : IAssembler
 {
+    private int _depth = 0;
     private int _fileCount = 0;
     private int _directivesCount = 0;
 
@@ -37,7 +38,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public List<ICodeLine> ArtifactLines { get; private set; } = new List<ICodeLine>();
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
-    private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
+    //private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
 
     public List<IRankedString> BuildRoot { get; private set; } = options.BuildRoot;
     public List<IRankedString> BuildOutput { get; private set; } = options.BuildOutput;
@@ -67,7 +68,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
             var normalizer = this.OpsFactory.NewNormalizer();
             var buildLines = new List<ICodeLine>();
-            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, this.Stack);
+            var codeFile = new FileDetail(buildFilePath, 0, 1);
+            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, codeFile);
 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
             directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
@@ -91,7 +93,10 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Stack, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+// MKC - NOTE: I BELIEVE that I no longer have access to original source-file paths at this point ... 
+//     i.e., identifying LINES with problems is going to be hard-ish ... 
+//      ah... unless each this.ArtifactLine[s] has it's source ... which it does, right? 
+            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
             // TODO: Significant Transition Happens Here. 
             //     until this point, everything has been 'line-based' - where we've: 
@@ -133,20 +138,20 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
-            var codeFile = new StackEntry(filePath, parentFileLine, this.Stack.Count);
-            this.Stack.Push(codeFile);
+            var codeFile = new FileDetail(filePath, parentFileLine, this._depth);
+            this._depth++;
             this._fileCount++;
 
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
 
             var normalizer = this.OpsFactory.NewNormalizer();    
             var localCodeLines = new List<ICodeLine>();  // REFACTOR: doesn't REALLY matter. But stop passing these by REF. Normalizer.Normalize() should return a List<ICodeLine>. 
-            normalizer.Normalize(fileContent, localCodeLines, this.SyntaxErrors, this.Stack);  // normalizer DOES need syntaxErrors and stack - by reference. 
+            normalizer.Normalize(fileContent, localCodeLines, this.SyntaxErrors, codeFile);  // normalizer DOES need syntaxErrors and stack - by reference. 
 
             if (this.Options.OperationType == OperationType.Document)
             {
                 var docExtractor = this.OpsFactory.NewDocumentationExtractor();
-                docExtractor.ExtractDocumentation(localCodeLines, this.DocLines, this.SyntaxErrors, this.Stack);
+                docExtractor.ExtractDocumentation(localCodeLines, this.DocLines, this.SyntaxErrors, codeFile);
             }
             else
             {
@@ -175,7 +180,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, localCodeLines, this.ArtifactLines, this.SyntaxErrors);
 
             this._directivesCount += directivesProcessor.Directives.Count;
-            this.Stack.Pop();
+            //this.Stack.Pop();
+            this._depth--;
         }
         catch (Exception ex)
         {

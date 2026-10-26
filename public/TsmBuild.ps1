@@ -216,7 +216,7 @@ function Invoke-TsmBuild {
 		
 		$assembler = $buildResult.Assembler;
 		foreach ($line in $assembler.ArtifactLines) {
-			Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
+			Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
 #			if ($null -ne $line.Directive) {
 #				if ("FILE" -eq $line.Directive.DirectiveName) {
 #					Write-Host "`t`t`t$($line.Directive.FilePath)";

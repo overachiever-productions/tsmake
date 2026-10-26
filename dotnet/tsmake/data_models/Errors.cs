@@ -15,18 +15,20 @@ public interface ISyntaxError
     int LineNumber { get; }
     string Message { get; }
     string Detail { get; }
-    Stack<IStackEntry> Stack { get; }   
+    //Stack<IStackEntry> Stack { get; }   
+    IFileDetail FileDetail { get; }
 
     string Summarize();     // used for xml formatter/CLI output.
 }
 
-public class SyntaxError(string message, string detail, int lineNumber, Stack<IStackEntry> stack) : ISyntaxError
+public class SyntaxError(string message, string detail, int lineNumber, IFileDetail fileDetail) : ISyntaxError
 {
     public string Message { get; } = message;
-    public string FileName { get; } = stack.Peek().FilePath;
+    public string FileName { get; } = fileDetail.FilePath;
     public int LineNumber { get; } = lineNumber;
     public string Detail { get; } = detail;
-    public Stack<IStackEntry> Stack { get; } = stack;
+    //public Stack<IStackEntry> Stack { get; } = stack;
+    public IFileDetail FileDetail { get; } = fileDetail;
 
     public string Summarize()
     {
