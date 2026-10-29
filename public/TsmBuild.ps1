@@ -179,6 +179,11 @@ function Invoke-TsmBuild {
 		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
 		Write-Verbose "Starting BUILD. BUILD FILE: [$file]";
+		
+		## REFACTOR: Because I'm now handling SO MUCH logic within C# and NOT 'stopping' every, friggin, step to check for errors... 
+		##    the pipeline is, legit, only around 4-ish REAL lines of code. 
+		##    probably JUST fine to roll that into this - i.e., execute those lines down below ... instead of trying to have some big 'pipeline'.
+		
 		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions -WorkingDirectory $pwd;
 	};
 	

@@ -38,7 +38,6 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public List<ICodeLine> ArtifactLines { get; private set; } = new List<ICodeLine>();
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
-    //private Stack<IStackEntry> Stack { get; set; } = new Stack<IStackEntry>();
 
     public List<IRankedString> BuildRoot { get; private set; } = options.BuildRoot;
     public List<IRankedString> BuildOutput { get; private set; } = options.BuildOutput;
@@ -48,55 +47,12 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
-            #region REFACTOR
-            // REFACTOR: All logic in this block is a HACK to get ##ROOT, ##OUTPUT, and ##FILEMARKER BEFORE we jump into recursively assembling artifacts/output. 
-            //   also ... I do NOT need ##OUTPUT or ##FILEMARKER if we're doing a DOCUMENT build ... but I do need ##ROOT for INCLUDES. 
-
-            // REFACTOR: The logic below is clunky - because of how it was originally isolated/inverted to be solely processed in the IDirectivesProcessor 
-            //     against MEMBERS of the IAssember (i.e., the List<ICodeLine>). But this complexity is NO LONGER NEEDED. 
-            //   ergo: 
-            // REFACTOR IDirectivesProcessor.ProcessGlobalBuildFileDirectives() to: 
-            //     a) rename it ... it's no longer just identifying directives ... it's ... getting/setting ROOT/OUTPUT/FILEMARKER ... 
-            //     b) don't pass in List<ICodeLine> ... instead, pass in the NormalizedText and run a REGEX. 
-            //     c) and for each match ... 
-            //            convert to an IDirective (via regex text)... 
-            //             and if valid/legal ... set parent.xxxxRoot.Add(new rankedString()) ... accordingly. 
-            //     d) if invalid ... add a ConfigError to parent.ConfigErrors.
-            //            invalid could/would be: SyntaxError: missing or invalid syntax/etc. 
-            //                 or a CONFIG error: duplicate directive, file-not-found / etc. 
-
-            string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
-            var normalizer = this.OpsFactory.NewNormalizer();
-            var buildLines = new List<ICodeLine>();
-            var buildFile = new FileDetail(buildFilePath, 0, 1);
-            normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, buildFile);
-
-            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
-            directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines, this.SyntaxErrors);
-
-// REFACTOR: I think the following 3x operations should probably be handled within the <renamed>ProcessGlobalBuildFileDirectives() func
-// LARGELY because a) the logic belongs there - instead of cluttering up this func. and b) because I'll be able to test that easily. 
-            IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-            // TODO: should NOT BE EMPTY.
-            if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
-
-            IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
-            // TODO: might be empty... 
-            if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
-
-            IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-            // TODO: might be empty ... 
-            if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-                this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
-            #endregion 
+            this.ValidateBuildFileAndExtractBuildDirectives(buildFilePath);
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
-            // MKC - NOTE: Any syntax errors or other problems that are found from this point forward ... 
-            //          need to pull file/source information from the [ArtifactLines] collection - which has this info - per assembled code-line. 
-
+    // MKC - NOTE: Any syntax errors or other problems that are found from this point forward ... 
+    //          need to pull file/source information from the [ArtifactLines] collection - which has this info - per assembled code-line. 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer();
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
 
@@ -140,10 +96,10 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
-            var codeFile = new FileDetail(filePath, parentFileLine, this._depth);
             this._depth++;
             this._fileCount++;
 
+            var codeFile = new FileDetail(filePath, parentFileLine, this._depth);
             string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(filePath);
 
             var normalizer = this.OpsFactory.NewNormalizer();    
@@ -180,14 +136,39 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //      BUT, the point of the DirectiveProcessor is to ISOLATE logic to better enable Unit-Testing, etc. 
             var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();  // Hmmm. Factory should inject NEW DirectivesProcessor() with an IFileSystem. THOUGH ... that does make things a BIT harder to unit test... 
             directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, localCodeLines, this.ArtifactLines, this.SyntaxErrors);
-
+            
             this._directivesCount += directivesProcessor.Directives.Count;
-            //this.Stack.Pop();
             this._depth--;
         }
         catch (Exception ex)
         {
             this.BuildResult.AddException(ex);
         }
+    }
+
+    private void ValidateBuildFileAndExtractBuildDirectives(string buildFilePath)
+    {
+        var buildFile = new FileDetail(buildFilePath, 0, 1);
+        string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
+        var normalizer = this.OpsFactory.NewNormalizer();
+        var buildLines = new List<ICodeLine>();
+        normalizer.Normalize(fileContent, buildLines, this.SyntaxErrors, buildFile);
+        var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();
+        directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines);
+
+        IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
+        // TODO: should NOT BE EMPTY.
+        if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+            this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
+
+        IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
+        // TODO: might be empty... 
+        if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+            this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
+
+        IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
+        // TODO: might be empty ... 
+        if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+            this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
     }
 }

@@ -6,7 +6,7 @@ public interface IDirectiveProcessor
 {    
     List<IDirective> Directives { get; }
 
-    void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ISyntaxError> syntaxErrors);
+    void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines);
         
     void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors); 
 }
@@ -15,8 +15,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 {
     public List<IDirective> Directives { get; } = new List<IDirective>();
 
-    // REFACTOR: this is a temporary name while I sort out logic... and BEFORE I totally rewrite this logic.
-    public void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ISyntaxError> syntaxErrors)
+    public void ProcessGlobalBuildFileDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines)
     {
         var rootSet = false;
         var outputSet = false;
@@ -24,14 +23,13 @@ public class DirectiveProcessor : IDirectiveProcessor
 
         foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
-            Match m = Global.DirectiveRegex.Match(codeLine.OriginalContent);
+            Match m = Global.BuildDirectives.Match(codeLine.OriginalContent);
 
             if (!m.Success)
                 continue;
 
             var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
             codeLine.Directive = directive;
-            this.Directives.Add(directive);
 
             if (directive is RootDirective rootDirective)
             {
@@ -78,12 +76,17 @@ public class DirectiveProcessor : IDirectiveProcessor
                 else
                     parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.FileMarkerPath));
             }
+
+            // TODO: 
+            //  Add support for VERSION-CHECKER directive
+            //   i.e., it's going to be 'build-file' level/scoped (can't be defined anywhere else)
+            //   also ... make this a vNEXT feature ... I just don't care about it initially. 
         }
     }
 
     public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors)
     {
-        ConditionDefaultDirective currentConditionDirective = null;
+        ConditionDefaultDirective currentConditionDirective = null!;
 
         foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
@@ -94,7 +97,11 @@ public class DirectiveProcessor : IDirectiveProcessor
 
             var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
             codeLine.Directive = directive;
-            this.Directives.Add(directive);
+
+            if (!directive.IsValid)
+                syntaxErrors.Add(new SyntaxError(directive.ValidationMessage, "hmmmm", codeLine.LineNumber, codeLine.FileDetail));
+            else 
+                this.Directives.Add(directive);
 
             switch (directive.DirectiveType)
             {
@@ -135,7 +142,7 @@ public class DirectiveProcessor : IDirectiveProcessor
         if (currentConditionDirective != null)
         {
             // need to check if it's completed or not 
-            // and if not: that's a syntax error or ... config error - i.e., can't proceed until that's closed. 
+            // and if not: that's a syntax because the condition was never closed.
         }
 
         foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
