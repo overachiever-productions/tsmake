@@ -99,6 +99,10 @@ public class DirectiveProcessor : IDirectiveProcessor
             codeLine.Directive = directive;
 
             if (!directive.IsValid)
+                // TODO: "hmmm:" for the DETAIL part of this syntax error seems lame. 
+                // I MIGHT need a signature for SyntaxError that REQUIRES this ... and ... probably do. 
+                // BUT I also - clearly - don't always need this. 
+                // MORE IMPORTANTLY, I MIGHT want to have some sort of 'source' parameter for ALL syntax errors - that tells me, roughly, where they came from WITHIN the code to make debugging and other fixes/improvements over the long-haul easier to track down. 
                 syntaxErrors.Add(new SyntaxError(directive.ValidationMessage, "hmmmm", codeLine.LineNumber, codeLine.FileDetail));
             else 
                 this.Directives.Add(directive);
@@ -145,9 +149,9 @@ public class DirectiveProcessor : IDirectiveProcessor
             // and if not: that's a syntax because the condition was never closed.
         }
 
-        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.ConditionalFile) || (d.DirectiveType == DirectiveType.ConditionalDirectory))))
+        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.FlagFile) || (d.DirectiveType == DirectiveType.FlagDirectory))))
         {
-            // CONVERT CONDITIONAL-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
+            // CONVERT FLAG-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
 
             // e.g., directive(.type) = directive.ResolveCondition()
             // not EXACTLY sure how to swap out the current directive with a new one ... but ... yeah. 

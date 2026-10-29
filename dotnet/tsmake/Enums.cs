@@ -86,8 +86,8 @@ public enum DirectiveType
     Comment,
     File,
     Directory,
-    ConditionalFile,
-    ConditionalDirectory,
+    FlagFile,
+    FlagDirectory,
     ConditionDefault,
     Condition,
     ConditionEnd

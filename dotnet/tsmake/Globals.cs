@@ -15,11 +15,11 @@ public static class Global
     public static RegexOptions BatchSplittingOptions = RegexOptions.Compiled | RegexOptions.CultureInvariant | RegexOptions.Multiline;
 
     public static readonly Regex BuildDirectives = new(
-        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|FILEMARKER|VERSION-CHECKER):\s*(?<data>.*)$",
+        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|FILE-MARKER|VERSION-CHECKER):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     public static readonly Regex DirectiveRegex = new(
-        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILEMARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|CONDITIONAL-FILE|CONDITIONAL-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
+        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(FLAG|FLAGS)-FILE\s*\(#?[a-z]+\)|FLAG-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
 

@@ -17,6 +17,13 @@
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration1");
 				Invoke-TsmBuild; 
 
+	SIMPLE FLAGS-FILE TEST: 
+
+				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\conditional");
+				Invoke-TsmBuild; 			
+
+
 	S4 Build: 
 
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;

@@ -138,24 +138,36 @@ public class DirectoryDirective : BaseDirective
     }
 }
 
-public class ConditionalFileDirective : BaseDirective
+public class FlagFileDirective : BaseDirective
 {
     private IFileSystem FileSystem { get; set; }
 
-    public ConditionalFileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
+    public FlagFileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveType = DirectiveType.ConditionalFile;
+        base.DirectiveType = DirectiveType.FlagFile;
         this.FileSystem = fileSystem;
+
+        try
+        {
+            var options = FlagFileParser.Parse(this.CodeLine.OriginalContent);
+
+            base.ValidationMessage = $"NO-ERROR: OPTIONS: {options.Count}";
+        }
+        catch(Exception ex)
+        {
+            base.IsValid = false;
+            base.ValidationMessage = ex.Message;
+        }
     }
 }
 
-public class ConditionalDirectoryDirective : BaseDirective
+public class FlagDirectoryDirective : BaseDirective
 {
     private IFileSystem FileSystem { get; set; }
 
-    public ConditionalDirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
+    public FlagDirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
-        base.DirectiveType = DirectiveType.ConditionalDirectory;
+        base.DirectiveType = DirectiveType.FlagDirectory;
         this.FileSystem = fileSystem;
     }
 }
@@ -218,26 +230,108 @@ public class DirectiveParser
     // REFACTOR: ?? Use a C# Union: https://learn.microsoft.com/en-us/dotnet/csharp/language-reference/builtin-types/union
     public static IDirective LoadDirective(string directiveName, string payload, ICodeLine codeLine, IFileSystem fileSystem)
     {
-        // ROOT|OUTPUT|RUNNER|FILEMARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|CONDITIONAL-FILE|CONDITIONAL-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END
+        if(directiveName.Contains("("))
+            directiveName= directiveName.Substring(0, directiveName.IndexOf("(")).Trim();
+
+        // ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|FLAG-FILE|FLAG-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END
         return directiveName.ToUpperInvariant() switch
         {
             "ROOT" => new RootDirective(payload, codeLine, fileSystem),
             "OUTPUT" => new OutputDirective(payload, codeLine, fileSystem),
             "RUNNER" => new RunnerDirective(payload, codeLine),
-            "FILEMARKER" => new FileMarkerDirective(payload, codeLine, fileSystem),
+            "FILE-MARKER" => new FileMarkerDirective(payload, codeLine, fileSystem),
             "VERSION-CHECKER" => new VersionCheckerDirective(payload, codeLine),
             ":" => new CommentDirective(payload, codeLine),
             "COMMENT" => new CommentDirective(payload, codeLine),
             "FILE" => new FileDirective(payload, codeLine, fileSystem),
             "DIRECTORY" => new DirectoryDirective(payload, codeLine, fileSystem),
-
-            // NOTE: all conditionals (other than Condition-End) are going to need some PART of the IAssemblyOptions... i.e., .BuildFlags or whatever... 
-            "CONDITIONAL-FILE" => new ConditionalFileDirective(payload, codeLine, fileSystem),
-            "CONDITIONAL-DIRECTORY" => new ConditionalDirectoryDirective(payload, codeLine, fileSystem),
             "CONDITION-DEFAULT" => new ConditionDefaultDirective(payload, codeLine),
             "CONDITION" => new ConditionDirective(payload, codeLine),
             "CONDITION-END" => new ConditionEndDirective(payload, codeLine),
+
+            // NOTE: all FLAG-X (other than FLAG-END) are going to need some PART of the IAssemblyOptions... i.e., .BuildFlags or whatever... 
+            //    or ... maybe it just needs an option to have .FLAGS passed in when being processed? 
+            "FLAG-FILE" or "FLAGS-FILE" => new FlagFileDirective(payload, codeLine, fileSystem),
+            "FLAG-DIRECTORY" or "FLAGS-DIRECTORY" => new FlagDirectoryDirective(payload, codeLine, fileSystem),
+
+            "FLAG" or "FLAGS" => throw new ArgumentException($"Directive '{directiveName}' is not valid. Use FLAG-FILE or FLAG-DIRECTORY instead.", nameof(directiveName)),
+            "FLAG-DEFAULT" or "FLAGS-DEFAULT" => throw new ArgumentException($"Directive '{directiveName}' is not valid. Use CONDITION-DEFAULT instead.", nameof(directiveName)),
+            "FLAG-END" or "FLAGS-END" => throw new ArgumentException($"Directive '{directiveName}' is not valid. Use CONDITION-END instead.", nameof(directiveName)),
+
             _ => throw new ArgumentException($"Unknown directive name: {directiveName}", nameof(directiveName)),
         };
+    }
+}
+
+public static class FlagFileParser
+{
+    // One "(KEY[, KEY...]): path" entry. \G forces each match to begin where the last one ended.
+    private static readonly Regex Entry = new Regex(@"
+        \G\s*
+        \(\s*
+            \#?(?<key>[A-Za-z0-9_-]+)                  # first name; the '#' is not captured
+            (?:\s*,\s*\#?(?<key>[A-Za-z0-9_-]+))*      # more comma-separated names (each captured)
+        \s*\)
+        \x20?:\s*                                      # REQUIRED colon, 0-1 spaces before it
+        (?:
+            ""(?<path>[^""]+)""\s*                     # ""double-quoted"" path (parens allowed)
+          | '(?<path>[^']+)'\s*                        # 'single-quoted' path (parens allowed)
+          | (?<path>[^\s""'()](?:[^""'()]*[^\s""'()])?)(?:\s+|$)
+                                                       # unquoted path: no quotes or parens, and must be
+                                                       # followed by whitespace or end of string
+        )
+        (?=\(|$)                                       # next must be another directive or the end
+        ", RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+    // Used only for error messages: a syntactically valid "(...)" directive.
+    private static readonly Regex DirectiveStart = new Regex(
+        @"^\s*\(\s*\#?[A-Za-z0-9_-]+(?:\s*,\s*\#?[A-Za-z0-9_-]+)*\s*\)");
+
+    public static Dictionary<string, string> Parse(string input)
+    {
+        if (input is null)
+            throw new ArgumentNullException(nameof(input));
+
+        int start = input.IndexOf('(');
+        if (start < 0)
+            throw new FormatException("No (DIRECTIVE) found.");
+
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        int pos = start;
+
+        for (Match m = Entry.Match(input, start); m.Success; m = m.NextMatch())
+        {
+            string path = m.Groups["path"].Value;
+            foreach (Capture key in m.Groups["key"].Captures)
+            {
+                string keyValue = key.Value.ToUpperInvariant();
+                if (!string.Equals(keyValue, "DEFAULT", StringComparison.OrdinalIgnoreCase))
+                    keyValue = $"#{keyValue}";
+
+                if (!result.TryAdd(keyValue, path))
+                    throw new FormatException($"Duplicate directive '{keyValue}'.");
+            }
+            pos = m.Index + m.Length;
+        }
+
+        if (pos < input.Length)
+            throw new FormatException(Describe(input, pos));
+
+        return result;
+    }
+
+    private static string Describe(string input, int pos)
+    {
+        string rest = input.Substring(pos);
+        Match d = DirectiveStart.Match(rest);
+
+        string hint =
+            !d.Success
+                ? "Expected a directive like (DEFAULT) or (#RDS, #Azure); names may only contain A-Z, a-z, 0-9, '-' and '_'."
+            : !Regex.IsMatch(rest.Substring(d.Length), @"^\x20?:")
+                ? $"Missing ':' after '{d.Value.Trim()}' (at most one space is allowed before it)."
+            : "Paths containing '(' or ')' or quote characters must be wrapped in \"double\" or 'single' quotes.";
+
+        return $"Invalid flag-file syntax at position {pos}, near: {rest}\n{hint}";
     }
 }
