@@ -1,5 +1,5 @@
 -- ##::  this is a build file... 
--- ##OUTPUT: \\\piggly_wiggly.sql
+-- ##OUTPUT: ~\piggly_wiggly.sql
 -- 3
 -- 4
 -- 5

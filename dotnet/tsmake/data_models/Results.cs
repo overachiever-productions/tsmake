@@ -16,6 +16,9 @@ public interface IResult
     List<IArtifact> Artifacts { get; }
     IAssembler Assembler { get; }
 
+    List<string> Flags { get; }
+    FlagsSource FlagsSource { get; }
+
     int FileCount { get; }
     int CodeLineCount { get; }
     int DirectivesCount { get; }
@@ -27,6 +30,7 @@ public interface IResult
     void SetComplete();
     void SetSyntaxErrors(List<ISyntaxError> errors);
     void SetConfigErrors(List<IConfigError> errors);  
+    void SetFlagsDetails(List<string> flags, FlagsSource source);
     void AddArtifact(IArtifact artifact);
     void SetBuildRoot(string path, SourceType sourceType);  
 
@@ -40,6 +44,8 @@ public class BaseResult : IResult
     public Exception Exception { get; private set; }
     public OperationType OperationType { get; }
     public List<ISyntaxError> SyntaxErrors { get; private set; } = new List<ISyntaxError>();
+    public List<string> Flags { get; private set; } = new List<string>();
+    public FlagsSource FlagsSource { get; private set; } = FlagsSource.NotSet;
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public IAssembler Assembler { get; private set; } = null!;
 
@@ -68,6 +74,12 @@ public class BaseResult : IResult
     public void SetConfigErrors(List<IConfigError> errors)
     {
         this.ConfigErrors = errors;
+    }
+
+    public void SetFlagsDetails(List<string> flags, FlagsSource source)
+    {
+        this.FlagsSource = source;
+        this.Flags = flags;
     }
 
     public void AddArtifact(IArtifact artifact)

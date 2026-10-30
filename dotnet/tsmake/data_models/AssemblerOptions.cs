@@ -6,6 +6,9 @@ public interface IAssemblerOptions
     List<IRankedString> BuildOutput { get; }
     List<IRankedString> FileMarkerPath { get; }
 
+    List<string> Flags { get; }
+    FlagsSource FlagsSource { get; }
+
     OperationType OperationType { get; }
     LineEndingsType LineEndingsType { get; }
 
@@ -14,9 +17,11 @@ public interface IAssemblerOptions
     ITokenDefinitionRegistry TokenDefinitionRegistry { get; }
 
     void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives);
+    void SetFlags(List<string> flags, FlagsSource source);
     void AddOutputPath(IRankedString rankedString);
     void AddRootPath(IRankedString rankedString);
     void AddFileMarkerPath(IRankedString rankedString);
+    
 }
 
 public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, OperationType operationType) : IAssemblerOptions
@@ -24,6 +29,8 @@ public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, 
     public List<IRankedString> BuildRoot { get; set; } = new List<IRankedString>();
     public List<IRankedString> BuildOutput { get; set; } = new List<IRankedString>();
     public List<IRankedString> FileMarkerPath { get; set; } = new List<IRankedString>();
+    public List<string> Flags { get; set; } = new List<string>();
+    public FlagsSource FlagsSource { get; set; } = FlagsSource.NotSet;
 
     public OperationType OperationType { get; } = operationType;
 
@@ -45,6 +52,12 @@ public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, 
     public void AddFileMarkerPath(IRankedString rankedString)
     {
         this.FileMarkerPath.Add(rankedString);
+    }
+
+    public void SetFlags(List<string> flags, FlagsSource source)
+    {
+        this.Flags = flags;
+        this.FlagsSource = source;
     }
 
     public void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives)

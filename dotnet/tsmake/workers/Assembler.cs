@@ -79,6 +79,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //        we'll have 1 artifact PER each DocTransformer/Writer. 
 
             this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
+            this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);
             this.BuildResult.SetConfigErrors(this.ConfigErrors);
             this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
             this.BuildResult.SetStatistics(this._fileCount, this.ArtifactLines.Count, this._directivesCount);

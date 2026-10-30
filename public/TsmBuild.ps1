@@ -21,8 +21,7 @@
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\conditional");
-				Invoke-TsmBuild; 			
-
+				Invoke-TsmBuild -Flags "#Azure", "#RDS"; 			
 
 	S4 Build: 
 
@@ -58,7 +57,7 @@ function Invoke-TsmBuild {
 		[string]$Version,  
 		[string]$Summary,
 		[string[]]$Tokens,
-		#[string[]]$Flags,
+		[string[]]$Flags,
 		#[???[]]$BuildTransforms ... [regex-like-thingies with their matches... ]
 		[string[]]$CommentDirectives = @('RemoveHeader') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
 	);
@@ -93,11 +92,19 @@ function Invoke-TsmBuild {
 			throw "Input Error. Specified -BuildFile: Path not found for [$BuildFile].";
 		}
 		
+		$Flags = @($Flags).Where({ -not [string]::IsNullOrWhiteSpace($_) }).ForEach({ $_.Trim() });
+		$bad = $Flags.Where({ -not $_.StartsWith('#') });
+		
+		if ($bad) {
+			throw "Flags MUST start with the '#' sign. Invalid Flags: [$($bad -join ', ')]."
+		}
+		
+		Write-Host "Flags: $($Flags -join ', ')";
+		
+		
 		# TODO: if not $Config / $ConfigFile ... then ... look for one via the convention of <build_file_name>.json... 
 		# 	so that this can be loaded below... (i.e. don't load it here...  ... here we're just establishing params. )
 		# 	unlike -BuildFile ... this can be null/empty but IF specified by the user ... need to run a Test-Path against the path... 
-		
-		
 	};
 	
 	process {
@@ -157,6 +164,27 @@ function Invoke-TsmBuild {
 #		$buildGoRemovalDirectives = @();
 		
 		# ====================================================================================================
+		# Build Flags: 
+		# ====================================================================================================			
+		# TODO: 
+		#     Flags are  bit tricky. 
+		#     Config files can/should have the option to specify flags. 
+		# 		but unlike a number of other 'options' - I'm NOT going to try to and 'blend' or merge -Flags with .Config-Flags. 
+		#       instead: 
+		#        if $Flags.Count < 1 ... here (nothing was passed in via command-line params)
+		#           then I'll look to see if there are any flags in the config. 
+		# 		but if we've GOT flags from the command-line... those are the flags we use. 
+		#       a WRITE-VERBOSE (at the very minimum) should identify that we're using command-line flags and did NOT load flags from the config. 
+		#       and, actually, a) write-verbose here for the above and b) make it pretty obvious in the BUILD-RESULT/output that ... 
+		# 			we're using flags from the command-line. 
+		[tsmake.FlagsSource]$flagsSource = [tsmake.FlagsSource]::Console;  # stubb/place-holder for now. 
+		
+		# ====================================================================================================
+		# Build Transforms:
+		# ====================================================================================================			
+		
+		
+		# ====================================================================================================
 		# TokenExclusionDirectives:
 		# 		CAN ONLY be set via .config values. 
 		# ====================================================================================================			
@@ -185,6 +213,11 @@ function Invoke-TsmBuild {
 		
 		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
+		if ($Flags.Count -gt 0) {
+			$assemblerOptions.SetFlags($Flags, $flagsSource);
+		}
+		
+		
 		Write-Verbose "Starting BUILD. BUILD FILE: [$file]";
 		
 		## REFACTOR: Because I'm now handling SO MUCH logic within C# and NOT 'stopping' every, friggin, step to check for errors... 
@@ -200,6 +233,8 @@ function Invoke-TsmBuild {
 		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount) Directives: $($buildResult.DirectivesCount)";
 		## pretend that this is verbose:
 		Write-Host "		Build Root: $($buildResult.BuildRoot) from => $($buildResult.BuildRootSourceType).";
+		Write-Host "		Build Flags (via $($buildResult.FlagsSource)): $($buildResult.Flags -join ', ')."
+		
 		
 		if ($null -ne $buildResult.Exception) {
 			Write-Host "Build Exception: $($buildResult.Exception)";

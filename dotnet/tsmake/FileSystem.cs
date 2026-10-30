@@ -50,7 +50,7 @@ public class FileSystem (string workingDirectory) : IFileSystem
             case PathType.Relative:
                 return CollapsePath(this.RootDirectory, path);
             case PathType.Rooted:
-                return CollapsePath(this.RootDirectory, path.Replace(@"\\", ""));
+                return CollapsePath(this.RootDirectory, path.Replace(@"~", ""));
             default:
                 throw new Exception($"Invalid Path Type Specified: [{pathType}].");
         }

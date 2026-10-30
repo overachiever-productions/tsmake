@@ -15,6 +15,13 @@ public enum OperationType
     Deploy
 }
 
+public enum FlagsSource
+{
+    NotSet,
+    Console, 
+    Config
+}
+
 //public enum ErrorType
 //{
 //    Syntax,

@@ -37,10 +37,10 @@ public static class tsmakeExtensions
     internal static PathType GetPathType(this string input)
     {
         // Absolute - UNC Share
-        if (input.StartsWith(@"\\\\", StringComparison.OrdinalIgnoreCase) || input.StartsWith(@"UNC\\", StringComparison.OrdinalIgnoreCase))
+        if (input.StartsWith(@"\\\\", StringComparison.OrdinalIgnoreCase))
             return PathType.Absolute;
 
-        if (input.StartsWith(@"\\", StringComparison.OrdinalIgnoreCase))
+        if (input.StartsWith(@"~\", StringComparison.OrdinalIgnoreCase))
             return PathType.Rooted;
 
         // Absolute - Local File

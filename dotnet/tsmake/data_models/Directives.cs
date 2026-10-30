@@ -141,6 +141,7 @@ public class DirectoryDirective : BaseDirective
 public class FlagFileDirective : BaseDirective
 {
     private IFileSystem FileSystem { get; set; }
+    private Dictionary<string, string> Options { get; set; } = new Dictionary<string, string>();
 
     public FlagFileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
@@ -149,9 +150,24 @@ public class FlagFileDirective : BaseDirective
 
         try
         {
+            string validation = "";
             var options = FlagFileParser.Parse(this.CodeLine.OriginalContent);
+            foreach(var (key, value) in options)
+            {
+                string fullPath = this.FileSystem.TranslatePath(value);
+                if (!this.FileSystem.FileExists(fullPath))
+                    validation += $"Path specified for ({key}): does not exist: {value}\r\n";
+            }
 
-            base.ValidationMessage = $"NO-ERROR: OPTIONS: {options.Count}";
+            this.Options = options;
+
+            if (!string.IsNullOrWhiteSpace(validation))
+            {
+                base.IsValid = false;
+                base.ValidationMessage = validation.Trim();
+            }
+            else
+                base.IsValid = true;
         }
         catch(Exception ex)
         {
