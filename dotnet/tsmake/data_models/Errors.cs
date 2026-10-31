@@ -21,14 +21,19 @@ public interface ISyntaxError
     string Summarize();     // used for xml formatter/CLI output.
 }
 
-public class SyntaxError(string message, string detail, int lineNumber, IFileDetail fileDetail) : ISyntaxError
+
+public class SyntaxError(string message, string detail, int lineNumber, IFileDetail fileDetail)
+    : ISyntaxError
 {
     public string Message { get; } = message;
     public string FileName { get; } = fileDetail.FilePath;
     public int LineNumber { get; } = lineNumber;
     public string Detail { get; } = detail;
-    //public Stack<IStackEntry> Stack { get; } = stack;
     public IFileDetail FileDetail { get; } = fileDetail;
+
+    public SyntaxError(string message, string detail, ICodeLine codeLine)
+        : this(message, detail, codeLine.LineNumber, codeLine.FileDetail)
+    { }
 
     public string Summarize()
     {

@@ -1,5 +1,12 @@
 ﻿namespace tsmake.data_models;
 
+public record FlagIncludeOption(string Key, string Path);
+
+public interface IFlagIncludeResolver
+{
+    public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags);
+}
+
 public interface IDirective
 {           
     public DirectiveType DirectiveType { get; }
@@ -138,7 +145,7 @@ public class DirectoryDirective : BaseDirective
     }
 }
 
-public class FlagFileDirective : BaseDirective
+public class FlagFileDirective : BaseDirective, IFlagIncludeResolver
 {
     private IFileSystem FileSystem { get; set; }
     private Dictionary<string, string> Options { get; set; } = new Dictionary<string, string>();
@@ -175,6 +182,29 @@ public class FlagFileDirective : BaseDirective
             base.ValidationMessage = ex.Message;
         }
     }
+
+    public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags)
+    {
+        // TODO ... implement this HERE ... as an initial proof of concept. 
+        //   THEN ... create an extension method for ... IFlagIncludeResolver.ResolveOptionFromFlags() 
+        //      (if it's possible to hang an extension method off/from an interface) 
+        //        that takes in a Dictionary<string, string> options and a List<string> flags
+        //          along with a DEFAULT or NULL/EMPTY if no match is found ... (in DEFAULT -> empty order).
+
+        if (this.Options.Count == 0)
+            return null;    
+
+        foreach(var flag in flags)
+        {
+            if(this.Options.TryGetValue(flag, out var option))
+                return new FlagIncludeOption(flag, option);
+        }
+
+        if (this.Options.TryGetValue("DEFAULT", out var defaultOption))
+            return new FlagIncludeOption("DEFAULT", defaultOption);
+
+        return null;
+    }   
 }
 
 public class FlagDirectoryDirective : BaseDirective
@@ -191,7 +221,7 @@ public class FlagDirectoryDirective : BaseDirective
 public class ConditionDefaultDirective : BaseDirective
 {
     private List<ConditionDirective> _conditions { get; set; } = new List<ConditionDirective>();
-    private ConditionEndDirective _conditionEnd { get; set; } = null;
+    private ConditionEndDirective? _conditionEnd { get; set; } = null;
 
     public ConditionDefaultDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {

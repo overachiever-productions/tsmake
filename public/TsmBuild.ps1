@@ -6,14 +6,12 @@
 		
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 		#	$global:VerbosePreference = "Continue";
-				# Set 'current' location = "..\test_files\simple1" 
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\simple1");
 				Invoke-TsmBuild; 
 
 	MULTIPLE / NESTED INCLUDES:
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
-				# Set 'current' location = "..\test_files\calibration1" 
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration1");
 				Invoke-TsmBuild; 
 
@@ -27,7 +25,6 @@
 
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 			Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
-
 			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
 
 	CALIBRATED EXAMPLE:

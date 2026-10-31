@@ -30,7 +30,7 @@ filter Import-Types {
 #		"$ScriptRoot\dotnet\tsmake\Formatter.cs";
 	);
 	
-	Add-Type -Path $classFiles;
+	Add-Type -Path $classFiles -CompilerOptions '-nullable:enable';
 }
 
 Import-Types;

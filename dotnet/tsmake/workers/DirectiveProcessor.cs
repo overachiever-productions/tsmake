@@ -86,7 +86,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
     public void ProcessDirectives(IAssembler parent, IFileSystem fileSystem, List<ICodeLine> currentLines, List<ICodeLine> artifactLines, List<ISyntaxError> syntaxErrors)
     {
-        ConditionDefaultDirective currentConditionDirective = null!;
+        ConditionDefaultDirective? currentConditionDirective = null;
 
         foreach (var codeLine in currentLines.Where(c => (c.OriginalContent.IndexOf("--", StringComparison.Ordinal) >= 0 && c.OriginalContent.IndexOf("##", StringComparison.Ordinal) >= 2)))
         {
@@ -107,6 +107,7 @@ public class DirectiveProcessor : IDirectiveProcessor
             else 
                 this.Directives.Add(directive);
 
+            // TODO: need to add switch/cases for FLAG-DEFAULT, FLAG[s](), FLAG-END... virtually no different than CONDITION-DEFAULT, CONDITION[s](), CONDITION-END ... 
             switch (directive.DirectiveType)
             {
                 case DirectiveType.ConditionDefault:
@@ -149,15 +150,27 @@ public class DirectiveProcessor : IDirectiveProcessor
             // and if not: that's a syntax because the condition was never closed.
         }
 
-        foreach (var directive in this.Directives.Where(d => d.IsValid && ((d.DirectiveType == DirectiveType.FlagFile) || (d.DirectiveType == DirectiveType.FlagDirectory))))
+        for (int i = 0; i < this.Directives.Count; i++)
         {
-            // CONVERT FLAG-FILE|DIRECTORY down to 'normal' FILE|DIRECTORY ... for processing down below. 
+            // CONVERT FLAG-FILE|DIRECTORY FILE|DIRECTORY (or nothing/empty) ... depending upon #Flags.
+            var directive = this.Directives[i];
 
-            // e.g., directive(.type) = directive.ResolveCondition()
-            // not EXACTLY sure how to swap out the current directive with a new one ... but ... yeah. 
-            //   BUT ... this has to be done at the CodeLine level ... AND ... i need to 'swap out' whatever .directive I'm currently working on/against with the FILE or DIRECTORY that replaces it. 
+            if (directive.IsValid && ((directive.DirectiveType == DirectiveType.FlagFile) || (directive.DirectiveType == DirectiveType.FlagDirectory)))
+            {
+                IFlagIncludeResolver resolver = (IFlagIncludeResolver)directive;
+
+                FlagIncludeOption? option = resolver.ResolveOptionFromFlags(parent.Options.Flags);
+                if (option != null)
+                {
+                    // doh... this needs to be forced to .IsValid = 1. er. no. that should already be true. 
+                    //    assuming that the path is correct. 
+                    this.Directives[i] = new FileDirective(option.Path, directive.CodeLine, fileSystem);
+
+                    syntaxErrors.Add(new SyntaxError($"Directive type: {this.Directives[i].DirectiveType}", "||", directive.CodeLine));
+                }
+            }
         }
-
+        
         foreach (ICodeLine line in currentLines)
         {
             if(line.Directive != null)
@@ -168,6 +181,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                     {
                         case DirectiveType.File:
                         case DirectiveType.Directory:
+                            syntaxErrors.Add(new SyntaxError("doing a line (well... file)", "||", line.LineNumber, line.FileDetail));
                             IInclude include = IncludeTranslator.LoadInclude(line.Directive, fileSystem, currentLines, syntaxErrors);
                             foreach (string includedFilePath in include.IncludedFiles)
                             {
@@ -188,6 +202,9 @@ public class DirectiveProcessor : IDirectiveProcessor
                             //      which'll hand-back a LIST<ICodeLine> ... (that'll be 'de-commented')
                             //     and then ... foreach of those lines ... add to artifactLines.
                             break;
+                        case DirectiveType.FlagDirectory:
+                        case DirectiveType.FlagFile:
+                            // do NOTHING... i.e.,  don't add to artifact lines - this is/was a FLAG-INCLUDE that is now empty/non-matched.
                         default:
                             // for everything that does NOT match (e.g., ROOT, OUTPUT,  COMMENT, CONDITION, CONDITION-END, ETC...) simply SKIP the line... 
                             break;

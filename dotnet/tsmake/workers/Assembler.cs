@@ -16,6 +16,8 @@ public interface IAssembler
     List<IRankedString> BuildOutput { get; }
     List<IRankedString> FileMarkerPath { get; }
 
+    IAssemblerOptions Options { get; }
+
     void Assemble(string buildFilePath);
     internal void RecursivelyAssemble(string filePath, int parentFileLine);
 }
@@ -31,7 +33,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     // TODO: options is (i think) already tracking a handful of IRankedStrings for OUTPUT and ROOT (and FILEMARKER) ... 
     //      but I'm NOT copying them into the IAssembler's copy of these ... I should be ... 
     //        either that ... or I ONLY use the values in IAssemblerOptions ... and not have these in IAssembler at all.
-    private IAssemblerOptions Options { get; } = options;
+    public IAssemblerOptions Options { get; } = options;
     private IResult BuildResult { get; } = buildResult;
 
     public List<ISyntaxError> SyntaxErrors { get; private set; } = new List<ISyntaxError>();
