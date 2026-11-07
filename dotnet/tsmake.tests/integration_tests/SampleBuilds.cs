@@ -1,7 +1,7 @@
 ﻿namespace tsmake.tests.integration_tests;
 
 [TestFixture]
-public class SimpleBuild()
+public class SampleBuilds()
 {
     [Test]
     public void Execute_Simple1_Build()
@@ -43,6 +43,30 @@ public class SimpleBuild()
 
         // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
         
+        var commentRemovalDirectives = CommentRemovalDirectives.RemoveHeaderComments | CommentRemovalDirectives.RemoveDocComments;
+        buildOptions.SetDirectives(LineEndingsType.CrLf, commentRemovalDirectives, tokenExclusionDirectives: TokenExclusionDirectives.ExcludeBlockComments);
+
+        BuildResult buildResult = new BuildResult();
+
+        var opsFactory = new OpsFactory(fileSystem, buildOptions);
+
+        Assembler assembler = new Assembler(opsFactory, buildOptions, buildResult);
+        assembler.Assemble(buildFile);
+    }
+
+    [Test]
+    public void Execute_Conditional_Build()
+    {
+        string pwd = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\conditional";
+        string buildFile = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\conditional\\conditional.build.sql";
+        var fileSystem = new FileSystem(pwd);
+
+        var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
+        AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
+        buildOptions.AddRootPath(new RankedString(SourceType.BuildFile, pwd));
+
+        // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
+
         var commentRemovalDirectives = CommentRemovalDirectives.RemoveHeaderComments | CommentRemovalDirectives.RemoveDocComments;
         buildOptions.SetDirectives(LineEndingsType.CrLf, commentRemovalDirectives, tokenExclusionDirectives: TokenExclusionDirectives.ExcludeBlockComments);
 
