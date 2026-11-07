@@ -19,7 +19,7 @@
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\conditional");
-				Invoke-TsmBuild -Flags "#Azure", "#RDS"; 			
+				Invoke-TsmBuild -Flags "#RDS"; 			
 
 	S4 Build: 
 

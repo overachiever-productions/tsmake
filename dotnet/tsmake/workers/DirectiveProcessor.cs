@@ -152,7 +152,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
         for (int i = 0; i < this.Directives.Count; i++)
         {
-            // CONVERT FLAG-FILE|DIRECTORY FILE|DIRECTORY (or nothing/empty) ... depending upon #Flags.
+            // CONVERT FLAG-FILE|DIRECTORY to FILE|DIRECTORY (or nothing/empty) ... depending upon #Flags.
             var directive = this.Directives[i];
 
             if (directive.IsValid && ((directive.DirectiveType == DirectiveType.FlagFile) || (directive.DirectiveType == DirectiveType.FlagDirectory)))
@@ -162,11 +162,20 @@ public class DirectiveProcessor : IDirectiveProcessor
                 FlagIncludeOption? option = resolver.ResolveOptionFromFlags(parent.Options.Flags);
                 if (option != null)
                 {
-                    // doh... this needs to be forced to .IsValid = 1. er. no. that should already be true. 
-                    //    assuming that the path is correct. 
-                    this.Directives[i] = new FileDirective(option.Path, directive.CodeLine, fileSystem);
-
-                    syntaxErrors.Add(new SyntaxError($"Directive type: {this.Directives[i].DirectiveType}", "||", directive.CodeLine));
+                    if(directive.DirectiveType == DirectiveType.FlagFile)
+                    {
+                        var replacement = new FileDirective(option.Path, directive.CodeLine, fileSystem);
+                    
+                        this.Directives[i] = replacement;
+                        this.Directives[i].CodeLine.Directive = replacement;
+                    }
+                    else if(directive.DirectiveType == DirectiveType.FlagDirectory)
+                    {
+                        var replacement = new DirectoryDirective(option.Path, directive.CodeLine, fileSystem);
+                    
+                        this.Directives[i] = replacement;
+                        this.Directives[i].CodeLine.Directive = replacement;
+                    }
                 }
             }
         }
@@ -181,7 +190,6 @@ public class DirectiveProcessor : IDirectiveProcessor
                     {
                         case DirectiveType.File:
                         case DirectiveType.Directory:
-                            syntaxErrors.Add(new SyntaxError("doing a line (well... file)", "||", line.LineNumber, line.FileDetail));
                             IInclude include = IncludeTranslator.LoadInclude(line.Directive, fileSystem, currentLines, syntaxErrors);
                             foreach (string includedFilePath in include.IncludedFiles)
                             {
