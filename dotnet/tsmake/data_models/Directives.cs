@@ -2,6 +2,20 @@
 
 public record FlagIncludeOption(string Key, string Path);
 
+// Parsed components of a ##DIRECTORY payload: path [exclude: ...] [sort: ...]
+//   Exclude / Sort are NULL when their clause is absent (Sort is EMPTY - not null - for marker-only clauses like [sort: ALPHA]).
+//   SortMarkerPosition = index within Sort where the marker appeared (i.e., # of explicit names before it), or -1 if no marker.
+public record DirectoryOptions(
+    string Path,
+    IReadOnlyList<string>? Exclude,
+    IReadOnlyList<string>? Sort,
+    DirectorySortMarker SortMarker,
+    int SortMarkerPosition)
+{
+    public bool HasExclude => this.Exclude is not null;
+    public bool HasSort => this.Sort is not null;
+}
+
 public interface IFlagIncludeResolver
 {
     public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags);
@@ -138,10 +152,30 @@ public class DirectoryDirective : BaseDirective
 {
     private IFileSystem FileSystem { get; set; }
 
+    public string FilePath { get; private set; }
+
     public DirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
         base.DirectiveType = DirectiveType.Directory;
         this.FileSystem = fileSystem;
+
+        try
+        {
+            this.FilePath = this.FileSystem.TranslatePath(this.Payload);
+            if (this.FileSystem.FileExists(this.FilePath))
+                base.IsValid = true;
+            else
+            {
+                base.IsValid = false;
+                base.ValidationMessage = $"Specified ##DIRECTORY does not exist: {this.FilePath}";
+            }
+        }
+        catch (Exception ex)
+        {
+            this.FilePath = string.Empty;
+            base.IsValid = false;
+            base.ValidationMessage = ex.Message;
+        }
     }
 }
 
@@ -379,5 +413,237 @@ public static class FlagFileParser
             : "Paths containing '(' or ')' or quote characters must be wrapped in \"double\" or 'single' quotes.";
 
         return $"Invalid flag-file syntax at position {pos}, near: {rest}\n{hint}";
+    }
+}
+
+public static class DirectoryParser
+{
+    private const RegexOptions Options =
+        RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled;
+
+    // The REQUIRED directory path - at the very start of the payload.
+    private static readonly Regex PathPattern = new Regex(@"
+        \A\s*
+        (?:
+            ""(?<path>[^""]+)""                                 # ""double-quoted"" path (commas, parens, brackets allowed)
+          | '(?<path>[^']+)'                                    # 'single-quoted' path (commas, parens, brackets allowed)
+          | (?<path>(?:(?!\[\s*(?:exclude|sort)\s*:)[^""'(),])+?)
+                                                                # unquoted path: spaces are fine, but no quotes, parens
+                                                                # or commas; it ends where a clause begins
+        )
+        \s*
+        (?=\[\s*(?:exclude|sort)\s*:|\z)                        # next must be a clause or the end
+        ", Options);
+
+    // One [exclude: ...] or [sort: ...] clause. \G forces each match to begin where the last one ended.
+    private static readonly Regex ClausePattern = new Regex(@"
+        \G\s*
+        \[\s*(?<kind>exclude|sort)\s*:
+        (?<body>(?:""[^""]*""|'[^']*'|[^\]""'])*)               # quoted entries may contain ']'
+        \]
+        ", Options);
+
+    // One comma-delimited entry within a clause's body.
+    private static readonly Regex EntryPattern = new Regex(@"
+        \G\s*
+        (?:
+            ""(?<quoted>[^""]*)""                               # ""double-quoted"" entry
+          | '(?<quoted>[^']*)'                                  # 'single-quoted' entry
+          | (?<bare>[^\s""'(),\[\]](?:[^""'(),\[\]]*[^\s""'(),\[\]])?)
+                                                                # unquoted entry: spaces are fine, but no quotes,
+                                                                # parens, commas or brackets
+        )
+        \s*
+        (?:(?<sep>,)|\z)                                        # a comma, or the end of the clause
+        ", Options);
+
+    // Used only for error messages: anything shaped like a "[name:" clause opener.
+    private static readonly Regex ClauseHead = new Regex(@"\[\s*(?<kind>[A-Za-z][A-Za-z0-9_-]*)\s*:", Options);
+
+    /// <summary>
+    /// Parses the PAYLOAD of a ##DIRECTORY directive (everything after "##DIRECTORY:", with any ##:: comment already removed), e.g.:
+    ///     Common\Tables [exclude: scratch.sql, "old, unused.sql"] [sort: 00_setup.sql, ALPHA]
+    /// Throws FormatException (with a hint) for invalid syntax.
+    /// </summary>
+    public static DirectoryOptions Parse(string payload)
+    {
+        if (payload is null)
+            throw new ArgumentNullException(nameof(payload));
+
+        string input = payload.Trim();
+        if (input.Length == 0)
+            throw new FormatException("A ##DIRECTORY path is required.");
+
+        Match p = PathPattern.Match(input);
+        if (!p.Success)
+            throw new FormatException(DescribePathError(input));
+
+        string path = p.Groups["path"].Value;
+        bool quotedPath = input[0] is '"' or '\'';
+
+        if (string.IsNullOrWhiteSpace(path))
+            throw new FormatException("A ##DIRECTORY path is required (the quoted path is empty).");
+
+        if (!quotedPath && FindUnknownClause(path, 0) is { } unknown)
+            throw new FormatException($"Invalid ##DIRECTORY syntax near: {input}\n{UnknownClauseHint(unknown)}");
+
+        List<string>? exclude = null;
+        List<string>? sort = null;
+        var marker = DirectorySortMarker.None;
+        string markerText = string.Empty;
+        int markerPosition = -1;
+        int pos = p.Length;
+
+        for (Match c = ClausePattern.Match(input, pos); c.Success; c = c.NextMatch())
+        {
+            string kind = c.Groups["kind"].Value.ToLowerInvariant();
+            var entries = ParseEntries(c.Groups["body"].Value, kind);
+
+            if (kind == "exclude")
+            {
+                if (exclude is not null)
+                    throw new FormatException("Only one [exclude: ...] clause is allowed.");
+
+                foreach (var (value, _) in entries)
+                {
+                    if (!value.EndsWith(".sql", StringComparison.OrdinalIgnoreCase))
+                        throw new FormatException($"[exclude:] entries must be .sql files; found: '{value}'.");
+                }
+
+                exclude = entries.Select(e => e.Value).ToList();
+            }
+            else
+            {
+                if (sort is not null)
+                    throw new FormatException("Only one [sort: ...] clause is allowed.");
+
+                sort = new List<string>();
+                foreach (var (value, quoted) in entries)
+                {
+                    // Quoting a marker (e.g., 'ALPHA') makes it a literal name instead.
+                    var entryMarker = quoted ? DirectorySortMarker.None : ToMarker(value);
+                    if (entryMarker == DirectorySortMarker.None)
+                    {
+                        sort.Add(value);
+                        continue;
+                    }
+
+                    if (marker != DirectorySortMarker.None)
+                        throw new FormatException($"Only one sort marker (ALPHA, ALPHADESC, TIMESTAMP or TIMESTAMPDESC) is allowed; found '{markerText}' and '{value}'.");
+
+                    marker = entryMarker;
+                    markerText = value;
+                    markerPosition = sort.Count;
+                }
+            }
+
+            pos = c.Index + c.Length;
+        }
+
+        if (pos < input.Length)
+            throw new FormatException(DescribeClauseError(input, pos));
+
+        return new DirectoryOptions(path, exclude, sort, marker, markerPosition);
+    }
+
+    private static List<(string Value, bool Quoted)> ParseEntries(string body, string kind)
+    {
+        var entries = new List<(string Value, bool Quoted)>();
+        bool trailingComma = false;
+        int pos = 0;
+
+        for (Match m = EntryPattern.Match(body); m.Success; m = m.NextMatch())
+        {
+            bool quoted = m.Groups["quoted"].Success;
+            string value = quoted ? m.Groups["quoted"].Value : m.Groups["bare"].Value;
+
+            if (string.IsNullOrWhiteSpace(value))
+                throw new FormatException($"Empty quoted entry in [{kind}: {body.Trim()}].");
+
+            entries.Add((value, quoted));
+            trailingComma = m.Groups["sep"].Success;
+            pos = m.Index + m.Length;
+        }
+
+        string rest = body.Substring(pos).Trim();
+        if (rest.Length > 0)
+        {
+            string hint = rest.StartsWith(',')
+                ? "Empty entry (a leading comma, or two commas in a row)."
+                : "Entries containing ',', '(', ')', '[', ']' or quote characters must be wrapped in \"double\" or 'single' quotes.";
+
+            throw new FormatException($"Invalid [{kind}:] entry near: {rest}\n{hint}");
+        }
+
+        if (entries.Count == 0)
+            throw new FormatException($"[{kind}:] clause is empty; expected a comma-delimited list.");
+
+        if (trailingComma)
+            throw new FormatException($"[{kind}:] clause ends with a trailing comma.");
+
+        return entries;
+    }
+
+    private static DirectorySortMarker ToMarker(string value) => value.ToUpperInvariant() switch
+    {
+        "ALPHA" => DirectorySortMarker.Alpha,
+        "ALPHADESC" => DirectorySortMarker.AlphaDesc,
+        "TIMESTAMP" => DirectorySortMarker.Timestamp,
+        "TIMESTAMPDESC" => DirectorySortMarker.TimestampDesc,
+        _ => DirectorySortMarker.None
+    };
+
+    private static Match? FindUnknownClause(string input, int start)
+    {
+        for (Match m = ClauseHead.Match(input, start); m.Success; m = m.NextMatch())
+        {
+            string kind = m.Groups["kind"].Value;
+            if (!kind.Equals("exclude", StringComparison.OrdinalIgnoreCase) && !kind.Equals("sort", StringComparison.OrdinalIgnoreCase))
+                return m;
+        }
+
+        return null;
+    }
+
+    private static string UnknownClauseHint(Match unknown) =>
+        $"Unknown clause '[{unknown.Groups["kind"].Value}:'. Expected [exclude: ...] or [sort: ...]. " +
+        "(If the path itself contains '[', wrap it in \"double\" or 'single' quotes.)";
+
+    private static string DescribePathError(string input)
+    {
+        char first = input[0];
+        bool quoted = first is '"' or '\'';
+        int closingQuote = quoted ? input.IndexOf(first, 1) : -1;
+
+        string hint =
+            quoted && closingQuote < 0
+                ? $"The path is missing its closing {first} quote."
+            : quoted && closingQuote == 1
+                ? "A ##DIRECTORY path is required (the quoted path is empty)."
+            : FindUnknownClause(input, quoted ? closingQuote + 1 : 0) is { } unknown
+                ? UnknownClauseHint(unknown)
+            : !quoted && ClauseHead.Match(input) is { Success: true, Index: 0 }
+                ? "A directory path is required before any [exclude: ...] or [sort: ...] clause."
+            : quoted
+                ? "Only [exclude: ...] and/or [sort: ...] clauses may follow the quoted path."
+            : "Paths containing ',', '(', ')' or quote characters must be wrapped in \"double\" or 'single' quotes.";
+
+        return $"Invalid ##DIRECTORY path near: {input}\n{hint}";
+    }
+
+    private static string DescribeClauseError(string input, int pos)
+    {
+        string rest = input.Substring(pos).TrimStart();
+        Match head = ClauseHead.Match(rest);
+        bool atClause = head.Success && head.Index == 0;
+
+        string hint =
+            !atClause
+                ? "Expected an [exclude: ...] or [sort: ...] clause, or the end of the directive."
+            : FindUnknownClause(head.Value, 0) is { } unknown
+                ? UnknownClauseHint(unknown)
+            : $"The [{head.Groups["kind"].Value}:] clause is missing its closing ']' (or has an unterminated quote).";
+
+        return $"Invalid ##DIRECTORY syntax at position {pos}, near: {rest}\n{hint}";
     }
 }

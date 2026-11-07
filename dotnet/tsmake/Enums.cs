@@ -100,6 +100,16 @@ public enum DirectiveType
     ConditionEnd
 }
 
+// Sort 'markers' allowed (at most one) within a ##DIRECTORY [sort: ...] clause.
+public enum DirectorySortMarker
+{
+    None,
+    Alpha,
+    AlphaDesc,
+    Timestamp,
+    TimestampDesc
+}
+
 //public enum OrderBy
 //{
 //    Alphabetical,
