@@ -1,7 +1,7 @@
 -- ##COMMENT: This is a build file... 
 -- ##OUTPUT: basic_latest.sql
 -- 3
--- ##:: Comment also - using alternate comment-syntax.
+-- ##:: Comment - using alternate comment-syntax.
 -- 5
 -- ##FLAG-FILE(DEFAULT): onprem-sixes.sql (#Azure): azure-sixes.sql
 -- 7

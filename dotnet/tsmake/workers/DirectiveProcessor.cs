@@ -199,7 +199,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                             break;
                         case DirectiveType.ConditionDefault:
                             // IF the Directive is a BUILD-TIME directive ... 
-                            //          the process the CASEs and: 
+                            //          then process the CASEs and: 
                             //          for the entire CASE that matches ... 
                             //                  for EACH line in the CASE ... add to artifactLines.
                             //        at this point ... we've swapped ##directives and #conditions and #end-condition ... with ... code-lines to be output. 
