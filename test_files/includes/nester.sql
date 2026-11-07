@@ -1,0 +1,6 @@
+-- 6.0
+-- 6.1
+-- 6.2
+-- ##DIRECTORY: alpha_sixes [exclude: e.sql] [sort: 6d.sql, ALPHA, 6a.sql] 
+-- 6.5
+-- 6.6
