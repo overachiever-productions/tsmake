@@ -37,11 +37,13 @@ public static class tsmakeExtensions
 
     internal static PathType GetPathType(this string input)
     {
-        // Absolute - UNC Share
-        if (input.StartsWith(@"\\\\", StringComparison.OrdinalIgnoreCase))
+        // Absolute - UNC Share: \\server\share\...
+        //      (NOTE: @"\\" is TWO backslashes. Back when \\ was the ROOTED marker, UNC paths needed \\\\ or UNC\\ instead.)
+        if (input.StartsWith(@"\\", StringComparison.Ordinal))
             return PathType.Absolute;
 
-        if (input.StartsWith(@"~\", StringComparison.OrdinalIgnoreCase))
+        // Rooted - relative to the ##ROOT directory: ~\...
+        if (input.StartsWith(@"~\", StringComparison.Ordinal))
             return PathType.Rooted;
 
         // Absolute - Local File
@@ -66,9 +68,13 @@ public static class tsmakeExtensions
             return new List<string>();
 
         // 1. Exclusions first - so an excluded file can never be pinned back in by a Sort entry.
+        //    Same (case-insensitive, exact or */? wildcard) matching as Sort entries - see CreateMatcher().
         var pool = sourceFiles.ToList();
         if (options?.HasExclude == true)
-            pool = pool.Where(f => !options.Exclude!.Any(exclude => f.FileName.Contains(exclude, StringComparison.OrdinalIgnoreCase))).ToList();
+        {
+            var excluded = options.Exclude!.Select(CreateMatcher).ToList();
+            pool.RemoveAll(f => excluded.Any(isMatch => isMatch(f.FileName)));
+        }
 
         // 2. Work out the sort marker plus the "before" / "after" pinned entries.
         var marker = DirectorySortMarker.Alpha;
@@ -82,33 +88,26 @@ public static class tsmakeExtensions
 
             if (options.Sort != null)
             {
+                // NOTE: options.Sort holds ONLY the file names - the marker itself is NOT in the list.
+                //   SortMarkerPosition = # of names BEFORE the marker, so names [0..position) are pinned first
+                //   and names [position..end) are pinned last (i.e., Skip(position) - NOT Skip(position + 1)).
+                // No marker (-1): every name is pinned first - as if the (default ALPHA) marker were at the end.
+                if (markerIndex < 0)
+                    markerIndex = options.Sort.Count;
+
                 before = options.Sort.Take(markerIndex).ToList();
-                after = options.Sort.Skip(markerIndex + 1).ToList();
+                after = options.Sort.Skip(markerIndex).ToList();
             }
         }
 
         // 3. Pull the pinned files out of the pool (order of the Sort entries is preserved).
-        //    "Before" is processed first, so a file listed on both sides ends up at the front.
-        var head = TakeMatches(pool, before);
-        var tail = TakeMatches(pool, after);
+        //    Each file goes to the FIRST entry that matches it - and "before" is processed first,
+        //    so a file matched on both sides ends up at the front.
+        var head = TakeMatches(pool, before, marker);
+        var tail = TakeMatches(pool, after, marker);
 
         // 4. Sort whatever remains.
-        IEnumerable<(string FileName, DateTime TimeStamp)> middle = marker switch
-        {
-            DirectorySortMarker.AlphaDesc =>
-                pool.OrderByDescending(f => f.FileName, StringComparer.OrdinalIgnoreCase),
-
-            DirectorySortMarker.Timestamp =>
-                pool.OrderBy(f => f.TimeStamp)
-                    .ThenBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
-
-            DirectorySortMarker.TimestampDesc =>
-                pool.OrderByDescending(f => f.TimeStamp)
-                    .ThenBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
-
-            _ => // Alpha (default)
-                pool.OrderBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
-        };
+        var middle = Order(pool, marker);
 
         // 5. Stitch it together: pinned-first + sorted remainder + pinned-last.
         var output = new List<string>(head.Count + pool.Count + tail.Count);
@@ -118,28 +117,60 @@ public static class tsmakeExtensions
         return output;
     }
 
-    private static List<string> TakeMatches(List<(string FileName, DateTime TimeStamp)> pool, IEnumerable<string> names)
+    private static List<string> TakeMatches(List<(string FileName, DateTime TimeStamp)> pool, IEnumerable<string> entries, DirectorySortMarker marker)
     {
         var result = new List<string>();
-        foreach (var name in names)
+        foreach (var entry in entries)
         {
-            int index = pool.FindIndex(f => IsMatch(f.FileName, name));
-            if (index < 0)
+            var isMatch = CreateMatcher(entry);
+            var matches = pool.Where(f => isMatch(f.FileName)).ToList();
+            if (matches.Count == 0)
                 continue;
 
-            result.Add(pool[index].FileName);
-            pool.RemoveAt(index);
+            // An exact name matches (at most) one file; a wildcard can match several - which are ordered by the sort marker.
+            result.AddRange(Order(matches, marker).Select(f => f.FileName));
+            pool.RemoveAll(f => isMatch(f.FileName));
         }
         return result;
     }
 
-    private static bool IsMatch(string filePath, string candidate)
+    private static IEnumerable<(string FileName, DateTime TimeStamp)> Order(IEnumerable<(string FileName, DateTime TimeStamp)> files, DirectorySortMarker marker) => marker switch
     {
-        if (string.IsNullOrWhiteSpace(candidate))
-            return false;
+        DirectorySortMarker.AlphaDesc =>
+            files.OrderByDescending(f => f.FileName, StringComparer.OrdinalIgnoreCase),
 
-        candidate = candidate.Trim();
-        return string.Equals(filePath, candidate, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(Path.GetFileName(filePath), candidate, StringComparison.OrdinalIgnoreCase);
+        DirectorySortMarker.Timestamp =>
+            files.OrderBy(f => f.TimeStamp)
+                .ThenBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
+
+        DirectorySortMarker.TimestampDesc =>
+            files.OrderByDescending(f => f.TimeStamp)
+                .ThenBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
+
+        _ => // Alpha (default)
+            files.OrderBy(f => f.FileName, StringComparer.OrdinalIgnoreCase),
+    };
+
+    // Builds a (case-insensitive) matcher for one [exclude:] or [sort:] entry:
+    //   - no wildcards:  exact match against the file name (or the full path).
+    //   - wildcards:     '*' = zero or more characters, '?' = exactly one character. Matched against the
+    //                    file name - or against the full path if the entry includes a '\' or '/'.
+    //                    Every other character (including '.', '(', '+', etc.) is literal.
+    private static Func<string, bool> CreateMatcher(string entry)
+    {
+        string candidate = entry?.Trim() ?? string.Empty;
+        if (candidate.Length == 0)
+            return _ => false;
+
+        if (candidate.IndexOfAny(['*', '?']) < 0)
+            return filePath => string.Equals(filePath, candidate, StringComparison.OrdinalIgnoreCase)
+                || string.Equals(Path.GetFileName(filePath), candidate, StringComparison.OrdinalIgnoreCase);
+
+        // Regex.Escape() turns '*' into '\*' and '?' into '\?' - which are then swapped for their regex equivalents.
+        string pattern = "^" + Regex.Escape(candidate).Replace(@"\*", ".*").Replace(@"\?", ".") + "$";
+        var regex = new Regex(pattern, RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline);
+        bool matchFullPath = candidate.IndexOfAny(['\\', '/']) >= 0;
+
+        return filePath => regex.IsMatch(matchFullPath ? filePath : Path.GetFileName(filePath));
     }
 }

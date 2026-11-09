@@ -79,8 +79,10 @@ public class OutputDirective : BaseDirective
 
         string fullPath = this.FileSystem.TranslatePath(this.Payload);
 
-        // NOTE: Checking ONLY for directory.exists at this point. ARTIFACT will have to deal with FILE-NAME within the directory-in-question at write-time/etc. 
-        if(this.FileSystem.DirectoryExists(fullPath))
+        // NOTE: ##OUTPUT is the path of the build ARTIFACT (a file) - so check ONLY that the directory it'll be written INTO exists.
+        //      ARTIFACT will have to deal with FILE-NAME within the directory-in-question at write-time/etc.
+        string outputDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;   // null => fullPath is a drive/share root.
+        if(this.FileSystem.DirectoryExists(outputDirectory))
         {
             base.IsValid = true;
             this.Path = fullPath;
@@ -89,7 +91,7 @@ public class OutputDirective : BaseDirective
         else
         {
             base.IsValid = false;
-            base.ValidationMessage = $"The specified ##OUTPUT path does not exist: {fullPath}";
+            base.ValidationMessage = $"The directory for the specified ##OUTPUT path does not exist: {outputDirectory}";
         }
     }
 }

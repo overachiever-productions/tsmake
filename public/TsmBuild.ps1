@@ -12,7 +12,7 @@
 	MULTIPLE / NESTED INCLUDES:
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
-				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration1");
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration");
 				Invoke-TsmBuild; 
 
 	SIMPLE FLAGS-FILE TEST: 
@@ -20,14 +20,6 @@
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\conditional");
 				Invoke-TsmBuild -Flags "#RDS"; 			
-
-	CALIBRATED EXAMPLE:
-
-				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
-			#$global:VerbosePreference = "Continue";
-				# Set 'current' location = "..\test_files\calibration" 
-				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration");
-				Invoke-TsmBuild; 
 	
 	DIRECTORY (INCLUDE) EXAMPLE: 
 			
@@ -35,9 +27,6 @@
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\includes");
 				Invoke-TsmBuild; 
 	
-
-
-
 	S4 Build: 
 
 			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;

@@ -50,7 +50,7 @@ public class FileSystem (string workingDirectory) : IFileSystem
             case PathType.Relative:
                 return CollapsePath(this.RootDirectory, path);
             case PathType.Rooted:
-                return CollapsePath(this.RootDirectory, path.Replace(@"~", ""));
+                return CollapsePath(this.RootDirectory, path.Substring(2));     // strip ONLY the leading ~\ (other '~' chars are legal in names).
             default:
                 throw new Exception($"Invalid Path Type Specified: [{pathType}].");
         }
@@ -65,9 +65,10 @@ public class FileSystem (string workingDirectory) : IFileSystem
             .ToList();
     }
 
+    // NOTE: checks the directory AT path - NOT its parent. Callers holding a FILE path (e.g., ##OUTPUT) must pass in its directory.
     public bool DirectoryExists(string path)
     {
-        return Directory.Exists(Path.GetDirectoryName(path));
+        return Directory.Exists(path);
     }
 
     public bool FileExists(string filePath)

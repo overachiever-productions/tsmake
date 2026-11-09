@@ -59,6 +59,17 @@ public class DirectoryParserTests
 
         Assert.That(result.Exclude, Is.EqualTo(new[] { "a.SQL" }));
     }
+
+    [Test]
+    public void Parses_Wildcard_Entries_As_Literal_Strings()
+    {
+        var result = DirectoryParser.Parse(@"Common\Tables [exclude: *.sql, test_??.sql, 'old (*).sql'] [sort: 00_*.sql, ALPHA, zz?.sql]");
+
+        Assert.That(result.Exclude, Is.EqualTo(new[] { "*.sql", "test_??.sql", "old (*).sql" }));
+        Assert.That(result.Sort, Is.EqualTo(new[] { "00_*.sql", "zz?.sql" }));
+        Assert.That(result.SortMarker, Is.EqualTo(DirectorySortMarker.Alpha));
+        Assert.That(result.SortMarkerPosition, Is.EqualTo(1));
+    }
     #endregion
 
     #region [sort:]
@@ -165,6 +176,8 @@ public class DirectoryParserTests
     [TestCase(@"Tables [sort: ALPHA] [sort: b.sql]", "Only one [sort: ...]")]
     [TestCase(@"Tables [exclude: a.sql, readme.md]", "must be .sql files; found: 'readme.md'")]
     [TestCase(@"Tables [exclude: ALPHA]", "must be .sql files")]
+    [TestCase(@"Tables [exclude: test_*]", "must be .sql files; found: 'test_*'")]
+    [TestCase(@"Tables [exclude: *]", "must be .sql files")]
     [TestCase(@"Tables [sort: ALPHA, timestamp]", "Only one sort marker")]
     [TestCase(@"Tables [exclude: ]", "clause is empty")]
     [TestCase(@"Tables [sort:]", "clause is empty")]
