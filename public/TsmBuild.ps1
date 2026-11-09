@@ -19,7 +19,9 @@
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\conditional");
-				Invoke-TsmBuild -Flags "#RDS"; 			
+				Invoke-TsmBuild -Flags "#RDS"; 		
+				Write-Host "";
+				Invoke-TsmBuild -Flags "#Azure";
 	
 	DIRECTORY (INCLUDE) EXAMPLE: 
 			
@@ -29,11 +31,9 @@
 	
 	S4 Build: 
 
-			Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
-			Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
-			Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
-
-
+				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
+				Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
 
 	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
 				xxxx

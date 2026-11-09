@@ -1,5 +1,6 @@
 ﻿namespace tsmake.data_models;
 
+// Path = what the resolved option becomes: a ##FILE path (FLAG-FILE) or a complete ##DIRECTORY payload - path + any [exclude:] / [sort:] clauses (FLAG-DIRECTORY).
 public record FlagIncludeOption(string Key, string Path);
 
 public record DirectoryOptions(string Path, IReadOnlyList<string>? Exclude, IReadOnlyList<string>? Sort, DirectorySortMarker SortMarker, int SortMarkerPosition)
@@ -11,6 +12,28 @@ public record DirectoryOptions(string Path, IReadOnlyList<string>? Exclude, IRea
 public interface IFlagIncludeResolver
 {
     public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags);
+}
+
+internal static class FlagIncludeResolution
+{
+    // Shared by ##FLAG-FILE and ##FLAG-DIRECTORY: the FIRST of the -Flags (in the order they were specified) that has an option wins;
+    //      otherwise the (DEFAULT) option - if there is one; otherwise null (i.e., nothing gets included).
+    internal static FlagIncludeOption? Resolve(Dictionary<string, string> options, List<string>? flags)
+    {
+        if (options.Count == 0)
+            return null;
+
+        foreach (var flag in flags ?? [])
+        {
+            if (options.TryGetValue(flag, out var option))
+                return new FlagIncludeOption(flag, option);
+        }
+
+        if (options.TryGetValue("DEFAULT", out var defaultOption))
+            return new FlagIncludeOption("DEFAULT", defaultOption);
+
+        return null;
+    }
 }
 
 public interface IInclude
@@ -205,7 +228,8 @@ public class FlagFileDirective : BaseDirective, IFlagIncludeResolver
         try
         {
             string validation = "";
-            var options = FlagFileParser.Parse(this.CodeLine.OriginalContent);
+            // NOTE: parses the ORIGINAL line (the first (KEY) is part of the directive's name) - so any ##:: comment has to be removed here.
+            var options = FlagFileParser.Parse(this.CodeLine.OriginalContent.StripDirectiveComments());
             foreach(var (key, value) in options)
             {
                 string fullPath = this.FileSystem.TranslatePath(value);
@@ -230,39 +254,62 @@ public class FlagFileDirective : BaseDirective, IFlagIncludeResolver
         }
     }
 
-    public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags)
-    {
-        // TODO ... implement this HERE ... as an initial proof of concept. 
-        //   THEN ... create an extension method for ... IFlagIncludeResolver.ResolveOptionFromFlags() 
-        //      (if it's possible to hang an extension method off/from an interface) 
-        //        that takes in a Dictionary<string, string> options and a List<string> flags
-        //          along with a DEFAULT or NULL/EMPTY if no match is found ... (in DEFAULT -> empty order).
-
-        if (this.Options.Count == 0)
-            return null;    
-
-        foreach(var flag in flags)
-        {
-            if(this.Options.TryGetValue(flag, out var option))
-                return new FlagIncludeOption(flag, option);
-        }
-
-        if (this.Options.TryGetValue("DEFAULT", out var defaultOption))
-            return new FlagIncludeOption("DEFAULT", defaultOption);
-
-        return null;
-    }   
+    public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags) => FlagIncludeResolution.Resolve(this.Options, flags);
 }
 
-public class FlagDirectoryDirective : BaseDirective
+public class FlagDirectoryDirective : BaseDirective, IFlagIncludeResolver
 {
+    // Everything AFTER "##FLAG-DIRECTORY" (or "##FLAGS-DIRECTORY") on the original line is the list of (KEY): options.
+    private static readonly Regex DirectiveName = new Regex(@"##FLAGS?-DIRECTORY", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
+
     private IFileSystem FileSystem { get; set; }
+
+    // KEY ("#AZURE", "DEFAULT", etc.) => the ##DIRECTORY payload to use for it - e.g., @"~\azure-funcs\ [sort: azure_helper.sql, ALPHA]".
+    private Dictionary<string, string> Options { get; set; } = new Dictionary<string, string>();
 
     public FlagDirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
         base.DirectiveType = DirectiveType.FlagDirectory;
         this.FileSystem = fileSystem;
+
+        try
+        {
+            // NOTE: the FIRST (KEY) is part of the directive's NAME - i.e., "##FLAG-DIRECTORY(#Azure):" - so it's NOT in the payload.
+            //      Parse everything after ##FLAG-DIRECTORY on the original line instead (minus any ##:: comment).
+            string line = this.CodeLine.OriginalContent.StripDirectiveComments();
+            Match name = DirectiveName.Match(line);
+            string optionsText = name.Success ? line.Substring(name.Index + name.Length) : this.Payload;
+
+            var options = FlagDirectoryParser.Parse(optionsText);     // also validates the ##DIRECTORY syntax of EACH option.
+
+            // Same as FLAG-FILE: EVERY option is validated - not just the one the current -Flags will select.
+            string validation = "";
+            foreach (var (key, directoryPayload) in options)
+            {
+                string fullPath = this.FileSystem.TranslatePath(DirectoryParser.Parse(directoryPayload).Path);
+                if (!this.FileSystem.DirectoryExists(fullPath))
+                    validation += $"Directory specified for ({key}) does not exist: {fullPath}\r\n";
+            }
+
+            this.Options = options;
+
+            if (!string.IsNullOrWhiteSpace(validation))
+            {
+                base.IsValid = false;
+                base.ValidationMessage = validation.Trim();
+            }
+            else
+                base.IsValid = true;
+        }
+        catch (Exception ex)
+        {
+            base.IsValid = false;
+            base.ValidationMessage = ex.Message;
+        }
     }
+
+    // The resolved option's .Path is a complete ##DIRECTORY payload - i.e., it's turned into a DirectoryDirective (by the DirectiveProcessor).
+    public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags) => FlagIncludeResolution.Resolve(this.Options, flags);
 }
 
 public class ConditionDefaultDirective : BaseDirective
@@ -660,5 +707,124 @@ public static class DirectoryParser
             : $"The [{head.Groups["kind"].Value}:] clause is missing its closing ']' (or has an unterminated quote).";
 
         return $"Invalid ##DIRECTORY syntax at position {pos}, near: {rest}\n{hint}";
+    }
+}
+
+public static class FlagDirectoryParser
+{
+    private const RegexOptions Options = RegexOptions.IgnorePatternWhitespace | RegexOptions.CultureInvariant | RegexOptions.Compiled;
+
+    // One "(KEY[, KEY...]):" option head - same names and rules as FlagFileParser. \G anchors it to the position being tested.
+    private static readonly Regex Head = new Regex(@"
+        \G\(\s*
+            \#?(?<key>[A-Za-z0-9_-]+)                  # first name; the '#' is not captured
+            (?:\s*,\s*\#?(?<key>[A-Za-z0-9_-]+))*      # more comma-separated names (each captured)
+        \s*\)
+        \x20?:                                         # REQUIRED colon, 0-1 spaces before it
+        ", Options);
+
+    // Used only for error messages: a "(...)" head with valid names - but no colon.
+    private static readonly Regex HeadNames = new Regex(@"
+        \G\(\s*\#?[A-Za-z0-9_-]+(?:\s*,\s*\#?[A-Za-z0-9_-]+)*\s*\)
+        ", Options);
+
+    private const string Example = @"(#Azure): ~\azure-funcs [sort: ALPHA] (DEFAULT): ~\on-prem-funcs";
+
+    /// <summary>
+    /// Parses the OPTIONS of a ##FLAG-DIRECTORY directive - i.e., everything after "##FLAG-DIRECTORY" (with any ##:: comment already removed), e.g.:
+    ///     (#Azure): ~\azure-funcs\ [sort: azure_helper.sql, ALPHA] [exclude: _ignored.sql] (DEFAULT): ~\on-prem-funcs\ [sort: ALPHA]
+    /// Each option's value is a complete ##DIRECTORY payload (path + optional [exclude:] / [sort:] clauses) - validated by DirectoryParser.
+    /// Returns KEY => ##DIRECTORY payload, with keys normalized the same way as FlagFileParser's: "#AZURE", "DEFAULT".
+    /// Throws FormatException (with a hint) for invalid syntax.
+    /// </summary>
+    public static Dictionary<string, string> Parse(string input)
+    {
+        if (input is null)
+            throw new ArgumentNullException(nameof(input));
+
+        int start = 0;
+        while (start < input.Length && char.IsWhiteSpace(input[start]))
+            start++;
+
+        Match head = Head.Match(input, start);
+        if (!head.Success)
+            throw new FormatException(DescribeHeadError(input, start));
+
+        var result = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        while (head.Success)
+        {
+            // An option's payload runs until the next (KEY): head - or the end of the input.
+            int payloadStart = head.Index + head.Length;
+            Match next = FindNextHead(input, payloadStart);
+            int payloadEnd = next.Success ? next.Index : input.Length;
+            string payload = input.Substring(payloadStart, payloadEnd - payloadStart).Trim();
+
+            try
+            {
+                DirectoryParser.Parse(payload);
+            }
+            catch (FormatException ex)
+            {
+                string label = head.Value.Substring(0, head.Value.LastIndexOf(')') + 1);   // e.g., "(#Azure)"
+                throw new FormatException($"Invalid ##DIRECTORY details for {label}: {ex.Message}");
+            }
+
+            foreach (Capture key in head.Groups["key"].Captures)
+            {
+                string keyValue = key.Value.ToUpperInvariant();
+                if (!string.Equals(keyValue, "DEFAULT", StringComparison.OrdinalIgnoreCase))
+                    keyValue = $"#{keyValue}";
+
+                if (!result.TryAdd(keyValue, payload))
+                    throw new FormatException($"Duplicate option '{keyValue}'.");
+            }
+
+            head = next;
+        }
+
+        return result;
+    }
+
+    // Finds the next (KEY): head - skipping anything in "double" or 'single' quotes (quoted paths and entries may contain "(...):").
+    //      NOTE: an unquoted "(" that ISN'T a head - e.g., the "(v2)" in: Reports (v2) - stays in the payload, where DirectoryParser rejects it.
+    private static Match FindNextHead(string input, int start)
+    {
+        char quote = '\0';
+        for (int i = start; i < input.Length; i++)
+        {
+            char c = input[i];
+            if (quote != '\0')
+            {
+                if (c == quote)
+                    quote = '\0';
+            }
+            else if (c is '"' or '\'')
+                quote = c;
+            else if (c == '(')
+            {
+                Match m = Head.Match(input, i);
+                if (m.Success)
+                    return m;
+            }
+        }
+
+        return Match.Empty;
+    }
+
+    private static string DescribeHeadError(string input, int pos)
+    {
+        string rest = input.Substring(pos);
+        if (rest.Length == 0)
+            return $"No (#FLAG) or (DEFAULT) options found. Expected, e.g.: ##FLAG-DIRECTORY{Example}";
+
+        Match names = HeadNames.Match(input, pos);
+        string hint =
+            rest[0] != '('
+                ? $"Expected a (#FLAG) or (DEFAULT) option immediately after ##FLAG-DIRECTORY, e.g.: ##FLAG-DIRECTORY{Example}"
+            : !names.Success
+                ? "Expected an option like (DEFAULT) or (#RDS, #Azure); names may only contain A-Z, a-z, 0-9, '-' and '_'."
+            : $"Missing ':' after '{names.Value.Trim()}' (at most one space is allowed before it).";
+
+        return $"Invalid ##FLAG-DIRECTORY syntax near: {rest}\n{hint}";
     }
 }

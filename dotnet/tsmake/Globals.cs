@@ -19,8 +19,11 @@ public static class Global
         @"^\s*--\s*##(?<directive>ROOT|OUTPUT|FILE-MARKER|VERSION-CHECKER):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // NOTE: FLAG-FILE and FLAG-DIRECTORY include their FIRST "(KEY[, KEY...])" in the directive name - e.g., "FLAG-DIRECTORY(#Azure)" -
+    //      using the same key rules as FlagFileParser/FlagDirectoryParser (A-Z, 0-9, '-', '_', optional '#', 0-1 spaces before the ':').
+    //      A bare "FLAG-DIRECTORY:" (no keys) still matches - so that it's reported as an error instead of silently ignored.
     public static readonly Regex DirectiveRegex = new(
-        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(FLAG|FLAGS)-FILE\s*\(#?[a-z]+\)|FLAG-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
+        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(?:FLAG|FLAGS)-(?:FILE|DIRECTORY)\s*\(\s*\#?[a-z0-9_-]+(?:\s*,\s*\#?[a-z0-9_-]+)*\s*\)\x20?|(?:FLAG|FLAGS)-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
 
