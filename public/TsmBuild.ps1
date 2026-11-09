@@ -32,8 +32,7 @@
 	DIRECTORY (INCLUDE) EXAMPLE: 
 			
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
-				# Set 'current' location = "..\test_files\includes" 
-				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration");
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\includes");
 				Invoke-TsmBuild; 
 	
 

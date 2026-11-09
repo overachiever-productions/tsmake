@@ -100,10 +100,9 @@ public enum DirectiveType
     ConditionEnd
 }
 
-// Sort 'markers' allowed (at most one) within a ##DIRECTORY [sort: ...] clause.
 public enum DirectorySortMarker
 {
-    None,
+    None,   // default - if none specified. However, DEFAULT behavior is Alpha.
     Alpha,
     AlphaDesc,
     Timestamp,

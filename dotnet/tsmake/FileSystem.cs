@@ -15,7 +15,7 @@ public interface IFileSystem
     bool DirectoryExists(string path);
     bool FileExists(string filePath);
 
-    List<string> GetDirectoryFiles(string directory);
+    List<(string FilePath, DateTime TimeStamp)> GetDirectoryFiles(string directory);
     string GetFileContent(string filePath);
 
     void WriteArtifact(IArtifact artifact);
@@ -56,10 +56,13 @@ public class FileSystem (string workingDirectory) : IFileSystem
         }
     }
 
-    public List<string> GetDirectoryFiles(string directory)
+    public List<(string FilePath, DateTime TimeStamp)> GetDirectoryFiles(string directory)
     {
-        throw new NotImplementedException();
-        // not in v2025 (i.e., tsmake2 ... but I probably had logic for htis in 'v1'. 
+        string[] files = Directory.GetFiles(directory, "*.sql", SearchOption.TopDirectoryOnly);
+
+        return files
+            .Select(f => (FilePath: f, TimeStamp: File.GetLastWriteTime(f)))
+            .ToList();
     }
 
     public bool DirectoryExists(string path)

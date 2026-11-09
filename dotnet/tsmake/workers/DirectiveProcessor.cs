@@ -190,7 +190,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                     {
                         case DirectiveType.File:
                         case DirectiveType.Directory:
-                            IInclude include = IncludeTranslator.LoadInclude(line.Directive, fileSystem, currentLines, syntaxErrors);
+                            IInclude include = (IInclude)line.Directive;
                             foreach (string includedFilePath in include.IncludedFiles)
                             {
                                 int lineOfCurrentFileThatDirectedTheInclusionOfNewChildFile = line.LineNumber;

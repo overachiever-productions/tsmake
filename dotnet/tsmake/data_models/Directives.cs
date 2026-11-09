@@ -2,15 +2,7 @@
 
 public record FlagIncludeOption(string Key, string Path);
 
-// Parsed components of a ##DIRECTORY payload: path [exclude: ...] [sort: ...]
-//   Exclude / Sort are NULL when their clause is absent (Sort is EMPTY - not null - for marker-only clauses like [sort: ALPHA]).
-//   SortMarkerPosition = index within Sort where the marker appeared (i.e., # of explicit names before it), or -1 if no marker.
-public record DirectoryOptions(
-    string Path,
-    IReadOnlyList<string>? Exclude,
-    IReadOnlyList<string>? Sort,
-    DirectorySortMarker SortMarker,
-    int SortMarkerPosition)
+public record DirectoryOptions(string Path, IReadOnlyList<string>? Exclude, IReadOnlyList<string>? Sort, DirectorySortMarker SortMarker, int SortMarkerPosition)
 {
     public bool HasExclude => this.Exclude is not null;
     public bool HasSort => this.Sort is not null;
@@ -19,6 +11,11 @@ public record DirectoryOptions(
 public interface IFlagIncludeResolver
 {
     public FlagIncludeOption? ResolveOptionFromFlags(List<string> flags);
+}
+
+public interface IInclude
+{
+    List<string> IncludedFiles { get; }
 }
 
 public interface IDirective
@@ -117,11 +114,12 @@ public class CommentDirective : BaseDirective
     }
 }
 
-public class FileDirective : BaseDirective
+public class FileDirective : BaseDirective, IInclude
 {
     private IFileSystem FileSystem { get; set; }
 
     public string FilePath { get; private set; }
+    public List<string> IncludedFiles { get; private set; } = new List<string>();
 
     public FileDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
@@ -131,6 +129,7 @@ public class FileDirective : BaseDirective
         try
         {
             this.FilePath = this.FileSystem.TranslatePath(this.Payload);
+            this.IncludedFiles.Add(this.FilePath);
             if(this.FileSystem.FileExists(this.FilePath))
                 base.IsValid = true;
             else
@@ -148,11 +147,13 @@ public class FileDirective : BaseDirective
     }
 }
 
-public class DirectoryDirective : BaseDirective
+public class DirectoryDirective : BaseDirective, IInclude
 {
     private IFileSystem FileSystem { get; set; }
+    public DirectoryOptions? Options { get; private set; }   // public to allow easier unit tests. 
 
-    public string FilePath { get; private set; }
+    public List<string> IncludedFiles { get; private set; } = new List<string>();
+    public string DirectoryPath { get; private set; } = string.Empty;
 
     public DirectoryDirective(string payload, ICodeLine codeLine, IFileSystem fileSystem) : base(payload, codeLine)
     {
@@ -161,18 +162,28 @@ public class DirectoryDirective : BaseDirective
 
         try
         {
-            this.FilePath = this.FileSystem.TranslatePath(this.Payload);
-            if (this.FileSystem.FileExists(this.FilePath))
-                base.IsValid = true;
-            else
+            this.Options = DirectoryParser.Parse(this.Payload);
+
+            this.DirectoryPath = this.FileSystem.TranslatePath(this.Options.Path);
+            if (!this.FileSystem.DirectoryExists(this.DirectoryPath))
             {
-                base.IsValid = false;
-                base.ValidationMessage = $"Specified ##DIRECTORY does not exist: {this.FilePath}";
+                base.ValidationMessage = $"Specified ##DIRECTORY does not exist: {this.DirectoryPath}";
+                return;
             }
+
+            if (this.Options == null)
+            {
+                base.ValidationMessage = $"Specified ##DIRECTORY has invalid syntax: {this.Payload}";
+                return;
+            }
+
+            var files = this.FileSystem.GetDirectoryFiles(this.DirectoryPath);
+            this.IncludedFiles.AddRange(files.PrioritizeAndExclude(this.Options));
+            base.IsValid = true;
         }
         catch (Exception ex)
         {
-            this.FilePath = string.Empty;
+            this.DirectoryPath = string.Empty;
             base.IsValid = false;
             base.ValidationMessage = ex.Message;
         }
@@ -297,8 +308,10 @@ public class RunnerDirective : BaseDirective
     }
 }
 
-public class VersionCheckerDirective : BaseDirective
+public class VersionCheckerDirective : BaseDirective, IInclude
 {
+    public List<string> IncludedFiles { get; private set; } = new List<string>();
+ 
     public VersionCheckerDirective(string payload, ICodeLine codeLine) : base(payload, codeLine)
     {
         base.DirectiveType = DirectiveType.VersionChecker;
