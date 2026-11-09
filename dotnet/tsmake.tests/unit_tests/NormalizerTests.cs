@@ -292,6 +292,7 @@ public class NormalizerTests
         
         Assert.That(errors.Count, Is.EqualTo(1));
         StringAssert.Contains("Non-Terminated Block-Comment", errors[0].Message);
+        Assert.That(errors[0].LineNumber, Is.EqualTo(1));       // the /* is at column 0 - which used to be reported as line -99.
     }
 
     [Test]
@@ -333,8 +334,207 @@ public class NormalizerTests
 
         var sut = new Normalizer();
         sut.Normalize(text, lines, errors, codeFile);
-        
+
         Assert.That(errors.Count, Is.EqualTo(0));
+    }
+
+    private static List<ISyntaxError> ClosureErrors(string text, LineEndingsType lineEndings = LineEndingsType.CrLf)
+    {
+        var lines = new List<ICodeLine>();
+        var errors = new List<ISyntaxError>();
+
+        new Normalizer(lineEndings).Normalize(text, lines, errors, new FileDetail("file-name.sql", 0, 0));
+        return errors;
+    }
+
+    private static void AssertSingleError(List<ISyntaxError> errors, string message, int lineNumber, string? detail = null)
+    {
+        Assert.That(errors.Select(e => $"line {e.LineNumber}: {e.Message} [{e.Detail}]").ToList(), Has.Count.EqualTo(1));
+        Assert.That(errors[0].Message, Is.EqualTo(message));
+        Assert.That(errors[0].LineNumber, Is.EqualTo(lineNumber));
+        if (detail != null)
+            Assert.That(errors[0].Detail, Is.EqualTo(detail));
+    }
+
+    private static void AssertNoErrors(List<ISyntaxError> errors) =>
+        Assert.That(errors.Select(e => $"line {e.LineNumber}: {e.Message} [{e.Detail}]"), Is.Empty);
+
+    // -- comments: ticks, /*, [ and " within them are just comment text.
+    [TestCase("SELECT 1; -- it's fine\r\nSELECT 2;")]
+    [TestCase("-- don't\r\nSELECT 'abc';")]
+    [TestCase("-- don't\r\nSELECT 'a [b' AS x;")]
+    [TestCase("-- see /* below\r\nSELECT 1;")]
+    [TestCase("-- arr[0\r\nSELECT 1;")]
+    [TestCase("-- \"quoted\r\nSELECT 1;")]
+    [TestCase("SELECT 1; -- not a stray */ either")]
+    [TestCase("SELECT 1;--it's at the very end")]
+    [TestCase("SELECT '--', 'it''s'; -- the first -- is in a string")]
+    public void It_Ignores_Closures_Within_EOL_Comments(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
+    }
+
+    [Test]
+    public void It_Still_Finds_Unclosed_Strings_After_A_Tick_In_An_EOL_Comment()
+    {
+        // The tick in "don't" used to PAIR with the unclosed string's tick - hiding the error.
+        AssertSingleError(ClosureErrors("-- don't\r\nPRINT 'unclosed"), "Non-Terminated String.", 2, "'unclosed");
+    }
+
+    [Test]
+    public void It_Does_Not_Treat_Dashes_In_A_String_As_A_Comment()
+    {
+        AssertSingleError(ClosureErrors("PRINT '-- not a comment"), "Non-Terminated String.", 1, "'-- not a comment");
+    }
+
+    // Openers in column 0 (any line) used to be reported as line -99.
+    [TestCase("'abc", "Non-Terminated String.", 1)]
+    [TestCase("SELECT 1;\r\n[Unclosed", "Non-Terminated [Identifier].", 2)]
+    [TestCase("/* unclosed\r\nPRINT 'x';", "Non-Terminated Block-Comment.", 1)]
+    [TestCase("SELECT 1;\r\n\r\n\"oops", "Non-Terminated \"Identifier\".", 3)]
+    [TestCase("SELECT 1;\r\n*/", "Unexpected End of Block-Comment (*/ without a matching /*).", 2)]
+    public void It_Reports_The_Correct_Line_For_Errors_In_Column_Zero(string text, string message, int lineNumber)
+    {
+        AssertSingleError(ClosureErrors(text), message, lineNumber);
+    }
+
+    // Line numbers must match the INPUT's lines - whatever its line endings are, and whatever they're normalized TO.
+    [TestCase("\r\n", LineEndingsType.CrLf)]
+    [TestCase("\r\n", LineEndingsType.Lf)]
+    [TestCase("\r\n", LineEndingsType.Cr)]
+    [TestCase("\n", LineEndingsType.CrLf)]
+    [TestCase("\n", LineEndingsType.Lf)]
+    [TestCase("\n", LineEndingsType.Cr)]
+    [TestCase("\r", LineEndingsType.CrLf)]
+    [TestCase("\r", LineEndingsType.Lf)]
+    [TestCase("\r", LineEndingsType.Cr)]
+    public void It_Reports_The_Correct_Line_Regardless_Of_Line_Endings(string lineEnding, LineEndingsType target)
+    {
+        var lines = Enumerable.Range(1, 30).Select(n => n == 21 ? "SELECT [oops" : $"SELECT {n};");
+        string text = string.Join(lineEnding, lines);
+
+        AssertSingleError(ClosureErrors(text, target), "Non-Terminated [Identifier].", 21, "[oops");
+    }
+
+    [Test]
+    public void It_Reports_The_Correct_Line_With_Mixed_Line_Endings()
+    {
+        AssertSingleError(ClosureErrors("SELECT 1;\r\nSELECT 2;\nSELECT 3;\rSELECT 4;\r\n\nPRINT 'oops"), "Non-Terminated String.", 6, "'oops");
+    }
+
+    [Test]
+    public void It_Reports_The_Line_Where_A_Multi_Line_Construct_Starts()
+    {
+        AssertSingleError(ClosureErrors("SELECT 1;\r\nPRINT N'line 2\r\nline 3\r\nline 4"), "Non-Terminated String.", 2, "'line 2");
+    }
+
+    // Nested block comments are valid T-SQL.
+    [TestCase("/* outer /* inner */ still outer */\r\nSELECT 1;")]
+    [TestCase("/*\r\n/* note */\r\nthis isn't code\r\n*/\r\nSELECT 1;")]
+    [TestCase("/* a /* b /* c */ b */ a */ SELECT 1;")]
+    [TestCase("/**/ SELECT 1; /***/ /* ** */")]
+    public void It_Allows_Nested_Block_Comments(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
+    }
+
+    [TestCase("/* outer /* inner */\r\nSELECT 1;", 1)]
+    [TestCase("SELECT 1;\r\n/* outer\r\n/* inner */\r\nSELECT 2;", 2)]
+    public void It_Reports_Unclosed_Outer_Block_Comments(string text, int lineNumber)
+    {
+        AssertSingleError(ClosureErrors(text), "Non-Terminated Block-Comment.", lineNumber);
+    }
+
+    // "Quoted" identifiers (or strings - if QUOTED_IDENTIFIER is OFF): same rules either way.
+    [TestCase("SELECT 1 AS \"Don't\";")]
+    [TestCase("SELECT 1 AS \"a\"\"b\";")]
+    [TestCase("SELECT 1 AS \"[x\", 2 AS \"/* y\", 3 AS \"-- z\";")]
+    [TestCase("SELECT '\"' AS [\"], 2 AS \"'\";")]
+    public void It_Ignores_Closures_Within_Quoted_Identifiers(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
+    }
+
+    [TestCase("SELECT 1 AS \"oops;", "\"oops;")]
+    [TestCase("SELECT 1 AS \"a\"\";", "\"a\"\";")]
+    public void It_Has_SyntaxErrors_When_There_Are_Unclosed_Quoted_Identifiers(string text, string detail)
+    {
+        AssertSingleError(ClosureErrors(text), "Non-Terminated \"Identifier\".", 1, detail);
+    }
+
+    [TestCase("SELECT 1 AS [a]]")]           // ]] is an escaped ] - so the identifier is still open.
+    [TestCase("SELECT 1 AS [a]]]]")]
+    public void It_Has_SyntaxErrors_When_Brackets_End_With_An_Escaped_Bracket(string text)
+    {
+        AssertSingleError(ClosureErrors(text), "Non-Terminated [Identifier].", 1);
+    }
+
+    [TestCase("SELECT 127 [kinda [weird]]];")]
+    [TestCase("SELECT 1 AS [a]]]")]
+    [TestCase("SELECT [O'Brien] FROM t;")]
+    [TestCase("SELECT 'wth?' [for 'realz'?];")]
+    [TestCase("SELECT 1 AS [this is --not a comment], 2 AS [/* nor this */];")]
+    public void It_Ignores_Closures_Within_Bracketed_Identifiers(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
+    }
+
+    [TestCase("/* don't */ SELECT 1;")]
+    [TestCase("SELECT '', N'', '''', N'''';")]
+    [TestCase("SELECT 'it''s', 'a [b', 'c /* d', 'e \"f', 'g */ h';")]
+    public void It_Handles_Correctly_Formed_Strings_And_Comments(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
+    }
+
+    [Test]
+    public void It_Has_SyntaxErrors_When_A_String_Ends_With_An_Escaped_Tick()
+    {
+        AssertSingleError(ClosureErrors("PRINT 'abc'';"), "Non-Terminated String.", 1, "'abc'';");
+    }
+
+    // Like SQL Server: an unclosed string/comment/identifier swallows the REST of the file - so it's ONE error, not a cascade.
+    [TestCase("/* unclosed\r\ndon't\r\nSELECT 1;", "Non-Terminated Block-Comment.", "/* unclosed")]
+    [TestCase("[a\r\n[b", "Non-Terminated [Identifier].", "[a")]
+    [TestCase("PRINT 'oops\r\nSELECT [x", "Non-Terminated String.", "'oops")]
+    [TestCase("SELECT \"x\r\n/* y\r\n'z", "Non-Terminated \"Identifier\".", "\"x")]
+    public void It_Reports_One_Error_For_One_Unclosed_Construct(string text, string message, string detail)
+    {
+        AssertSingleError(ClosureErrors(text), message, 1, detail);
+    }
+
+    [Test]
+    public void It_Limits_Error_Detail_To_The_Rest_Of_The_Line()
+    {
+        // Detail used to be the ENTIRE rest of the file for strings (and to end with a stray \r for comments/brackets).
+        AssertSingleError(ClosureErrors("PRINT 'oops\r\nSELECT 1;\r\nSELECT 2;\r\nSELECT 3;"), "Non-Terminated String.", 1, "'oops");
+        AssertSingleError(ClosureErrors("SELECT 1; /* oops\r\nSELECT 2;"), "Non-Terminated Block-Comment.", 1, "/* oops");
+        AssertSingleError(ClosureErrors("SELECT [oops\r\nSELECT 2;"), "Non-Terminated [Identifier].", 1, "[oops");
+    }
+
+    [TestCase("SELECT 1; */", 1, "*/")]
+    [TestCase("SELECT 1;\r\n/* a */ */ -- the 2nd one", 2, "*/ -- the 2nd one")]
+    public void It_Has_SyntaxErrors_For_Block_Comment_Ends_Without_A_Start(string text, int lineNumber, string detail)
+    {
+        AssertSingleError(ClosureErrors(text), "Unexpected End of Block-Comment (*/ without a matching /*).", lineNumber, detail);
+    }
+
+    [Test]
+    public void It_Reports_Every_Block_Comment_End_Without_A_Start()
+    {
+        var errors = ClosureErrors("SELECT 1; */\r\nSELECT 2;\r\nSELECT 3; */");
+
+        Assert.That(errors.Select(e => e.LineNumber), Is.EqualTo(new[] { 1, 3 }));
+    }
+
+    [TestCase("SELECT t.*/* all columns */ FROM t;")]       // * then a /* comment - NOT a stray */
+    [TestCase("SELECT 2*/* times */3;")]
+    [TestCase("PRINT '*/';")]
+    [TestCase("SELECT 1 AS [*/], 2 AS \"*/\";")]
+    [TestCase("/* a */ SELECT 1; /* b */")]
+    public void It_Does_Not_Report_Valid_Uses_Of_Comment_Ends(string text)
+    {
+        AssertNoErrors(ClosureErrors(text));
     }
     #endregion
 
@@ -399,8 +599,11 @@ public class NormalizerTests
         Assert.That(lines.Count, Is.EqualTo(5));
     }
 
-    //  TODO:
-    // It_Ignores_BracketedIdentifiers_Within_Strings() - e.g.,  SELECT 'this is not an identifier [so ignore me]' AS [columnName];
+    [Test]
+    public void It_Ignores_BracketedIdentifiers_Within_Strings()
+    {
+        AssertNoErrors(ClosureErrors("SELECT 'this is not an identifier [so ignore me]' AS [columnName];"));
+    }
     #endregion
 
     #region Matches are ignored within Comments
@@ -441,8 +644,12 @@ public class NormalizerTests
     //    Assert.That(sut.Batches.Count, Is.EqualTo(1));
     //}
 
-    // TODO:
-    // It_Ignores_BracketedIdentifiers_Within_Comments() - e.g.,  /* this is a comment with [bracketed identifiers] in it - but ignore them */\r\nGO\r\nSELECT 1;
+    [Test]
+    public void It_Ignores_BracketedIdentifiers_Within_Comments()
+    {
+        AssertNoErrors(ClosureErrors("/* this is a comment with [bracketed identifiers] in it - but ignore them */\r\nGO\r\nSELECT 1;"));
+        AssertNoErrors(ClosureErrors("-- this is a comment with an [unclosed identifier in it\r\nGO\r\nSELECT 1;"));
+    }
     #endregion
 
     #region Syntax Edge Cases 
