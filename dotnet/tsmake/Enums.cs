@@ -22,13 +22,6 @@ public enum FlagsSource
     Config
 }
 
-//public enum ErrorType
-//{
-//    Syntax,
-//    Config,
-//    Runtime
-//}
-
 public enum SourceType
 {
     None,
@@ -51,11 +44,11 @@ public enum ArtifactType
 public enum CommentRemovalDirectives
 {
     None = 0,
-    RemoveHeaderComments = 1,
-    RemoveDocComments = 2,
-    RemoveLineEndComments = 4,
-    RemoveBlockComments = 8,
-    RemoveAllComments = 15  // redundant, but makes it easier to read in code.
+    RemoveHeaderComments = 1, RemoveHeader = RemoveHeaderComments,
+    RemoveDocComments = 2, RemoveDoc = RemoveDocComments,
+    RemoveLineEndComments = 4, RemoveEol = RemoveLineEndComments,
+    RemoveBlockComments = 8, RemoveBlock = RemoveBlockComments,
+    RemoveAllComments = 15, RemoveAll = RemoveAllComments       // redundant - but makes it easier to read in co
 }
 
 [Flags]

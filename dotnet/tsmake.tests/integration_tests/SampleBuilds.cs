@@ -12,7 +12,7 @@ public class SampleBuilds()
 
         var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
-        buildOptions.AddRootPath(new RankedString(SourceType.BuildFile, pwd));
+        buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
         // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
 
@@ -39,7 +39,7 @@ public class SampleBuilds()
 
         var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
-        buildOptions.AddRootPath(new RankedString(SourceType.BuildFile, pwd));
+        buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
         // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
         
@@ -63,7 +63,7 @@ public class SampleBuilds()
 
         var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
-        buildOptions.AddRootPath(new RankedString(SourceType.BuildFile, pwd));
+        buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
         // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
 
@@ -87,7 +87,7 @@ public class SampleBuilds()
 
         var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
-        buildOptions.AddRootPath(new RankedString(SourceType.BuildFile, pwd));
+        buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
         // optional ... specify the output path (i.e., pretend that it was specified via -Output). 
 

@@ -9,6 +9,8 @@ public interface ICodeLine
     int EndOffset { get; }
     IDirective Directive { get; internal set; }
     IFileDetail FileDetail { get; }
+
+    string GetContent();
 }
 
 public class CodeLine(string content, int lineNumber, int startOffset, int endOffset, IFileDetail fileDetail) : ICodeLine
@@ -20,6 +22,11 @@ public class CodeLine(string content, int lineNumber, int startOffset, int endOf
     public int EndOffset { get; } = endOffset;
     public IDirective Directive { get; set; } = null!;
     public IFileDetail FileDetail { get; } = fileDetail;
+    
+    public string GetContent()
+    {
+        return string.IsNullOrEmpty(TransformedContent) ? OriginalContent : TransformedContent;
+    }
 }
 
 public interface IFileDetail

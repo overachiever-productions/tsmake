@@ -82,6 +82,9 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //         we have 1-2 artifacts: the ##output and an optional ##filemarker (version-marker) file.
             //    IF .Document:
             //        we'll have 1 artifact PER each DocTransformer/Writer. 
+            //   and ... at this point, we need to 'fill'/assemble/write/output each (all) artifacts before continuing. 
+            //   e.g., for a BUILD result - we're going to go "line by line" through this.ArtifactLines and write .GetContent() to the ##output file 
+            //      etc. 
 
             this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
             this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);

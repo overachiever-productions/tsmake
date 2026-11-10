@@ -154,9 +154,12 @@ public class FileDirective : BaseDirective, IInclude
         try
         {
             this.FilePath = this.FileSystem.TranslatePath(this.Payload);
-            this.IncludedFiles.Add(this.FilePath);
-            if(this.FileSystem.FileExists(this.FilePath))
+
+            if (this.FileSystem.FileExists(this.FilePath))
+            {
+                this.IncludedFiles.Add(this.FilePath);
                 base.IsValid = true;
+            }
             else
             {
                 base.IsValid = false;

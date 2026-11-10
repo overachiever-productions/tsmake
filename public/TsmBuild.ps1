@@ -56,7 +56,7 @@ function Invoke-TsmBuild {
 		[string[]]$Tokens,
 		[string[]]$Flags,
 		#[???[]]$BuildTransforms ... [regex-like-thingies with their matches... ]
-		[string[]]$CommentDirectives = @('RemoveHeader') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
+		[string[]]$CommentDirectives = @('None') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
 	);
 	
 	begin {
@@ -95,9 +95,6 @@ function Invoke-TsmBuild {
 		if ($bad) {
 			throw "Flags MUST start with the '#' sign. Invalid Flags: [$($bad -join ', ')]."
 		}
-		
-		Write-Host "Flags: $($Flags -join ', ')";
-		
 		
 		# TODO: if not $Config / $ConfigFile ... then ... look for one via the convention of <build_file_name>.json... 
 		# 	so that this can be loaded below... (i.e. don't load it here...  ... here we're just establishing params. )
@@ -149,7 +146,8 @@ function Invoke-TsmBuild {
 		# Comment-Removal Options:
 		# Can be set via .config OR via $CommentDirectives. $CommentDirectives (i.e., CLI) trumps any values from config. 
 		# ====================================================================================================		
-		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::None;
+		#[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::None;
+		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = $CommentDirectives;
 		# TODO: load from config and/or squash via $CommentDirectives
 		
 		# ====================================================================================================
@@ -174,7 +172,7 @@ function Invoke-TsmBuild {
 		#       a WRITE-VERBOSE (at the very minimum) should identify that we're using command-line flags and did NOT load flags from the config. 
 		#       and, actually, a) write-verbose here for the above and b) make it pretty obvious in the BUILD-RESULT/output that ... 
 		# 			we're using flags from the command-line. 
-		[tsmake.FlagsSource]$flagsSource = [tsmake.FlagsSource]::Console;  # stubb/place-holder for now. 
+		#[tsmake.FlagsSource]$flagsSource = [tsmake.FlagsSource]::Console;  # stubb/place-holder for now. 
 		
 		# ====================================================================================================
 		# Build Transforms:
@@ -211,9 +209,9 @@ function Invoke-TsmBuild {
 		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);
 		
 		if ($Flags.Count -gt 0) {
+			[tsmake.FlagsSource]$flagsSource = [tsmake.FlagsSource]::Console;
 			$assemblerOptions.SetFlags($Flags, $flagsSource);
 		}
-		
 		
 		Write-Verbose "Starting BUILD. BUILD FILE: [$file]";
 		
@@ -231,7 +229,6 @@ function Invoke-TsmBuild {
 		## pretend that this is verbose:
 		Write-Host "		Build Root: $($buildResult.BuildRoot) from => $($buildResult.BuildRootSourceType).";
 		Write-Host "		Build Flags (via $($buildResult.FlagsSource)): $($buildResult.Flags -join ', ')."
-		
 		
 		if ($null -ne $buildResult.Exception) {
 			Write-Host "Build Exception: $($buildResult.Exception)";
@@ -255,31 +252,26 @@ function Invoke-TsmBuild {
 				}
 			}
 			
-			#return;
+			return;
 		}
 		
 		$assembler = $buildResult.Assembler;
 		[int]$i = 0;
 		foreach ($line in $assembler.ArtifactLines) {
 			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
-			Write-Host "$($line.OriginalContent)";
+			Write-Host "$($line.GetContent())";   # $line.OriginalContent
 #			if ($null -ne $line.Directive) {
 #				if ("FILE" -eq $line.Directive.DirectiveName) {
 #					Write-Host "`t`t`t$($line.Directive.FilePath)";
 #				}
 #			}
-			$i = $i + 1;
-			
-			if ($i -gt 800) {
-				break;
-			}
-			
-			#			if ($null -ne $line.Directive) {
-#				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
+#			$i = $i + 1;
+#			
+#			if ($i -gt 800) {
+#				break;
 #			}
 		}
 		
-		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";
 		return $buildResult;
 	};
 }
