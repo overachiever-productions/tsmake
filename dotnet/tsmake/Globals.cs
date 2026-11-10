@@ -25,6 +25,42 @@ public static class Global
     public static readonly Regex DirectiveRegex = new(
         @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(?:FLAG|FLAGS)-(?:FILE|DIRECTORY)\s*\(\s*\#?[a-z0-9_-]+(?:\s*,\s*\#?[a-z0-9_-]+)*\s*\)\x20?|(?:FLAG|FLAGS)-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    // A -- comment (to the end of its line).
+    private const string HeaderLineComment = @"
+        (?>--[^\r\n]*)";
+
+    // A /* block comment */ - which can be NESTED: /* outer /* inner */ still outer */  (balancing group: /* pushes, */ pops).
+    private const string HeaderBlockComment = @"
+        (?>
+            /\*
+            (?>(?: /\*(?<depth>) | \*/(?<-depth>) | (?!/\*|\*/)[\s\S] )*)
+            (?(depth)(?!))
+            \*/
+        )";
+
+    // HEADER COMMENTS: the whitespace and comments at the TOP of a file - i.e., everything before its FIRST code.
+    //  - comments: -- comments and /* block comments */ (nested or not) - in any combination.
+    //  - code: anything else.
+    //  - there's ONLY a header if a comment comes before any code - i.e., leading whitespace by itself is NOT a header.
+    //  - WARNING (as designed - for now): tsmake DIRECTIVES are -- comments too. So any directive (-- ##FILE:, -- ##DIRECTORY:, etc.)
+    //      that comes BEFORE a file's first code is part of its header - and is REMOVED (i.e., never processed) when header comments
+    //      are removed. To keep them: don't remove header comments, or move the directives below the first block of code.
+    //  - the match (i.e., what gets removed) ends:
+    //      a. at \z - when the file is nothing BUT whitespace and comments.
+    //      b. at the START of the line where code begins - i.e., whole lines are removed, and the code's indentation is kept.
+    //      c. at the code itself - when a block comment ends ON the code's line:   /* ... */USE [master];
+    //  NOTE: H* is greedy - so (b)/(c) are found by backing off from the furthest point the header could reach.
+    public static readonly Regex HeaderCommentsRegex = new(@"
+        \A
+        (?=\s*(?:" + HeaderLineComment + "|" + HeaderBlockComment + @"))      # a comment comes before any code
+        (?:\s|" + HeaderLineComment + "|" + HeaderBlockComment + @")*         # whitespace and comments
+        (?:
+            \z                                                                # a. no code at all
+          | (?<=[\r\n])(?=[^\S\r\n]*\S)                                       # b. start of the code's line
+          | (?<=\*/[^\S\r\n]*)(?=\S)                                          # c. a block comment ends on the code's line
+        )",
+        RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
 
 public static class tsmakeExtensions

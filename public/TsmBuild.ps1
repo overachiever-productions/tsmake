@@ -33,7 +33,7 @@
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
-				Invoke-TsmBuild -BuildFile "D:\Dropbox\Repositories\tsmake\test_files\test.build.sql";
+				Invoke-TsmBuild -CommentDirectives "RemoveHeader";
 
 	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
 				xxxx
@@ -255,26 +255,31 @@ function Invoke-TsmBuild {
 				}
 			}
 			
-			return;
+			#return;
 		}
 		
 		$assembler = $buildResult.Assembler;
+		[int]$i = 0;
 		foreach ($line in $assembler.ArtifactLines) {
-			Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
+			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
+			Write-Host "$($line.OriginalContent)";
 #			if ($null -ne $line.Directive) {
 #				if ("FILE" -eq $line.Directive.DirectiveName) {
 #					Write-Host "`t`t`t$($line.Directive.FilePath)";
 #				}
 #			}
+			$i = $i + 1;
 			
+			if ($i -gt 800) {
+				break;
+			}
 			
-#			if ($null -ne $line.Directive) {
+			#			if ($null -ne $line.Directive) {
 #				Write-Host "$($line.LineNumber.ToString().PadLeft(6)): $($line.OriginalContent)";
 #			}
 		}
 		
 		#Write-Host "Assembler.CodeLines: $($buildResult.Assembler.CodeLines.Count)";
-		
 		return $buildResult;
 	};
 }

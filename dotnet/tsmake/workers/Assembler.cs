@@ -51,6 +51,9 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         {
             this.ValidateBuildFileAndExtractBuildDirectives(buildFilePath);
 
+            if(this.SyntaxErrors.Count > 0)
+                return;
+
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
     // MKC - NOTE: Any syntax errors or other problems that are found from this point forward ... 
@@ -117,11 +120,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             else
             {
                 if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveHeaderComments))
-                {
-                    // TODO: use a REGEX vs .Normalizer.NormalizedText ... to identify the start/end-line of header-comments. 
-                    //      can, obviously be 1 (i.e., 0) or ... N. 
-                    // then remove those lines from normalizedCodeLines ... via a .RemoveRange() or something similar.
-                }
+                    RemoveHeaderComments(localCodeLines, normalizer.NormalizedText);
 
                 if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
                 {
@@ -146,6 +145,36 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         catch (Exception ex)
         {
             this.BuildResult.AddException(ex);
+        }
+    }
+
+    // Removes the file's header comments (see Global.HeaderCommentsRegex) from its code-lines:
+    //      - every line the header covers ENTIRELY is removed.
+    //      - if a block comment ends ON the line where code starts (e.g., "*/USE [master];"), only the part of that line BEFORE the code is removed.
+    //  NOTE: the regex runs against NormalizedText - which has exactly ONE line-break per code-line boundary (same as Normalize()'s split) -
+    //      so N line-breaks in the header = the first N code-lines. Remaining lines keep their ORIGINAL line numbers (for error reporting).
+    private static void RemoveHeaderComments(List<ICodeLine> codeLines, string normalizedText)
+    {
+        Match header = Global.HeaderCommentsRegex.Match(normalizedText);
+        if (!header.Success || header.Length == 0)
+            return;
+
+        if (header.Length == normalizedText.Length)
+        {
+            codeLines.Clear();      // nothing BUT whitespace and comments in this file.
+            return;
+        }
+
+        var lineBreaks = Regex.Matches(header.Value, @"\r\n|\r|\n");
+        int wholeLines = lineBreaks.Count;
+        int partial = wholeLines == 0 ? header.Length : header.Length - (lineBreaks[^1].Index + lineBreaks[^1].Length);
+
+        codeLines.RemoveRange(0, wholeLines);
+
+        if (partial > 0)
+        {
+            var codeStart = codeLines[0];
+            codeLines[0] = new CodeLine(codeStart.OriginalContent.Substring(partial), codeStart.LineNumber, codeStart.StartOffset + partial, codeStart.EndOffset, codeStart.FileDetail);
         }
     }
 
