@@ -43,12 +43,13 @@ public enum ArtifactType
 [Flags]
 public enum CommentRemovalDirectives
 {
-    None = 0,
-    RemoveHeaderComments = 1, RemoveHeader = RemoveHeaderComments,
-    RemoveDocComments = 2, RemoveDoc = RemoveDocComments,
-    RemoveLineEndComments = 4, RemoveEol = RemoveLineEndComments,
-    RemoveBlockComments = 8, RemoveBlock = RemoveBlockComments,
-    RemoveAllComments = 15, RemoveAll = RemoveAllComments       // redundant - but makes it easier to read in co
+    NotSet = 0,
+    RemoveNone = 1,
+    RemoveHeaderComments = 2, RemoveHeader = RemoveHeaderComments,
+    RemoveDocComments = 4, RemoveDoc = RemoveDocComments,
+    RemoveLineEndComments = 8, RemoveEol = RemoveLineEndComments,
+    RemoveBlockComments = 16, RemoveBlock = RemoveBlockComments,
+    RemoveAllComments = 30, RemoveAll = RemoveAllComments       // redundant - but makes it easier to read in co
 }
 
 [Flags]
@@ -63,7 +64,7 @@ public enum TokenExclusionDirectives
 //[Flags]
 //public enum GoHandlerDirectives
 //{
-//    None = 0, 
+//    RemoveNone = 0, 
 //    RemoveGoOnlyBatches = 1,
 //    RemoveUseOnlyBatches = 2
 //}

@@ -85,7 +85,7 @@ function Import-TsmTokens {
 	};
 }
 
-# set/define a single (extant) token's VALUE or ... options (.AllowEmpty)
+# set/define a single (EXISTING) token's VALUE or ... options (.AllowEmpty)
 # 		this can't be used to add a new token... 
 function Set-TsmToken {
 	

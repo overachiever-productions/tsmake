@@ -536,7 +536,7 @@ public class Directives
 
             var options = new AssemblerOptions(TokenDefinitionRegistry.Instance, OperationType.Build);
             options.AddRootPath(new RankedString(SourceType.BuildFile, temp));
-            options.SetDirectives(LineEndingsType.CrLf, CommentRemovalDirectives.None, TokenExclusionDirectives.None);
+            options.SetDirectives(LineEndingsType.CrLf, CommentRemovalDirectives.RemoveNone, TokenExclusionDirectives.None);
             if (flag != null)
                 options.SetFlags(new List<string> { flag }, FlagsSource.Console);
 

@@ -6,14 +6,14 @@
 public class SampleTSqlFiles
 {
     private string _samplesFolder = string.Empty;
-    private Assembler _kept = null!;        // CommentRemovalDirectives.None
+    private Assembler _kept = null!;        // CommentRemovalDirectives.RemoveNone
     private Assembler _removed = null!;     // CommentRemovalDirectives.RemoveHeaderComments
 
     [OneTimeSetUp]
     public void BuildSamples()
     {
         _samplesFolder = FindSamplesFolder();
-        _kept = Build(CommentRemovalDirectives.None);
+        _kept = Build(CommentRemovalDirectives.RemoveNone);
         _removed = Build(CommentRemovalDirectives.RemoveHeaderComments);
     }
 

@@ -72,7 +72,7 @@ public class AssemblerHeaderCommentsTests
         Assert.That(lines.Select(l => l.LineNumber), Is.EqualTo(new[] { 6, 7, 8, 9 }));      // ORIGINAL line numbers are kept (for error reporting).
     }
 
-    [TestCase(CommentRemovalDirectives.None)]
+    [TestCase(CommentRemovalDirectives.RemoveNone)]
     [TestCase(CommentRemovalDirectives.RemoveDocComments)]
     public void It_Keeps_Header_Comments_Unless_Told_To_Remove_Them(CommentRemovalDirectives removal)
     {
@@ -141,7 +141,7 @@ public class AssemblerHeaderCommentsTests
         var others = new Dictionary<string, string> { ["grandchild.sql"] = "SELECT 'grandchild';" };
 
         var removed = Build(child, CommentRemovalDirectives.RemoveHeaderComments, otherFiles: others);
-        var kept = Build(child, CommentRemovalDirectives.None, otherFiles: others);
+        var kept = Build(child, CommentRemovalDirectives.RemoveNone, otherFiles: others);
 
         Assert.That(IncludedLines(removed), Is.EqualTo(new[] { "SELECT 'child';" }));
         Assert.That(IncludedLines(kept), Is.EqualTo(new[] { "/* child header */", "SELECT 'grandchild';", "-- also header", "SELECT 'child';" }));
@@ -175,7 +175,7 @@ public class AssemblerHeaderCommentsTests
         var assembler = Build("PRINT 'child';", CommentRemovalDirectives.RemoveHeaderComments, HeaderOnlyBuildFile);
 
         Assert.That(assembler.ArtifactLines, Is.Empty);
-        Assert.That(LinesFrom(Build("PRINT 'child';", CommentRemovalDirectives.None, HeaderOnlyBuildFile), Child).Select(l => l.OriginalContent),
+        Assert.That(LinesFrom(Build("PRINT 'child';", CommentRemovalDirectives.RemoveNone, HeaderOnlyBuildFile), Child).Select(l => l.OriginalContent),
             Is.EqualTo(new[] { "PRINT 'child';" }));
     }
 }

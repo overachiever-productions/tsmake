@@ -56,7 +56,9 @@ function Invoke-TsmBuild {
 		[string[]]$Tokens,
 		[string[]]$Flags,
 		#[???[]]$BuildTransforms ... [regex-like-thingies with their matches... ]
-		[string[]]$CommentDirectives = @('None') # e.g., -Comments "RemoveHeader", "RemoveDoc", "RemoveEol", "RemoveBlock", "RemoveAll" ... 
+
+		[ValidateSet('RemoveNone', 'RemoveHeader', 'RemoveDoc', 'RemoveEol', 'RemoveBlock', 'RemoveAll')]
+		[string[]]$CommentDirectives = @('NotSet')
 	);
 	
 	begin {
@@ -137,18 +139,21 @@ function Invoke-TsmBuild {
 		# Version + Summary
 		# ====================================================================================================			
 		# 	Both of these are JUST tokens. 
-		# 	BUT, unlike most tokens - which are static, these guys ... are something that can be EASILY passed-in to each execution.
-		# 	
-		# 		IF they're present ... i'll do a TINY (or not?) bit of validation... 
 		# 			and then INJECT them into $Tokens. 		
 		
 		# ====================================================================================================
 		# Comment-Removal Options:
-		# Can be set via .config OR via $CommentDirectives. $CommentDirectives (i.e., CLI) trumps any values from config. 
+		# 1) load from .config. 
+		# 2) once loaded from .config we'll either have a) ::NotSet or b) a bitmask. 
+		# 3) either way, if -CommentDirectives -ne ::NotSet ... then whatever is passed in overwrites "from config" 
 		# ====================================================================================================		
-		#[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::None;
-		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = $CommentDirectives;
-		# TODO: load from config and/or squash via $CommentDirectives
+		# TODO: implement this as a LOAD from .config - e.g.,:
+		# [tsmake.CommentRemovalDirectives]$commentRemovalDirectives = Load-TokensFromConfig -Config $config;
+		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::NotSet; # this is JUST a place-holder until 
+		
+		if ($CommentDirectives -ne 'NotSet') {
+			[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = $CommentDirectives;
+		}
 		
 		# ====================================================================================================
 		# GO Removal/Cleanup Options

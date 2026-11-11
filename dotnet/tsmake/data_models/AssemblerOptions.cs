@@ -35,7 +35,7 @@ public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, 
     public OperationType OperationType { get; } = operationType;
 
     public LineEndingsType LineEndingsType { get; private set; } = LineEndingsType.CrLf;
-    public CommentRemovalDirectives CommentRemovalDirectives { get; private set; } = CommentRemovalDirectives.None;
+    public CommentRemovalDirectives CommentRemovalDirectives { get; private set; } = CommentRemovalDirectives.RemoveNone;
     public TokenExclusionDirectives TokenExclusionDirectives { get; private set; } = TokenExclusionDirectives.None;
     public ITokenDefinitionRegistry TokenDefinitionRegistry { get; } = tokenDefinitionRegistry;
     
