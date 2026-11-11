@@ -5,7 +5,9 @@
 # 			so ... yeah, we need an option for a COLLECTION of tokens as well. 
 # 		basically: Import-TsmTokens allows a number of different ways to add 1 or more tokens into the tsmTokenRegistry... 
 
-# MKC: v2026 ... this is ONLY used to import tokens IF a) they're sent in via command-line (as an object, array-of-strings, or serialized-string) or B) passed in via .config file - in which case I'll deserialize from .config and pass IN to Import-TsmTokens as ... as an array. 
+# MKC: v2026 ... this is ONLY used to import tokens IF 
+#   A) they're sent in via command-line (as an object, array-of-strings, or serialized-string) or 
+#   B) passed in via .config file - in which case I'll deserialize from .config and pass IN to Import-TsmTokens as ... as an array. 
 function Import-TsmTokens {
 	[CmdletBinding()]
 	#[Alias("")]

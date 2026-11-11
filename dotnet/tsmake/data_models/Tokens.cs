@@ -86,8 +86,6 @@ public class Token
     public string Name { get; }
     public string DefaultValue { get; }
 
-    //public Stack<Location> Location { get; private set; }
-
     public Token(string tokenValue, string defaultValue)
     {
         DefaultValue = defaultValue;

@@ -147,7 +147,6 @@ function Invoke-TsmBuild {
 		# 2) once loaded from .config we'll either have a) ::NotSet or b) a bitmask. 
 		# 3) either way, if -CommentDirectives -ne ::NotSet ... then whatever is passed in overwrites "from config" 
 		# ====================================================================================================		
-		# TODO: implement this as a LOAD from .config - e.g.,:
 		# [tsmake.CommentRemovalDirectives]$commentRemovalDirectives = Load-TokensFromConfig -Config $config;
 		[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = [tsmake.CommentRemovalDirectives]::NotSet; # this is JUST a place-holder until 
 		
@@ -183,19 +182,10 @@ function Invoke-TsmBuild {
 		# Build Transforms:
 		# ====================================================================================================			
 		
-		
-		# ====================================================================================================
-		# TokenExclusionDirectives:
-		# 		CAN ONLY be set via .config values. 
-		# ====================================================================================================			
-		[tsmake.TokenExclusionDirectives]$tokenExclusionDirectives = [tsmake.TokenExclusionDirectives]::None;
+		[tsmake.TokenExclusionDirectives]$tokenExclusionDirectives = [tsmake.TokenExclusionDirectives]::None; # CAN ONLY be set via .config values. 
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
-		# ====================================================================================================
-		# LineEndingOptions:
-		# 		CAN ONLY be set via .config values. 
-		# ====================================================================================================	
-		[tsmake.LineEndingsType]$lineEndingsType = [tsmake.LineEndingsType]::CrLf;
+		[tsmake.LineEndingsType]$lineEndingsType = [tsmake.LineEndingsType]::CrLf; # CAN ONLY be set via .config values. 
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
 		Write-Verbose "Configuring Assembler Options.";
