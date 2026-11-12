@@ -1,48 +1,4 @@
-﻿Set-StrictMode -Version 3.0;
-
-<#
-
-v2026 - COGNATIVE DISSONANCE
-	TOKENS are COMPLICATED. 
-		TOKEN DEFINITIONS
-			I need these - they're important in terms of DEFINING whether specific tokens (that my be USED inside someone's build file) 
-			ALLOW things like: 
-				EMPTY/BLANK inputs (or do they fail if something importantly like {{##COPYRIGHT}} is NOT supplied? 
-				DEFAULTS ... allowed or - fail? 
-					then if/when VALUES for these 'default-able' TOKENS are supplied by .config ... we no longer need a default. 
-						and if/when values for these default-able TOKENs are supplied by -Tokens ... those 'trump' config values (if loaded) and ... we no longer need defaults. 
-			OTHER than the 'complexity' above ... 
-				I could just let people pass in name-value-pairs. period. end-of-story. e.g., ##VERSION -> 12.34.56
-			
-		TOKEN REGISTRY
-			I've got a SINGLETON in C# that MANAGES: 
-				- TOKEN DEFINITIONs 
-				- user-defined (outside of command-line ARGs for Build-TSM xxx and Document-TsmEtc... 
-			i.e., the POINT of a SINGLETON is that 
-				a user can create token definitions via "token helper fuctions" (like New-TsmTokensCollection, Set-TsmToken, etc.) 
-				they get ONE of these instances for THEIR use in staging tokens. 
-				
-			WHICH they can then USE as -TokensCollection $myTokens
---MKC: at which point... a singleton is stupid. 
-			semantics should be: 
-			$myTokens = New-TsmTokensCollection -Config myConfig;  # and/or a couple of other 'ctors' whatever. 
-			Add-TsmToken -Collection $myTokens -Name "CopyRight" -Value "2026";
-			Set-TsmToken -Collection $myTokens -etc -etc. 
-
-			Invoke-Tsm<Verb> -x -y, -Tokens $myTokens
-				which is a new 'overload' ... we can pass in -Tokens 2 ways: 
-						- array of 'serialized' strings. 
-						- tsmake.tokenCollection ... 
-				and then just use overloads as needed. 
-				
-
-
-
-
-#>
-
-
-
+﻿#Set-StrictMode -Version 3.0;
 # 	 note that a CONFIG file can/will have the option for defined tokens. but we won't import from a config file. 
 # 			instead IF a "Config Object" has tokens, those can be ADDED to build/etc by IMPORTING those tokens.
 # 			so ... yeah, we need an option for a COLLECTION of tokens as well. 
