@@ -1,0 +1,8 @@
+-- ##COMMENT: This is a build file... 
+-- ##OUTPUT: basic_latest.sql
+-- 3
+-- ##:: Comment also - using alternate comment-syntax.
+-- 5 
+-- ##FILE: simple-sixes.sql
+-- 7
+-- 8

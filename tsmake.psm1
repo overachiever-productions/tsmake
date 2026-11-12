@@ -5,30 +5,36 @@ filter Import-Types {
 		[string]$ScriptRoot = $PSScriptRoot
 	);
 	
-	# NOTE: Import order can/does impact BUILD operations
 	$classFiles = @(
-		"$ScriptRoot\clr\tsmake\Globals.cs";
-		"$ScriptRoot\clr\tsmake\Enums.cs";
-		"$ScriptRoot\clr\tsmake\Errors.cs";
-		"$ScriptRoot\clr\tsmake\Extensions.cs";
+		"$ScriptRoot\dotnet\tsmake\Globals.cs";
+		"$ScriptRoot\dotnet\tsmake\Enums.cs";
+		"$ScriptRoot\dotnet\tsmake\FileSystem.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\Lines.cs";
-		"$ScriptRoot\clr\tsmake\models\Tokens.cs";
-		"$ScriptRoot\clr\tsmake\models\Directives.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\RankedValues.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Tokens.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Errors.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\CodeLines.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Directives.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\AssemblerOptions.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Results.cs";
+		"$ScriptRoot\dotnet\tsmake\data_models\Artifacts.cs";
 		
-		"$ScriptRoot\clr\tsmake\models\Files.cs";
-		"$ScriptRoot\clr\tsmake\Results.cs";
-		
-		"$ScriptRoot\clr\tsmake\Formatter.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\Assembler.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\Normalizer.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\DocumentationExtractor.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\DirectiveProcessor.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\TokenTransformer.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\OpsFactory.cs";
+
+#		"$ScriptRoot\dotnet\tsmake\Formatter.cs";
 	);
 	
-	Add-Type -Path $classFiles;
+	Add-Type -Path $classFiles -CompilerOptions '-nullable:enable';
 }
 
-# Import CLR objects: 
 Import-Types;
 
-# Import Private Funcs: 
+# Internal:
 foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'internal/*.ps1') -Recurse -ErrorAction Stop))) {
 	try {
 		. $file.FullName;
@@ -38,7 +44,7 @@ foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPa
 	}
 }
 
-# Import Public Funcs: 
+# Public:
 foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPath 'public/*.ps1') -Recurse -ErrorAction Stop))) {
 	try {
 		. $file.FullName;
@@ -48,5 +54,5 @@ foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPa
 	}
 }
 
-Export-ModuleMember -Function Invoke-TsmBuild, Import-TsmTokens, Get-TsmToken, Remove-TsmTokens;
+Export-ModuleMember -Function Invoke-TsmBuild;  #, Import-TsmTokens, Get-TsmToken, Remove-TsmTokens;
 Export-ModuleMember -Alias *;
