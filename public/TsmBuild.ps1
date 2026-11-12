@@ -35,11 +35,20 @@
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
 				Invoke-TsmBuild -CommentDirectives "RemoveHeader";
 
+	SUMMARY and Version (built-in tokens)
+
+				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
+				[string]$version = '14.8.5629.2';  # e.g. pull this from Get-OaToolsSignatureByProject -Project "S4", etc...  
+				Invoke-TsmBuild -Version $version -Summary "Standardization of Kill-Store functionality and options; bug fixes" -CommentDirectives "RemoveHeader";
+
 	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
 				xxxx
 
 	TOKENS (without explicit build-file):
-				xxxxx
+
+
+
 	
 #>
 
