@@ -56,10 +56,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
-    // MKC - NOTE: Any syntax errors or other problems that are found from this point forward ... 
-    //          need to pull file/source information from the [ArtifactLines] collection - which has this info - per assembled code-line. 
-            var tokenTransformer = this.OpsFactory.NewTokenTransformer();
-            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors, this.Options.TokenDefinitionRegistry, this.Options.TokenExclusionDirectives);
+            var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
+            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors);
 
             // TODO: Significant Transition Happens Here. 
             //     until this point, everything has been 'line-based' - where we've: 
@@ -132,7 +130,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                     // TODO: Need a REGEX for DocComments that can find / address 2x scenarios: 
                     //   1. ENTIRE block-comment is, effectively, a DocComment ... i.e., /* <whitespace> DOC_CONTENT <whitespace> */ ...
                     //        i.e., replace the entire block-comment.
-                    //   2. ... there are lines with DocContent in the ... but they're NOT the only content in the block-comment itself. 
+                    //   2. ... there are lines with DocContent in them ... but they're NOT the only content in the block-comment itself. 
                     //       just replace the matching LINES. 
                 }
             }

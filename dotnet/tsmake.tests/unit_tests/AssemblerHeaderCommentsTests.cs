@@ -27,7 +27,7 @@ public class AssemblerHeaderCommentsTests
             string buildFile = Path.Combine(temp, BuildFileName);
             File.WriteAllText(buildFile, buildContent);
 
-            var options = new AssemblerOptions(TokenDefinitionRegistry.Instance, OperationType.Build);
+            var options = new AssemblerOptions(TokenDefinitionRegistry.NewRegistry, OperationType.Build);
             options.AddRootPath(new RankedString(SourceType.BuildFile, temp));
             options.SetDirectives(lineEndings, removal, TokenExclusionDirectives.None);
 

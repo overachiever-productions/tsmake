@@ -54,5 +54,5 @@ foreach ($file in (@(Get-ChildItem -Path (Join-Path -Path $PSScriptRoot -ChildPa
 	}
 }
 
-Export-ModuleMember -Function Invoke-TsmBuild;  #, Import-TsmTokens, Get-TsmToken, Remove-TsmTokens;
+Export-ModuleMember -Function Invoke-TsmBuild, Import-TsmTokens;  #, Get-TsmToken, Remove-TsmTokens;
 Export-ModuleMember -Alias *;

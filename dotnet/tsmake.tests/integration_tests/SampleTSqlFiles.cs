@@ -41,7 +41,7 @@ public class SampleTSqlFiles
             string buildFile = Path.Combine(temp, "samples.build.sql");
             File.WriteAllText(buildFile, $"SET NOCOUNT ON;\r\n-- ##OUTPUT: samples_latest.sql\r\n-- ##DIRECTORY: \"{_samplesFolder}\"\r\n");
 
-            var options = new AssemblerOptions(TokenDefinitionRegistry.Instance, OperationType.Build);
+            var options = new AssemblerOptions(TokenDefinitionRegistry.NewRegistry, OperationType.Build);
             options.AddRootPath(new RankedString(SourceType.BuildFile, temp));
             options.SetDirectives(LineEndingsType.CrLf, removal, TokenExclusionDirectives.None);
 

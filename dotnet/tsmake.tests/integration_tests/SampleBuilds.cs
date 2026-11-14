@@ -10,7 +10,7 @@ public class SampleBuilds()
         string buildFile = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\simple1\\basic.build.sql";
         var fileSystem = new FileSystem(pwd);
 
-        var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
+        var tokenDefinitionRegistry = TokenDefinitionRegistry.NewRegistry;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
         buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
@@ -37,7 +37,7 @@ public class SampleBuilds()
         string buildFile = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\test.build.sql";
         var fileSystem = new FileSystem(pwd);
 
-        var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
+        var tokenDefinitionRegistry = TokenDefinitionRegistry.NewRegistry;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
         buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
@@ -61,7 +61,7 @@ public class SampleBuilds()
         string buildFile = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\conditional\\conditional.build.sql";
         var fileSystem = new FileSystem(pwd);
 
-        var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
+        var tokenDefinitionRegistry = TokenDefinitionRegistry.NewRegistry;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
         buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
@@ -85,7 +85,7 @@ public class SampleBuilds()
         string buildFile = "D:\\Dropbox\\Repositories\\tsmake\\test_files\\test.build.sql";
         var fileSystem = new FileSystem(pwd);
 
-        var tokenDefinitionRegistry = TokenDefinitionRegistry.Instance;
+        var tokenDefinitionRegistry = TokenDefinitionRegistry.NewRegistry;
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
         buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 

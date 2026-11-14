@@ -3,7 +3,7 @@
 # ====================================================================================================
 # Intrinsics:
 # ====================================================================================================	
-$tsmTokenRegistry = [tsmake.data_models.TokenDefinitionRegistry]::Instance;
+#$tsmTokenRegistry = [tsmake.data_models.TokenDefinitionRegistry]::Instance; # https://overachieverllc.atlassian.net/browse/TSM-41 
 
 # ====================================================================================================
 # Helpers / Utilities:

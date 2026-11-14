@@ -42,12 +42,14 @@
 				[string]$version = '14.8.5629.2';  # e.g. pull this from Get-OaToolsSignatureByProject -Project "S4", etc...  
 				Invoke-TsmBuild -Version $version -Summary "Standardization of Kill-Store functionality and options; bug fixes" -CommentDirectives "RemoveHeader";
 
-	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
-				xxxx
-
 	TOKENS (without explicit build-file):
 
+				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;		
+				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\calibration");
+				Invoke-TsmBuild -Tokens "##Copyright: 2026 - OverAchiever Productions, LLC.", "##PROJECT-SITE: https://www.totalsql.com/sql-server-solutions/tsmake";
 
+	EXPLICIT EXECUTION OPTION (send in an explicitly defined *.build.sql file(name)): 
+				xxxx
 
 	
 #>
@@ -118,7 +120,8 @@ function Invoke-TsmBuild {
 		
 		# ====================================================================================================
 		# Config-File(s):
-		# ====================================================================================================				
+		# ====================================================================================================	
+		#    	https://overachieverllc.atlassian.net/browse/TSM-30
 		# TODO: Implement logic for: 
 		# 		a. checking for .config file based on -BuildFile name/pattern. 
 		# 		b. handling EXPLICIT config file(s) (1 file or multiples)
@@ -133,22 +136,23 @@ function Invoke-TsmBuild {
 		# Tokens:
 		# ====================================================================================================			
 		# TODO: 
-		# 		implement tokens
-		# 			(these are/were working SOLIDLY in v0.3)
-		# 			Likewise, the existence of a POTENTIAL .CONFIG file for each of the -BuildFiles that MIGHT be getting processed 
-		# 				would be one way to have entirely different tokens from one project to the next AND have some of the tokens that are the same. 
-		# 		STEPS: 
-		# 				1. reset/unregister any extant tokens (i.e., clear away anything from PREVIOUS runs)
-		# 				2. load base/stock/core tokens. 
-		# 				3. add in any tokens provided by the command-line and/or via the .config. 	
-		# 				4. add in version/summary (below)
-		$buildTokens = @();
+		# 		https://overachieverllc.atlassian.net/browse/TSM-39
+		# 		https://overachieverllc.atlassian.net/browse/TSM-40
+		# 		https://overachieverllc.atlassian.net/browse/TSM-41
+		[tsmake.data_models.TokenDefinition[]]$buildTokens = @();
+		if ($PSBoundParameters.ContainsKey('Tokens')) {
+			$buildTokens += @(Import-TsmTokens -TokenStrings $Tokens);
+		}
 		
 		# ====================================================================================================
-		# Version + Summary
+		# Version + Summary (Implemented as Tokens):
 		# ====================================================================================================			
-		# 	Both of these are JUST tokens. 
-		# 			and then INJECT them into $Tokens. 		
+		if ($PSBoundParameters.ContainsKey('Version')) {
+			$buildTokens += New-Object tsmake.data_models.TokenDefinition("##VERSION", $Version);
+		}
+		if ($PSBoundParameters.ContainsKey('Summary')) {
+			$buildTokens += New-Object tsmake.data_models.TokenDefinition("##SUMMARY", $Summary);
+		}
 		
 		# ====================================================================================================
 		# Comment-Removal Options:
@@ -162,14 +166,6 @@ function Invoke-TsmBuild {
 		if ($CommentDirectives -ne 'NotSet') {
 			[tsmake.CommentRemovalDirectives]$commentRemovalDirectives = $CommentDirectives;
 		}
-		
-		# ====================================================================================================
-		# GO Removal/Cleanup Options
-		# ====================================================================================================	
-# TODO: think this could be a BuildTRANSFORM option ... i.e., most BUILD transforms are simple REGEXes ... this could be one too. 
-		# 		these can NOT be specified via command-line. 
-		# 		so if they exist in the config ... copy them over. 
-#		$buildGoRemovalDirectives = @();
 		
 		# ====================================================================================================
 		# Build Flags: 
@@ -191,6 +187,19 @@ function Invoke-TsmBuild {
 		# Build Transforms:
 		# ====================================================================================================			
 		
+		
+		# ====================================================================================================
+		# GO Removal/Cleanup Options
+		# ====================================================================================================	
+		# TODO: think this SHOULD be a BuildTRANSFORM option ... i.e., most BUILD transforms are simple REGEXes ... this could be one too. 
+		# 		these can NOT be specified via command-line. 
+		# 		so if they exist in the config ... copy them over. 
+		#		$buildGoRemovalDirectives = @();		
+		
+		
+		# ====================================================================================================
+		# Assembler Options + Invoice Build Pipeline:
+		# ====================================================================================================			
 		[tsmake.TokenExclusionDirectives]$tokenExclusionDirectives = [tsmake.TokenExclusionDirectives]::None; # CAN ONLY be set via .config values. 
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
@@ -198,7 +207,9 @@ function Invoke-TsmBuild {
 # TODO: map any value other than ::NONE from the .config if provided... 
 		
 		Write-Verbose "Configuring Assembler Options.";
-		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tsmTokenRegistry, [tsmake.OperationType]::Build);
+		
+		[tsmake.data_models.TokenDefinitionRegistry]$tokenRegistry = [tsmake.data_models.TokenDefinitionRegistry]::CreateRegistry($buildTokens);
+		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tokenRegistry, [tsmake.OperationType]::Build);
 		
 		[tsmake.data_models.RankedString]$pwdRoot = New-Object tsmake.data_models.RankedString([tsmake.SourceType]::Convention, $pwd);
 		$assemblerOptions.AddRootPath($pwdRoot);
@@ -210,7 +221,7 @@ function Invoke-TsmBuild {
 			$assemblerOptions.AddOutputPath($cmdLineOutputPath);
 		}
 		
-		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);
+		$assemblerOptions.SetDirectives($lineEndingsType, $commentRemovalDirectives, $tokenExclusionDirectives);  # todo add batch/go cleanup options. 
 		
 		if ($Flags.Count -gt 0) {
 			[tsmake.FlagsSource]$flagsSource = [tsmake.FlagsSource]::Console;

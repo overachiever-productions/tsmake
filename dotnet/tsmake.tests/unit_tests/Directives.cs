@@ -534,7 +534,7 @@ public class Directives
             string buildFile = Path.Combine(temp, "flags.build.sql");
             File.WriteAllText(buildFile, $"-- ##OUTPUT: flags_latest.sql\r\n{FlagDirectoryLine}\r\nSELECT 'after the flag-directory';\r\n");
 
-            var options = new AssemblerOptions(TokenDefinitionRegistry.Instance, OperationType.Build);
+            var options = new AssemblerOptions(TokenDefinitionRegistry.NewRegistry, OperationType.Build);
             options.AddRootPath(new RankedString(SourceType.BuildFile, temp));
             options.SetDirectives(LineEndingsType.CrLf, CommentRemovalDirectives.RemoveNone, TokenExclusionDirectives.None);
             if (flag != null)

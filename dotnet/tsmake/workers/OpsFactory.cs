@@ -7,7 +7,7 @@ public interface IOpsFactory
     IFileSystem CurrentFileSystem { get; }
     
     INormalizer NewNormalizer();
-    ITokenTransformer NewTokenTransformer();
+    ITokenTransformer NewTokenTransformer(TokenExclusionDirectives directives, ITokenDefinitionRegistry tokenDefinitionRegistry);
     IDirectiveProcessor NewDirectiveProcessor();
     IDocumentationExtractor NewDocumentationExtractor();
 }
@@ -23,9 +23,9 @@ public class OpsFactory(IFileSystem currentFileSystem, IAssemblerOptions assembl
         return new Normalizer(this._options.LineEndingsType);
     }
 
-    public ITokenTransformer NewTokenTransformer()
+    public ITokenTransformer NewTokenTransformer(TokenExclusionDirectives directives, ITokenDefinitionRegistry tokenDefinitionRegistry)
     {
-        return new TokenTransformer(this._options.TokenExclusionDirectives);
+        return new TokenTransformer(directives, tokenDefinitionRegistry);
     }
 
     public IDirectiveProcessor NewDirectiveProcessor()
