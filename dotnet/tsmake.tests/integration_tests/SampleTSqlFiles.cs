@@ -1,13 +1,16 @@
 ﻿namespace tsmake.tests.integration_tests;
 
-// Regression: REAL (non-test) T-SQL files - test_files\sample-t-sql-files - assembled as ##DIRECTORY includes,
-//      once WITHOUT and once WITH RemoveHeaderComments (both builds run once, in OneTimeSetUp).
+// Regression: REAL (non-test) T-SQL files - test_files\sample-t-sql-files - assembled as ##DIRECTORY includes:
+//      WITHOUT and WITH RemoveHeaderComments, and WITH token definitions (all builds run once, in OneTimeSetUp).
 [TestFixture]
 public class SampleTSqlFiles
 {
+    private const string Copyright = "Copyright (c) 2026 OverAchiever Productions, LLC.";
+
     private string _samplesFolder = string.Empty;
     private Assembler _kept = null!;        // CommentRemovalDirectives.RemoveNone
     private Assembler _removed = null!;     // CommentRemovalDirectives.RemoveHeaderComments
+    private Assembler _tokens = null!;      // {{##COPYRIGHT}} defined - plus 'decoys' named like S4's own (runtime) {TOKENS}.
 
     [OneTimeSetUp]
     public void BuildSamples()
@@ -15,6 +18,9 @@ public class SampleTSqlFiles
         _samplesFolder = FindSamplesFolder();
         _kept = Build(CommentRemovalDirectives.RemoveNone);
         _removed = Build(CommentRemovalDirectives.RemoveHeaderComments);
+        _tokens = Build(CommentRemovalDirectives.RemoveNone, TokenDefinitionRegistry.CreateRegistry([
+            new TokenDefinition("COPYRIGHT", Copyright),
+            new TokenDefinition("SYSTEM", "decoy"), new TokenDefinition("ALL", "decoy"), new TokenDefinition("DEFAULT", "decoy")]));
     }
 
     // Walks up from the test binaries (...\dotnet\tsmake.tests\bin\Debug\netX) to the repo's test_files - so no hard-coded paths.
@@ -31,7 +37,7 @@ public class SampleTSqlFiles
         return string.Empty;
     }
 
-    private Assembler Build(CommentRemovalDirectives removal)
+    private Assembler Build(CommentRemovalDirectives removal, ITokenDefinitionRegistry? tokens = null)
     {
         string temp = Path.Combine(Path.GetTempPath(), "tsmake_tests_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(temp);
@@ -41,7 +47,7 @@ public class SampleTSqlFiles
             string buildFile = Path.Combine(temp, "samples.build.sql");
             File.WriteAllText(buildFile, $"SET NOCOUNT ON;\r\n-- ##OUTPUT: samples_latest.sql\r\n-- ##DIRECTORY: \"{_samplesFolder}\"\r\n");
 
-            var options = new AssemblerOptions(TokenDefinitionRegistry.NewRegistry, OperationType.Build);
+            var options = new AssemblerOptions(tokens ?? TokenDefinitionRegistry.NewRegistry, OperationType.Build);
             options.AddRootPath(new RankedString(SourceType.BuildFile, temp));
             options.SetDirectives(LineEndingsType.CrLf, removal, TokenExclusionDirectives.None);
 
@@ -110,7 +116,7 @@ public class SampleTSqlFiles
 
     // The files (as provided): each has ONE leading /* block comment */ (+ blank lines) before "USE [admindb];".
     [TestCase("core_object_predicates.sql", 6)]
-    [TestCase("core_predicates.sql", 11)]                   // LF line endings (the rest are CRLF).
+    [TestCase("core_predicates.sql", 11)]
     [TestCase("database_defaults().sql", 6)]
     [TestCase("database_scoped_defaults().sql", 10)]
     [TestCase("engine_version().sql", 6)]
@@ -133,5 +139,34 @@ public class SampleTSqlFiles
 
         Assert.That(all.First().OriginalContent, Is.EqualTo("/*"));
         Assert.That(all.Take(firstCodeLine - 1).Last(l => l.OriginalContent.Trim().Length > 0).OriginalContent.Trim(), Is.EqualTo("*/"));
+    }
+
+    [Test]
+    public void Copyright_Tokens_Are_Replaced_And_Nothing_Else_Is()
+    {
+        int copyrights = 0, runtimeTokens = 0;
+
+        foreach (var fileName in SampleFiles())
+        {
+            foreach (var line in LinesFrom(_tokens, fileName))
+            {
+                string where = $"{fileName} line {line.LineNumber}: {line.OriginalContent}";
+                if (line.OriginalContent.Contains("{{##COPYRIGHT}}", StringComparison.Ordinal))
+                {
+                    copyrights++;
+                    Assert.That(line.GetContent(), Is.EqualTo(line.OriginalContent.Replace("{{##COPYRIGHT}}", Copyright)), where);
+                    continue;
+                }
+
+                // e.g., S4's (runtime) {SYSTEM}, {ALL}, {DEFAULT}, {CURRENT_DB} - with same-named (decoy) definitions.
+                if (Regex.IsMatch(line.OriginalContent, @"\{(?:SYSTEM|ALL|DEFAULT|CURRENT_DB)\}"))
+                    runtimeTokens++;
+
+                Assert.That(line.TransformedContent, Is.Null, where);
+            }
+        }
+
+        Assert.That(copyrights, Is.EqualTo(10));        // every sample file - except extract_letters() and extract_numbers().
+        Assert.That(runtimeTokens, Is.GreaterThan(0));
     }
 }

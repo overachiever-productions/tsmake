@@ -26,6 +26,14 @@ public static class Global
         @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(?:FLAG|FLAGS)-(?:FILE|DIRECTORY)\s*\(\s*\#?[a-z0-9_-]+(?:\s*,\s*\#?[a-z0-9_-]+)*\s*\)\x20?|(?:FLAG|FLAGS)-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
+    // TOKENS in .sql files: {{##NAME}} - where everything but NAME is literal, and NAME is UPPER-CASE letters and numbers with
+    //      single dashes BETWEEN them (e.g., {{##PROJECT-SITE}}). No whitespace anywhere. CASE-SENSITIVE (i.e., no IgnoreCase):
+    //      {{##copyright}}, {{COPYRIGHT}}, {{ ##COPYRIGHT}}, {{##A--B}} and {{##A_B}} are all just text.
+    //  (Token DEFINITIONS use the same name rules - but are case-insensitive; see TokenDefinition.)
+    public static readonly Regex TokenRegex = new(
+        @"\{\{\#\#(?<name>[A-Z0-9]+(?:-[A-Z0-9]+)*)\}\}",
+        RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
     // A -- comment (to the end of its line).
     private const string HeaderLineComment = @"
         (?>--[^\r\n]*)";

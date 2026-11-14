@@ -18,7 +18,7 @@ CREATE FUNCTION dbo.[execute_per_database_errors] (@errors xml)
 RETURNS table
 	AS RETURN
     
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 
     WITH core AS (
 		SELECT 

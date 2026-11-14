@@ -27,7 +27,7 @@ CREATE PROC dbo.[core_predicates]
 AS
     SET NOCOUNT ON; 
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 	
 	SET @Databases = NULLIF(@Databases, N'');
 	SET @Applications = NULLIF(@Applications, N'');

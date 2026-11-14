@@ -73,7 +73,7 @@ AS
 
 	SET @DotIncludeFile = NULLIF(@DotIncludeFile, N'');
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 	
 	DECLARE @commandOutput xml; 
 	DECLARE @returnValue int;

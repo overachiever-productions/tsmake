@@ -20,6 +20,7 @@ filter Import-Types {
 		"$ScriptRoot\dotnet\tsmake\data_models\Artifacts.cs";
 		
 		"$ScriptRoot\dotnet\tsmake\workers\Assembler.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\TSqlScanner.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\Normalizer.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\DocumentationExtractor.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\DirectiveProcessor.cs";

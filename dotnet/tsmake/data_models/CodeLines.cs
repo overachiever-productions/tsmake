@@ -3,7 +3,7 @@
 public interface ICodeLine
 {
     string OriginalContent { get; }
-    string TransformedContent { get; }
+    string? TransformedContent { get; internal set; }        // null = NOT transformed (an empty string is a valid transformation).
     int LineNumber { get; }
     int StartOffset { get; }
     int EndOffset { get; }
@@ -16,7 +16,7 @@ public interface ICodeLine
 public class CodeLine(string content, int lineNumber, int startOffset, int endOffset, IFileDetail fileDetail) : ICodeLine
 {
     public string OriginalContent { get; } = content;
-    public string TransformedContent { get; private set; } = string.Empty;
+    public string? TransformedContent { get; set; } = null;
     public int LineNumber { get; } = lineNumber;
     public int StartOffset { get; } = startOffset;
     public int EndOffset { get; } = endOffset;
@@ -25,7 +25,7 @@ public class CodeLine(string content, int lineNumber, int startOffset, int endOf
     
     public string GetContent()
     {
-        return string.IsNullOrEmpty(TransformedContent) ? OriginalContent : TransformedContent;
+        return TransformedContent ?? OriginalContent;
     }
 }
 

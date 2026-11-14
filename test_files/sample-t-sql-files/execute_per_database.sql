@@ -112,7 +112,7 @@ CREATE PROC dbo.[execute_per_database]
 AS
     SET NOCOUNT ON; 
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 
 	SET @Databases = NULLIF(@Databases, N'');
 	SET @Priorities = NULLIF(@Priorities, N'');

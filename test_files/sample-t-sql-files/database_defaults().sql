@@ -14,7 +14,7 @@ CREATE FUNCTION dbo.[database_defaults] (@database_id int = 3)
 RETURNS table
 AS RETURN
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 
 	WITH core AS ( 
 		SELECT 

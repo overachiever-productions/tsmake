@@ -69,8 +69,20 @@ function Import-TsmTokens {
 					throw "Invalid Token: [$tokenString]. Serialized Tokens must use 'name:value' syntax.";
 				}
 				
-				$parts = $tokenString.Split(":");
-				$tokens += New-Object tsmake.data_models.TokenDefinition($parts[0], $tokenString.Replace($parts[0] + ":", ""));
+				# name = everything BEFORE the first ':' - value = everything AFTER it (values can contain ':' - e.g., URLs).
+				$separator = $tokenString.IndexOf(":");
+				$name = $tokenString.Substring(0, $separator);
+				$value = $tokenString.Substring($separator + 1);
+
+				# Fail EARLY on invalid definitions - same rules as the C# TokenDefinition (which ALSO validates them):
+				#   names: letters + numbers, with single dashes between them, and an optional ## prefix (e.g., ##PROJECT-SITE).
+				#   values: no line breaks (CR or LF).
+				$problem = [tsmake.data_models.TokenDefinition]::GetValidationError($name, $value);
+				if ($problem) {
+					throw "Invalid Token: [$tokenString]. $problem";
+				}
+
+				$tokens += New-Object tsmake.data_models.TokenDefinition($name, $value);
 			}
 			
 		}

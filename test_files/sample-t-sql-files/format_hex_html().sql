@@ -62,7 +62,7 @@ RETURNS nvarchar(MAX)
 	WITH RETURNS NULL ON NULL INPUT
 AS
     
-	-- {copyright}
+	-- {{##COPYRIGHT}}
     
     BEGIN; 
     	

@@ -18,6 +18,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
     public void Normalize(string fileContent, List<ICodeLine> codeLines, List<ISyntaxError> syntaxErrors, IFileDetail fileDetail)
     {
         this._input = fileContent;
+        int firstNewLine = codeLines.Count;     // codeLines MAY already contain other lines: only THIS file's are validated (below).
 
         var regex = new Regex(@"\r\n|\r|\n", Global.SingleLineRegexOptions);
         var matches = regex.Matches(fileContent);
@@ -62,7 +63,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
         }
 
         this.NormalizedText = this.NormalizeLineEndings();
-        this.ValidateClosures(syntaxErrors, fileDetail);
+        ValidateClosures(codeLines.GetRange(firstNewLine, codeLines.Count - firstNewLine), syntaxErrors, fileDetail);
     }
 
     private string NormalizeLineEndings()
@@ -78,144 +79,40 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
         return Regex.Replace(this._input, @"\r\n|\r|\n", lineEnding, Global.SingleLineRegexOptions);
     }
 
-    private enum ScanState
-    {
-        Code,
-        EolComment,             // -- ... (to the end of the line)
-        BlockComment,           // /* ... */ - which can be NESTED: /* outer /* inner */ still outer */
-        String,                 // '...' (and N'...') - '' is an escaped tick
-        BracketedIdentifier,    // [...] - ]] is an escaped ]
-        QuotedIdentifier        // "..." - "" is an escaped " (a string - instead of an identifier - if QUOTED_IDENTIFIER is OFF; same rules either way)
-    }
-
-    // Scans the ORIGINAL input left-to-right - the same way SQL Server's lexer does - so that each delimiter is only
-    //      'seen' when it's in CODE: a tick in a -- comment, a /* in a string, a [ in a block comment, etc. are all just content.
-    //  Reports:
+    // Scans the file's lines with the (shared) TSqlScanner - see TSqlScanner for the lexing rules. Reports:
     //      - every */ found in CODE (i.e., without a matching /*).
     //      - at most ONE non-terminated string/comment/identifier: whatever is still open at the end of the file - which,
     //        like SQL Server, swallows everything after it (so a tick within an unclosed block comment is NOT a 2nd error).
-    //  Line numbers are counted while scanning (\r\n, \r and \n each end a line - same as Normalize()) - so they always
-    //      match the CodeLines; the line-ending normalization (and any difference in lengths it causes) plays no part.
-    private void ValidateClosures(List<ISyntaxError> syntaxErrors, IFileDetail fileDetail)
+    //  Line numbers come straight from the CodeLines - so the line-ending normalization plays no part.
+    //  Error detail: from the problem to the end of ITS line (not the rest of the file).
+    private static void ValidateClosures(List<ICodeLine> fileLines, List<ISyntaxError> syntaxErrors, IFileDetail fileDetail)
     {
-        string text = this._input;
-        if (string.IsNullOrEmpty(text))
-            return;
-
-        var state = ScanState.Code;
-        int commentDepth = 0;
-        int line = 1;
+        var scanner = new TSqlScanner();
+        ICodeLine? openedOn = null;
         int openedAt = -1;
-        int openedOnLine = 0;
 
-        for (int i = 0; i < text.Length; i++)
+        foreach (var line in fileLines)
         {
-            char c = text[i];
-            char next = i + 1 < text.Length ? text[i + 1] : '\0';
-
-            if (c is '\r' or '\n')
-            {
-                if (c == '\r' && next == '\n')
-                    i++;
-
-                line++;
-                if (state == ScanState.EolComment)
-                    state = ScanState.Code;
-
-                continue;       // in any other state, a line break is just part of the string/comment/identifier.
-            }
-
-            switch (state)
-            {
-                case ScanState.Code:
-                    if (c == '-' && next == '-')
-                    {
-                        state = ScanState.EolComment;
-                        i++;
-                    }
-                    else if (c == '/' && next == '*')
-                    {
-                        state = ScanState.BlockComment;
-                        commentDepth = 1;
-                        (openedAt, openedOnLine) = (i, line);
-                        i++;
-                    }
-                    else if (c == '*' && next == '/')
-                    {
-                        // NOT when the '/' starts a comment: "SELECT t.*/* all columns */" or "2*/* times */3" are valid.
-                        bool slashStartsComment = i + 2 < text.Length && text[i + 2] == '*';
-                        if (!slashStartsComment)
-                        {
-                            syntaxErrors.Add(new SyntaxError("Unexpected End of Block-Comment (*/ without a matching /*).", RestOfLine(text, i), line, fileDetail));
-                            i++;
-                        }
-                    }
-                    else if (c is '\'' or '[' or '"')
-                    {
-                        state = c switch
-                        {
-                            '\'' => ScanState.String,
-                            '[' => ScanState.BracketedIdentifier,
-                            _ => ScanState.QuotedIdentifier
-                        };
-                        (openedAt, openedOnLine) = (i, line);
-                    }
-                    break;
-
-                case ScanState.EolComment:
-                    break;
-
-                case ScanState.BlockComment:
-                    if (c == '/' && next == '*')
-                    {
-                        commentDepth++;
-                        i++;
-                    }
-                    else if (c == '*' && next == '/')
-                    {
-                        commentDepth--;
-                        i++;
-                        if (commentDepth == 0)
-                            state = ScanState.Code;
-                    }
-                    break;
-
-                default:    // String, BracketedIdentifier, QuotedIdentifier: closed by their delimiter - unless it's doubled (escaped).
-                    char closer = state switch
-                    {
-                        ScanState.String => '\'',
-                        ScanState.BracketedIdentifier => ']',
-                        _ => '"'
-                    };
-
-                    if (c == closer)
-                    {
-                        if (next == closer)
-                            i++;
-                        else
-                            state = ScanState.Code;
-                    }
-                    break;
-            }
+            scanner.ScanLine(line.OriginalContent,
+                regionStarts: (index, region) =>
+                {
+                    if (region is not (SqlRegion.Code or SqlRegion.EolComment))
+                        (openedOn, openedAt) = (line, index);
+                },
+                strayCommentEnd: index =>
+                    syntaxErrors.Add(new SyntaxError("Unexpected End of Block-Comment (*/ without a matching /*).", line.OriginalContent.Substring(index), line.LineNumber, fileDetail)));
         }
 
-        string? nonTerminated = state switch
+        string? nonTerminated = scanner.Region switch
         {
-            ScanState.String => "Non-Terminated String.",
-            ScanState.BlockComment => "Non-Terminated Block-Comment.",
-            ScanState.BracketedIdentifier => "Non-Terminated [Identifier].",
-            ScanState.QuotedIdentifier => "Non-Terminated \"Identifier\".",
-            _ => null      // Code or EolComment: nothing left open.
+            SqlRegion.String => "Non-Terminated String.",
+            SqlRegion.BlockComment => "Non-Terminated Block-Comment.",
+            SqlRegion.BracketedIdentifier => "Non-Terminated [Identifier].",
+            SqlRegion.QuotedIdentifier => "Non-Terminated \"Identifier\".",
+            _ => null      // Code: nothing left open.
         };
 
-        if (nonTerminated != null)
-            syntaxErrors.Add(new SyntaxError(nonTerminated, RestOfLine(text, openedAt), openedOnLine, fileDetail));
-    }
-
-    // Error detail: from the problem to the end of ITS line - not the rest of the file, and without the line break.
-    private static string RestOfLine(string text, int start)
-    {
-        int end = text.IndexOfAny(['\r', '\n'], start);
-        return end < 0 ? text.Substring(start) : text.Substring(start, end - start);
+        if (nonTerminated != null && openedOn != null)
+            syntaxErrors.Add(new SyntaxError(nonTerminated, openedOn.OriginalContent.Substring(openedAt), openedOn.LineNumber, fileDetail));
     }
 }

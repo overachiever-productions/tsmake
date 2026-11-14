@@ -98,6 +98,11 @@ public class DirectiveProcessor : IDirectiveProcessor
             var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
             codeLine.Directive = directive;
 
+            // Tokens are NEVER replaced within directives (directive lines don't make it into the artifact) - so don't let a
+            //      directive LOOK like it uses one. (Exempt: ##COMMENT: and ##:: - they're just notes - and ##:: comments after a directive.)
+            if (directive.DirectiveType != DirectiveType.Comment && Global.TokenRegex.IsMatch(directive.Payload))
+                syntaxErrors.Add(new SyntaxError("Tokens can't be used within directives - they are never replaced there.", directive.Payload, codeLine.LineNumber, codeLine.FileDetail));
+
             if (!directive.IsValid)
                 // TODO: "hmmm:" for the DETAIL part of this syntax error seems lame. 
                 // I MIGHT need a signature for SyntaxError that REQUIRES this ... and ... probably do. 

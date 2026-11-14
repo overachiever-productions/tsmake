@@ -9,14 +9,14 @@ SET NOCOUNT ON;
 			https://github.com/overachiever-productions/s4/
 
 	NOTES:
-		- This script will either install/deploy S4 version ##{{S4version}} or upgrade a PREVIOUSLY deployed version of S4 to ##{{S4version}}.
+		- This script will either install/deploy S4 version {{##S4VERSION}} or upgrade a PREVIOUSLY deployed version of S4 to {{##S4VERSION}}.
 		- This script will create a new, admindb, if one is not already present on the server where this code is being run.
 
 	Deployment Steps/Overview: 
 		1. Create admindb if not already present.
 		2. Create core S4 tables (and/or ALTER as needed + import data from any previous versions as needed). 
 		3. Cleanup any code/objects from previous versions of S4 installed and no longer needed. 
-		4. Deploy S4 version ##{{S4version}} code to admindb (overwriting any previous versions). 
+		4. Deploy S4 version {{##S4VERSION}} code to admindb (overwriting any previous versions). 
 		5. Report on current + any previous versions of S4 installed. 
 
 */
@@ -88,7 +88,7 @@ IF OBJECT_ID('dbo.version_history', 'U') IS NULL BEGIN
 		@level1name = 'version_history';
 END;
 
-DECLARE @CurrentVersion varchar(20) = N'##{{S4version}}';
+DECLARE @CurrentVersion varchar(20) = N'{{##S4VERSION}}';
 
 -- Add previous details if any are present: 
 DECLARE @version sysname; 
@@ -221,7 +221,7 @@ GO
 
 -----------------------------------
 -- v7.0+ - Conversion of [tokens] to {tokens}. (Breaking Change - Raises warnings/alerts via SELECT statements). 
-IF (SELECT admindb.dbo.get_s4_version('##{{S4version}}')) < 7.0 BEGIN
+IF (SELECT admindb.dbo.get_s4_version('{{##S4VERSION}}')) < 7.0 BEGIN
 
 	-- Replace any 'custom' token definitions in dbo.settings: 
 	DECLARE @tokenChanges table (
@@ -1271,8 +1271,8 @@ END;
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 -- 5. Update version_history with details about current version (i.e., if we got this far, the deployment is successful). 
 ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-DECLARE @CurrentVersion varchar(20) = N'##{{S4version}}';
-DECLARE @VersionDescription nvarchar(200) = N'##{{S4version_summary}}';
+DECLARE @CurrentVersion varchar(20) = N'{{##S4VERSION}}';
+DECLARE @VersionDescription nvarchar(200) = N'{{##S4VERSION-SUMMARY}}';
 DECLARE @InstallType nvarchar(20) = N'Install. ';
 
 IF EXISTS (SELECT NULL FROM dbo.[version_history] WHERE CAST(LEFT(version_number, 3) AS decimal(3,1)) >= 4)

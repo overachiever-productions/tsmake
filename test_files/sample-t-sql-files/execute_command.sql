@@ -149,7 +149,7 @@ CREATE PROC dbo.[execute_command]
 AS
 	SET NOCOUNT ON; 
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 
 	-----------------------------------------------------------------------------
 	-- Dependencies Validation:

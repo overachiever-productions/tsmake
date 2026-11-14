@@ -19,7 +19,7 @@ CREATE PROC dbo.[core_object_predicates]
 AS
     SET NOCOUNT ON; 
 
-	-- {copyright}
+	-- {{##COPYRIGHT}}
 	
 	SET @Databases = NULLIF(@Databases, N'');
 	SET @Tables = NULLIF(@Tables, N'');

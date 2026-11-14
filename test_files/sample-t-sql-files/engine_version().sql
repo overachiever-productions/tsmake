@@ -14,7 +14,7 @@ CREATE FUNCTION dbo.[engine_version] (@scope sysname = NULL)
 RETURNS decimal(6,4)
 AS
     
-	-- {copyright}
+	-- {{##COPYRIGHT}}
     
     BEGIN; 
 
