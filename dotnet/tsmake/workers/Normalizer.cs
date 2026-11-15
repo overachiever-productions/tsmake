@@ -68,15 +68,7 @@ public class Normalizer(LineEndingsType lineEndingsType = LineEndingsType.CrLf) 
 
     private string NormalizeLineEndings()
     {
-        var lineEnding = this._lineEndingsType switch
-        {
-            LineEndingsType.CrLf => "\r\n",
-            LineEndingsType.Lf => "\n",
-            LineEndingsType.Cr => "\r",
-            _ => throw new InvalidEnumArgumentException()
-        };
-
-        return Regex.Replace(this._input, @"\r\n|\r|\n", lineEnding, Global.SingleLineRegexOptions);
+        return Regex.Replace(this._input, @"\r\n|\r|\n", this._lineEndingsType.ToLineEnding(), Global.SingleLineRegexOptions);
     }
 
     // Scans the file's lines with the (shared) TSqlScanner - see TSqlScanner for the lexing rules. Reports:

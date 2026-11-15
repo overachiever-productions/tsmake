@@ -104,7 +104,7 @@ public class DirectiveProcessor : IDirectiveProcessor
                 syntaxErrors.Add(new SyntaxError("Tokens can't be used within directives - they are never replaced there.", directive.Payload, codeLine.LineNumber, codeLine.FileDetail));
 
             if (!directive.IsValid)
-                // TODO: "hmmm:" for the DETAIL part of this syntax error seems lame. 
+                // TODO: The "hmmm:" for the DETAIL part of this syntax error seems lame. 
                 // I MIGHT need a signature for SyntaxError that REQUIRES this ... and ... probably do. 
                 // BUT I also - clearly - don't always need this. 
                 // MORE IMPORTANTLY, I MIGHT want to have some sort of 'source' parameter for ALL syntax errors - that tells me, roughly, where they came from WITHIN the code to make debugging and other fixes/improvements over the long-haul easier to track down. 
@@ -113,6 +113,8 @@ public class DirectiveProcessor : IDirectiveProcessor
                 this.Directives.Add(directive);
 
             // TODO: need to add switch/cases for FLAG-DEFAULT, FLAG[s](), FLAG-END... virtually no different than CONDITION-DEFAULT, CONDITION[s](), CONDITION-END ... 
+            //    NOTE: switch immediately below is JUST for determining overlaps/closure problems.
+            //      Implementation for transforms is ... down below.
             switch (directive.DirectiveType)
             {
                 case DirectiveType.ConditionDefault:
@@ -155,9 +157,9 @@ public class DirectiveProcessor : IDirectiveProcessor
             // and if not: that's a syntax because the condition was never closed.
         }
 
+        // CONVERT FLAG-FILE|DIRECTORY to FILE|DIRECTORY (or nothing/empty) ... depending upon #Flags.
         for (int i = 0; i < this.Directives.Count; i++)
         {
-            // CONVERT FLAG-FILE|DIRECTORY to FILE|DIRECTORY (or nothing/empty) ... depending upon #Flags.
             var directive = this.Directives[i];
 
             if (directive.IsValid && ((directive.DirectiveType == DirectiveType.FlagFile) || (directive.DirectiveType == DirectiveType.FlagDirectory)))
@@ -203,6 +205,8 @@ public class DirectiveProcessor : IDirectiveProcessor
                             }
                             break;
                         case DirectiveType.ConditionDefault:
+                            //      https://overachieverllc.atlassian.net/browse/TSM-45
+                            //      https://overachieverllc.atlassian.net/browse/TSM-44
                             // IF the Directive is a BUILD-TIME directive ... 
                             //          then process the CASEs and: 
                             //          for the entire CASE that matches ... 

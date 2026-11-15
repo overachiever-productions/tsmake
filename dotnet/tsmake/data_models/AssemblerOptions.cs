@@ -62,6 +62,12 @@ public class AssemblerOptions(ITokenDefinitionRegistry tokenDefinitionRegistry, 
 
     public void SetDirectives(LineEndingsType lineEndingsType, CommentRemovalDirectives commentRemovalDirectives, TokenExclusionDirectives tokenExclusionDirectives)
     {
+        // RemoveNone is an EXPLICIT 'keep all comments' - so it can't be combined with any other comment-removal directive.
+        //      Same rule as Invoke-TsmBuild's -CommentDirectives - enforced here too, so that NO caller can get around it.
+        //      (Validated BEFORE anything is set: a rejected call leaves the options unchanged.)
+        if (commentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveNone) && commentRemovalDirectives != CommentRemovalDirectives.RemoveNone)
+            throw new ArgumentException($"RemoveNone can't be combined with other comment-removal directives. Specified: [{commentRemovalDirectives}].", nameof(commentRemovalDirectives));
+
         this.LineEndingsType = lineEndingsType;
         this.CommentRemovalDirectives = commentRemovalDirectives;
         this.TokenExclusionDirectives = tokenExclusionDirectives;

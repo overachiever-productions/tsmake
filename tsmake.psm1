@@ -25,6 +25,7 @@ filter Import-Types {
 		"$ScriptRoot\dotnet\tsmake\workers\DocumentationExtractor.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\DirectiveProcessor.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\TokenTransformer.cs";
+		"$ScriptRoot\dotnet\tsmake\workers\CommentRemover.cs";
 		"$ScriptRoot\dotnet\tsmake\workers\OpsFactory.cs";
 
 #		"$ScriptRoot\dotnet\tsmake\Formatter.cs";

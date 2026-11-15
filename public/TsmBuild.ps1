@@ -108,6 +108,11 @@ function Invoke-TsmBuild {
 		if ($bad) {
 			throw "Flags MUST start with the '#' sign. Invalid Flags: [$($bad -join ', ')]."
 		}
+
+		# RemoveNone is an EXPLICIT 'keep all comments' - so it can only be specified by itself (comparisons are case-insensitive).
+		if (($CommentDirectives -contains 'RemoveNone') -and (@($CommentDirectives -ne 'RemoveNone').Count -gt 0)) {
+			throw "-CommentDirectives: RemoveNone can't be combined with other comment-removal directives. Specified: [$($CommentDirectives -join ', ')]. Use RemoveNone by itself (to keep all comments) - or remove it.";
+		}
 		
 		# TODO: if not $Config / $ConfigFile ... then ... look for one via the convention of <build_file_name>.json... 
 		# 	so that this can be loaded below... (i.e. don't load it here...  ... here we're just establishing params. )
@@ -272,20 +277,23 @@ function Invoke-TsmBuild {
 		
 		$assembler = $buildResult.Assembler;
 		[int]$i = 0;
-		foreach ($line in $assembler.ArtifactLines) {
-			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
-			Write-Host "$($line.GetContent())";   # $line.OriginalContent
-#			if ($null -ne $line.Directive) {
-#				if ("FILE" -eq $line.Directive.DirectiveName) {
-#					Write-Host "`t`t`t$($line.Directive.FilePath)";
-#				}
-#			}
-#			$i = $i + 1;
-#			
-#			if ($i -gt 800) {
-#				break;
-#			}
-		}
+		
+		Write-Host "$($assembler.ArtifactBody)";
+		
+#		foreach ($line in $assembler.ArtifactLines) {
+#			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
+#			Write-Host "$($line.GetContent())";   # $line.OriginalContent
+##			if ($null -ne $line.Directive) {
+##				if ("FILE" -eq $line.Directive.DirectiveName) {
+##					Write-Host "`t`t`t$($line.Directive.FilePath)";
+##				}
+##			}
+##			$i = $i + 1;
+##			
+##			if ($i -gt 800) {
+##				break;
+##			}
+#		}
 		
 		return $buildResult;
 	};

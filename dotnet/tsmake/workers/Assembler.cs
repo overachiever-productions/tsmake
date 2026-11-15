@@ -5,6 +5,7 @@ namespace tsmake.workers;
 public interface IAssembler
 {
     List<ICodeLine> ArtifactLines { get; }
+    string ArtifactBody { get; }
     List<ISyntaxError> SyntaxErrors { get; }
     List<IConfigError> ConfigErrors { get; }
     List<ICodeLine> DocLines { get; }
@@ -39,6 +40,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     public List<ISyntaxError> SyntaxErrors { get; private set; } = new List<ISyntaxError>();
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public List<ICodeLine> ArtifactLines { get; private set; } = new List<ICodeLine>();
+    public string ArtifactBody { get; private set; } = string.Empty;
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
 
     public List<IRankedString> BuildRoot { get; private set; } = options.BuildRoot;
@@ -59,30 +61,24 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors);
 
-            // TODO: Significant Transition Happens Here. 
-            //     until this point, everything has been 'line-based' - where we've: 
-            //          - extracted root/output/filemarker directives, etc. 
-            //          - recursively assembled all artifacts (including includes, conditionals, etc.)
-            //          - handled all CONDITIONALs (including conditional-files > converted to FILE|DIRECTORY then processed with all other FILE|DIRECTORY directives). 
-            //          - and replaced all tokens (via TokenTransformer.TransformTokens()) ...
-            //    FROM here forward, we'll be working against a SERIALIZED copy of ArtifactLines<> ... 
-            //          i.e., at text/file-string level - effectively all via REGEX at this point. 
+            // If we don't have a VALID Output Artifact, we can't BUILD... so, throw at this point. 
+            if (this.BuildResult.Artifacts == null || !this.BuildResult.Artifacts.Any(artifact => artifact is BuildArtifact))
+                throw new InvalidOperationException("No BUILD Output was specified.");
 
-            // IF there are any <BuildTransforms> (including comment-removal transforms)...
-            //      then execute each transform in <BuildTransforms> in order ... passing the serialized-string into each one ...
-            // NOTE: CommentRemovalDirectives like RemoveAll, RemoveEOL, and a few other 'global' directives WILL be handled as 
-            //       internal/built-in <BuildTransforms> - i.e., if we need to process any Comment-Removal Directives we'll: 
-            //       a) add them as transforms - essentially: regex to match the comment-type and ... empty-string as the replacement. 
-            //       b) then we'll process THOSE before any other transforms (supplied by end-users/callers). 
+            // Transition from LINE-BY-LINE (ICodeLine) processing to WHOLE-BODY (this.ArtifactBody) processing:
+            this.ArtifactBody = this.ArtifactLines.Serialize(this.Options.LineEndingsType);
 
-            // TODO:  ARTIFACTS will be different based on .Document or .Build ... 
-            //    IF .Build: 
-            //         we have 1-2 artifacts: the ##output and an optional ##filemarker (version-marker) file.
-            //    IF .Document:
-            //        we'll have 1 artifact PER each DocTransformer/Writer. 
-            //   and ... at this point, we need to 'fill'/assemble/write/output each (all) artifacts before continuing. 
-            //   e.g., for a BUILD result - we're going to go "line by line" through this.ArtifactLines and write .GetContent() to the ##output file 
-            //      etc. 
+            // Address any final (non-handled to this point) comment-removal directives (e.g., RemoveAll, RemoveEOL, etc.)
+            this.ArtifactBody = CommentRemover.RemoveComments(this.ArtifactBody, this.Options.CommentRemovalDirectives);
+
+
+            //   https://overachieverllc.atlassian.net/browse/TSM-46
+            // TODO: Process <BuildTransforms> if any - in order of declaration (as passed in by the caller). 
+            //       Include 'options'/transforms for remaining comment-removal directives (e.g., RemoveAll, RemoveEOL, etc.) 
+            //       Include 'batch/GO' handler directives if they were passed in by the caller.
+            //       Then handle any user-defined transforms.  
+            //      Each transform is, essentially, a (semi-complex) REGEX + REPLACE - against the entire 'body' of the main output/artifact. 
+            //          MAIN-ARTIFACT = this.ArtifactBody if BUILD or a ... something-something representation of ALL documentation components (if we're in DOCUMENT mode).
 
             this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
             this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);
@@ -122,22 +118,11 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             {
                 if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveHeaderComments))
                     RemoveHeaderComments(localCodeLines, normalizer.NormalizedText);
-
-                if (this.Options.CommentRemovalDirectives.HasFlag(CommentRemovalDirectives.RemoveDocComments))
-                {
-                    // TODO: similar to the above ... but get a list of ALL lines with DocContent in them. ... 
-
-                    // TODO: Need a REGEX for DocComments that can find / address 2x scenarios: 
-                    //   1. ENTIRE block-comment is, effectively, a DocComment ... i.e., /* <whitespace> DOC_CONTENT <whitespace> */ ...
-                    //        i.e., replace the entire block-comment.
-                    //   2. ... there are lines with DocContent in them ... but they're NOT the only content in the block-comment itself. 
-                    //       just replace the matching LINES. 
-                }
             }
 
             // MKC: Everything done within directiveProcessor.ProcessDirectives COULD 'easily' be done here - inline - with a bunch of additional code blocks. 
             //      BUT, the point of the DirectiveProcessor is to ISOLATE logic to better enable Unit-Testing, etc. 
-            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();  // Hmmm. Factory should inject NEW DirectivesProcessor() with an IFileSystem. THOUGH ... that does make things a BIT harder to unit test... 
+            var directivesProcessor = this.OpsFactory.NewDirectiveProcessor();  
             directivesProcessor.ProcessDirectives(this, this.OpsFactory.CurrentFileSystem, localCodeLines, this.ArtifactLines, this.SyntaxErrors);
             
             this._directivesCount += directivesProcessor.Directives.Count;

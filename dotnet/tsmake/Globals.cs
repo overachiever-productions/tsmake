@@ -69,6 +69,30 @@ public static class Global
           | (?<=\*/[^\S\r\n]*)(?=\S)                                          # c. a block comment ends on the code's line
         )",
         RegexOptions.IgnorePatternWhitespace | RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Compiled);
+
+    // COMMENTS (for CommentRemover): a T-SQL 'lexer' - i.e., each match is ONE of the regions that can hide comment markers:
+    //      strings, [identifiers], "identifiers", /* block comments */ and -- comments. Matches are found left-to-right (the same
+    //      way SQL Server reads T-SQL) and each one is consumed WHOLE - so a delimiter only counts when it's in CODE:
+    //      '-- not a comment', [/* not a comment */], /* -- not an EOL comment */, -- not a /* block comment, -- don't (no string) etc.
+    //  - strings, identifiers: '' ]] and "" are escapes. Unterminated: run to the end of the text (like SQL Server).
+    //  - block comments: can be NESTED (balancing group: /* pushes, */ pops).
+    //      Unterminated: 'unterminated' - runs to the end of the text (which SQL Server treats as comment) - so NOTHING after it is
+    //      ever treated as code. (Unterminated strings, identifiers and comments are already reported by the Normalizer.)
+    //  - -- comments: to the end of the line (the line break is NOT part of the match).
+    //  PERF: every match starts with ' [ " / or - (so the regex engine can jump straight to candidates); the block-comment loop eats
+    //      runs of [^/*] at a time.
+    public static readonly Regex CommentsRegex = new("""
+          (?<string>        '[^']*(?:''[^']*)*(?:'|\z) )
+        | (?<identifier>    \[[^\]]*(?:\]\][^\]]*)*(?:\]|\z)
+                          | "[^"]*(?:""[^"]*)*(?:"|\z) )
+        | (?<block>         /\*
+                            (?>(?: [^/*]+ | /\*(?<depth>) | \*/(?<-depth>) | /(?!\*) | \*(?!/) )*)
+                            (?(depth)(?!))
+                            \*/ )
+        | (?<unterminated>  /\*[\s\S]* )
+        | (?<eol>           --[^\r\n]* )
+        """,
+        RegexOptions.IgnorePatternWhitespace | RegexOptions.ExplicitCapture | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 }
 
 public static class tsmakeExtensions
@@ -82,10 +106,35 @@ public static class tsmakeExtensions
         _ => throw new ArgumentOutOfRangeException(nameof(sourceType), sourceType, "No priority defined for this SourceType.")
     };
 
+    public static string ToLineEnding(this LineEndingsType lineEndingsType) => lineEndingsType switch
+    {
+        LineEndingsType.CrLf => "\r\n",
+        LineEndingsType.Lf => "\n",
+        LineEndingsType.Cr => "\r",
+        _ => throw new InvalidEnumArgumentException(nameof(lineEndingsType), (int)lineEndingsType, typeof(LineEndingsType))
+    };
+
+    // Serializes code-lines into ONE string: each line's TransformedContent (if any - an empty string counts) or else its OriginalContent,
+    //      with lineEndingsType BETWEEN lines (none after the last one: a file that ends with a line-break already ends with an empty line).
+    //  PERF: one pass to collect each line's content, then string.Join() - which sizes the result up front and copies each line exactly once.
+    public static string Serialize(this IReadOnlyList<ICodeLine> codeLines, LineEndingsType lineEndingsType)
+    {
+        ArgumentNullException.ThrowIfNull(codeLines);
+
+        int count = codeLines.Count;
+        if (count == 0)
+            return string.Empty;
+
+        var contents = new string[count];
+        for (int i = 0; i < count; i++)
+            contents[i] = codeLines[i].GetContent();
+
+        return string.Join(lineEndingsType.ToLineEnding(), contents);
+    }
+
     internal static PathType GetPathType(this string input)
     {
         // Absolute - UNC Share: \\server\share\...
-        //      (NOTE: @"\\" is TWO backslashes. Back when \\ was the ROOTED marker, UNC paths needed \\\\ or UNC\\ instead.)
         if (input.StartsWith(@"\\", StringComparison.Ordinal))
             return PathType.Absolute;
 
@@ -93,7 +142,7 @@ public static class tsmakeExtensions
         if (input.StartsWith(@"~\", StringComparison.Ordinal))
             return PathType.Rooted;
 
-        // Absolute - Local File
+        // Absolute:
         if (Regex.IsMatch(input, @"^[A-Za-z]{1}:\\", Global.SingleLineRegexOptions))
             return PathType.Absolute;
 
