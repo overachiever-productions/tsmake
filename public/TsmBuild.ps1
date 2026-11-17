@@ -245,10 +245,22 @@ function Invoke-TsmBuild {
 	end {
 		
 		# NOTE: THIS is attempting to simulate what the xml-format of this object's output will be: (i.e., rough and tumble implementation at this point with no real formatting)
-		Write-Host "  Build Stats: Files: $($buildResult.FileCount) CodeLines: $($buildResult.CodeLineCount) Directives: $($buildResult.DirectivesCount)";
-		## pretend that this is verbose:
-		Write-Host "		Build Root: $($buildResult.BuildRoot) from => $($buildResult.BuildRootSourceType).";
-		Write-Host "		Build Flags (via $($buildResult.FlagsSource)): $($buildResult.Flags -join ', ')."
+		$span = New-TimeSpan $buildResult.Start -End $buildResult.End;
+		
+		Write-Host "STATS:";
+		Write-Host "`tBUILD TIME: $($span.TotalMilliseconds) ms";
+		Write-Host "`tFILES: $($buildResult.FileCount)";
+		Write-Host "`tLINES: $($buildResult.CodeLineCount)";
+		Write-Host "`tDIRECTIVES: $($buildResult.DirectivesCount)";
+		Write-Host "`tTOKENS: <todo>";
+		Write-Host "`tTRANSFORMS: <todo>";
+		Write-Host "";
+		
+		Write-Host "SETTINGS:";
+		Write-Host "`tBUILD ROOT: $($buildResult.BuildRoot) (SOURCE: $($buildResult.BuildRootSourceType)).";
+		Write-Host "`tBUILD FLAGS: $($buildResult.Flags -join ', ') (SOURCE: $($buildResult.FlagsSource)))";
+		Write-Host "`tTOKENS: <hmmm> "
+		Write-Host "";
 		
 		if ($null -ne $buildResult.Exception) {
 			Write-Host "Build Exception: $($buildResult.Exception)";
@@ -277,28 +289,20 @@ function Invoke-TsmBuild {
 		
 		$assembler = $buildResult.Assembler;
 		
+		Write-Host "ARTIFACTS: ";
 		foreach ($artifact in $buildResult.Artifacts) {
-			Write-Host "`tARTIFACT: $($artifact.Path).";
+			Write-Host "`t$($artifact.ArtifactType.ToString().ToUpper()) ARTIFACT: ";
+			Write-Host "`t`tPATH: $($artifact.Path)";
+			if ($artifact.WriteResult.Success) {
+				Write-Host "`t`tOUTCOME: Success!";
+				Write-Host "`t`tSIZE: $($artifact.WriteResult.FileSizeKB) KB";
+			}
+			else {
+				Write-Host "`t`tOUTCOME: !FAILURE!";
+				Write-Host "`t`t$($artifact.WriteResult.Exception.ToString())";
+			}
 		}
 		
-		
-#		Write-Host "$($assembler.ArtifactBody)";
-		
-#		foreach ($line in $assembler.ArtifactLines) {
-#			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";
-#			Write-Host "$($line.GetContent())";   # $line.OriginalContent
-##			if ($null -ne $line.Directive) {
-##				if ("FILE" -eq $line.Directive.DirectiveName) {
-##					Write-Host "`t`t`t$($line.Directive.FilePath)";
-##				}
-##			}
-##			$i = $i + 1;
-##			
-##			if ($i -gt 800) {
-##				break;
-##			}
-#		}
-		
-		return $buildResult;
+		#return $buildResult;
 	};
 }
