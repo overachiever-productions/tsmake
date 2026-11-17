@@ -53,24 +53,26 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         {
             this.ValidateBuildFileAndExtractBuildDirectives(buildFilePath);
 
-            if(this.SyntaxErrors.Count > 0)
+            if (this.SyntaxErrors.Count > 0)
+            {
+                this.SetResultDetails();
                 return;
+            }
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors);
 
-            // If we don't have a VALID Output Artifact, we can't BUILD... so, throw at this point. 
             if (this.BuildResult.Artifacts == null || !this.BuildResult.Artifacts.Any(artifact => artifact is BuildArtifact))
-                throw new InvalidOperationException("No BUILD Output was specified.");
-
-            // Transition from LINE-BY-LINE (ICodeLine) processing to WHOLE-BODY (this.ArtifactBody) processing:
+            {
+                this.ConfigErrors.Add(new ConfigError("No BUILD Output was specified.", "Build Can't proceed..", this.BuildOutput));
+                this.SetResultDetails();
+                return;
+            }
+                
             this.ArtifactBody = this.ArtifactLines.Serialize(this.Options.LineEndingsType);
-
-            // Address any final (non-handled to this point) comment-removal directives (e.g., RemoveAll, RemoveEOL, etc.)
             this.ArtifactBody = CommentRemover.RemoveComments(this.ArtifactBody, this.Options.CommentRemovalDirectives);
-
 
             //   https://overachieverllc.atlassian.net/browse/TSM-46
             // TODO: Process <BuildTransforms> if any - in order of declaration (as passed in by the caller). 
@@ -80,18 +82,25 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //      Each transform is, essentially, a (semi-complex) REGEX + REPLACE - against the entire 'body' of the main output/artifact. 
             //          MAIN-ARTIFACT = this.ArtifactBody if BUILD or a ... something-something representation of ALL documentation components (if we're in DOCUMENT mode).
 
-            this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
-            this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);
-            this.BuildResult.SetConfigErrors(this.ConfigErrors);
-            this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
-            this.BuildResult.SetStatistics(this._fileCount, this.ArtifactLines.Count, this._directivesCount);
-            this.BuildResult.SetComplete();
+            foreach (IArtifact artifact in this.BuildResult.Artifacts)
+            {
+                try
+                {
+                    Artifactory.PopulateArtifact(this, artifact);
+                    artifact.Persist(this.OpsFactory.CurrentFileSystem);
+                }
+                catch (Exception ex)
+                {
+                    this.BuildResult.AddException(ex);
+                }
+            }
 
-            this.BuildResult.AddAssembler(this);
+            this.SetResultDetails();
         }
         catch (Exception ex)
         {
-            this.BuildResult.AddException(ex);  // TODO: identify this as an exception within ... general assembly vs recursiveAssembly... (ditto down in .RecursivelyAssemble() below)
+            // TODO: identify this as an exception within ... general assembly vs recursiveAssembly... (ditto down in .RecursivelyAssemble() below)
+            this.BuildResult.AddException(ex);  
         }
     }
 
@@ -132,6 +141,18 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         {
             this.BuildResult.AddException(ex);
         }
+    }
+
+    private void SetResultDetails()
+    {
+        this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
+        this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);
+        this.BuildResult.SetConfigErrors(this.ConfigErrors);
+        this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
+        this.BuildResult.SetStatistics(this._fileCount, this.ArtifactLines.Count, this._directivesCount);
+        this.BuildResult.SetComplete();
+
+        this.BuildResult.AddAssembler(this);
     }
 
     // Removes the file's header comments (see Global.HeaderCommentsRegex) from its code-lines:

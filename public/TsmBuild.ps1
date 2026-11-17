@@ -276,9 +276,13 @@ function Invoke-TsmBuild {
 		}
 		
 		$assembler = $buildResult.Assembler;
-		[int]$i = 0;
 		
-		Write-Host "$($assembler.ArtifactBody)";
+		foreach ($artifact in $buildResult.Artifacts) {
+			Write-Host "`tARTIFACT: $($artifact.Path).";
+		}
+		
+		
+#		Write-Host "$($assembler.ArtifactBody)";
 		
 #		foreach ($line in $assembler.ArtifactLines) {
 #			#Write-Host "$($line.OriginalContent)  => $($line.FileDetail.FilePath)::$($line.LineNumber)";

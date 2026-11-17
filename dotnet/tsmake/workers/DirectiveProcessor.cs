@@ -56,7 +56,7 @@ public class DirectiveProcessor : IDirectiveProcessor
 
                 outputSet = true;
                 if (outputDirective.IsValid)
-                    parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Payload, directive));
+                    parent.BuildOutput.Add(new RankedString(SourceType.BuildFile, outputDirective.Path, directive));
                 else
                     parent.ConfigErrors.Add(new ConfigError($"Invalid ##{directive.DirectiveType} directive.", directive.ValidationMessage, parent.BuildOutput));
             }

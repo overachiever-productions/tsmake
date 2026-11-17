@@ -103,8 +103,7 @@ public class OutputDirective : BaseDirective
         string fullPath = this.FileSystem.TranslatePath(this.Payload);
 
         // NOTE: ##OUTPUT is the path of the build ARTIFACT (a file) - so check ONLY that the directory it'll be written INTO exists.
-        //      ARTIFACT will have to deal with FILE-NAME within the directory-in-question at write-time/etc.
-        string outputDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;   // null => fullPath is a drive/share root.
+        string outputDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
         if(this.FileSystem.DirectoryExists(outputDirectory))
         {
             base.IsValid = true;
@@ -128,6 +127,17 @@ public class FileMarkerDirective : BaseDirective
         base.DirectiveType = DirectiveType.FileMarker;
         this.FileSystem = fileSystem;
     }
+
+//              @"![](https://assets.overachiever.net/s4/images/s4_main_logo.png)
+
+//          # S4 - {0}
+
+//          > ### :label: **NOTE:** 
+//          > *This is marker-file only; it provides 'at-a-glance' version details for admindb_latest.sql* 
+
+//          For more information see the [change log](/changelog.md) or check out the [readme](/readme.md) for this project.";
+
+
 }
 
 public class CommentDirective : BaseDirective
