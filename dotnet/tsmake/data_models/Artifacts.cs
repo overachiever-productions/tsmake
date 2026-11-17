@@ -33,13 +33,39 @@ public class BuildArtifact(string path, SourceType sourceType) : IArtifact
 public class FileMarkerArtifact(string path, SourceType sourceType, IDirective sourceDirective) : IArtifact
 {
     public IDirective SourceDirective { get; } = sourceDirective;
-    public string Path { get; } = path;
+    public string Path { get; private set; } = path;
     // From the ##FILE-MARKER directive's [body: ...] clause - as-is (i.e., {placeholders}, `r`n, etc. are NOT processed yet).
     //      null: no [body: ...] clause - or the path didn't come from a directive (e.g., it was passed in by the caller).
-    public string? Body { get; } = (sourceDirective as FileMarkerDirective)?.Body;
+    public string? Body { get; private set; } = (sourceDirective as FileMarkerDirective)?.Body;
     public ArtifactType ArtifactType { get; } = ArtifactType.FileMarker;
     public SourceType SourceType { get; } = sourceType;
     public IFileWriteResult WriteResult { get; set; } = null!;
+
+    public void TranslatePlaceHolders(IAssemblerOptions options, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
+    {
+        var lineEndings = options.LineEndingsType.ToLineEnding();
+
+        if (this.Body != null && !this.Body.IsWhiteSpace())
+        {
+            this.Body = this.Body.ReplaceLineEndings(lineEndings);
+
+            if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
+                this.Body = this.Body.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
+
+            if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
+                this.Body = this.Body.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
+        }
+
+        if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
+            this.Path = this.Path.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
+
+        if(options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
+            this.Path = this.Path.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
+
+        string fullPath = fileSystem.TranslatePath(this.Path);
+        if (!fileSystem.DirectoryExists(fullPath))
+            syntaxErrors.Add(new SyntaxError("Invalid --##FILE-MARKER Directive.", $"The directory for the specified ##FILE-MARKER path does not exist: {fullPath}", this.SourceDirective.CodeLine));
+    }
 
     public void Persist(IFileSystem fileSystem)
     {

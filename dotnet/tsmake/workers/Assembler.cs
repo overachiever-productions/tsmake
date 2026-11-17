@@ -196,20 +196,19 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines);
 
         IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-        // TODO: should NOT BE EMPTY.
         if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
             this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
 
         IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
-        // TODO: might be empty... 
         if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
             this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
 
         IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-        // TODO: might be empty ... 
         if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
         {
             var fileMarker = new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective);
+            fileMarker.TranslatePlaceHolders(this.Options, this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
+
 
             this.BuildResult.Artifacts.Add(fileMarker);
         }

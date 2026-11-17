@@ -1,4 +1,6 @@
-﻿namespace tsmake.data_models;
+﻿using System.Diagnostics;
+
+namespace tsmake.data_models;
 
 // Path = what the resolved option becomes: a ##FILE path (FLAG-FILE) or a complete ##DIRECTORY payload - path + any [exclude:] / [sort:] clauses (FLAG-DIRECTORY).
 public record FlagIncludeOption(string Key, string Path);
@@ -158,17 +160,6 @@ public class FileMarkerDirective : BaseDirective
             base.ValidationMessage = ex.Message;
         }
     }
-
-//              @"![](https://assets.overachiever.net/s4/images/s4_main_logo.png)
-
-//          # S4 - {0}
-
-//          > [!NOTE]
-//          > This is marker-file only; it provides 'at-a-glance' version details for admindb_latest.sql.
-
-//          For more information see the [change log](/changelog.md) or check out the [readme](/readme.md) for this project.";
-
-
 }
 
 // A line that LOOKS like a directive - but isn't a valid one: e.g., ##FLAG(#Azure): ... (DirectiveParser throws for these, with a hint).
