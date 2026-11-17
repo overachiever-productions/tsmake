@@ -207,7 +207,12 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
         IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
         // TODO: might be empty ... 
-        if (fileMarkerOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-            this.BuildResult.Artifacts.Add(new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective));
+        if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
+        {
+            var fileMarker = new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective);
+
+            this.BuildResult.Artifacts.Add(fileMarker);
+        }
+            
     }
 }

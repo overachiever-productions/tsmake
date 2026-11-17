@@ -67,7 +67,8 @@ public class DirectiveProcessor : IDirectiveProcessor
                 {
                     if (!markerSet)
                     {
-                        parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Payload, directive));
+                        // NOTE: .Path - NOT .Payload - which also includes any [body: ...] clause. (The body travels with the directive.)
+                        parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Path, directive));
                         markerSet = true;
                     }
                     else
@@ -95,7 +96,19 @@ public class DirectiveProcessor : IDirectiveProcessor
             if (!m.Success)
                 continue;
 
-            var directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
+            IDirective directive;
+            try
+            {
+                directive = DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem);
+            }
+            catch (ArgumentException ex)
+            {
+                // A line that LOOKS like a directive - but isn't a valid one: e.g., ##FLAG(#Azure): ... (use ##FLAG-FILE or ##FLAG-DIRECTORY instead).
+                //      Reported against its line - like any other invalid directive - instead of failing the whole build with an exception.
+                //      (Message minus .NET's " (Parameter '...')" suffix.)
+                string message = ex.ParamName is null ? ex.Message : ex.Message.Replace($" (Parameter '{ex.ParamName}')", string.Empty);
+                directive = new InvalidDirective(m.Groups["data"].Value, codeLine, message);
+            }
             codeLine.Directive = directive;
 
             // Tokens are NEVER replaced within directives (directive lines don't make it into the artifact) - so don't let a

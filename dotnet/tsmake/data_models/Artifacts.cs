@@ -34,6 +34,9 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
 {
     public IDirective SourceDirective { get; } = sourceDirective;
     public string Path { get; } = path;
+    // From the ##FILE-MARKER directive's [body: ...] clause - as-is (i.e., {placeholders}, `r`n, etc. are NOT processed yet).
+    //      null: no [body: ...] clause - or the path didn't come from a directive (e.g., it was passed in by the caller).
+    public string? Body { get; } = (sourceDirective as FileMarkerDirective)?.Body;
     public ArtifactType ArtifactType { get; } = ArtifactType.FileMarker;
     public SourceType SourceType { get; } = sourceType;
     public IFileWriteResult WriteResult { get; set; } = null!;

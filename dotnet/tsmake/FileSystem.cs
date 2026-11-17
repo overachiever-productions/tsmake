@@ -1,6 +1,4 @@
-﻿using tsmake.data_models;
-
-namespace tsmake;
+﻿namespace tsmake;
 
 public interface IFileWriteResult
 {

@@ -91,7 +91,8 @@ public enum DirectiveType
     FlagDirectory,
     ConditionDefault,
     Condition,
-    ConditionEnd
+    ConditionEnd,
+    Invalid         // a line that LOOKS like a directive but isn't a valid one - e.g., ##FLAG(#Azure): ... (see InvalidDirective).
 }
 
 public enum DirectorySortMarker

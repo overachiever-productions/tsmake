@@ -19,11 +19,18 @@ public static class Global
         @"^\s*--\s*##(?<directive>ROOT|OUTPUT|FILE-MARKER|VERSION-CHECKER):\s*(?<data>.*)$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
-    // NOTE: FLAG-FILE and FLAG-DIRECTORY include their FIRST "(KEY[, KEY...])" in the directive name - e.g., "FLAG-DIRECTORY(#Azure)" -
-    //      using the same key rules as FlagFileParser/FlagDirectoryParser (A-Z, 0-9, '-', '_', optional '#', 0-1 spaces before the ':').
-    //      A bare "FLAG-DIRECTORY:" (no keys) still matches - so that it's reported as an error instead of silently ignored.
+    // DIRECTIVES: "-- ##NAME: data" - in one of 3 forms (alternatives):
+    //  1. FLAG-FILE / FLAG-DIRECTORY (or FLAGS-...): ANY line that starts with one of these names IS a FLAG directive - well-formed or not -
+    //      so that a malformed one is REPORTED (by FlagFileParser/FlagDirectoryParser) instead of silently ignored as an ordinary comment:
+    //      no keys, bad key names, a missing ':', 2+ spaces before the ':', etc. (Both parse the ORIGINAL line - not just 'data'.)
+    //      When well-formed, the directive name includes the FIRST "(KEY[, KEY...])" - e.g., "FLAG-DIRECTORY(#Azure)" - and 'data' is
+    //      everything after its ':'. Otherwise, 'data' is everything after the name (and whatever part of a (KEY) list did match).
+    //  2. FLAG / FLAGS / FLAG-DEFAULT / FLAG-END (or FLAGS-...) followed by '(' or ':' - which aren't valid directives: DirectiveParser
+    //      throws for these (with a hint for the right directive to use) - and the DirectiveProcessor reports that as a syntax error.
+    //  3. Every other directive: "NAME:" - exactly.
+    //  NOTE: names must be followed by something other than [a-z0-9_-] - so FLAG-FILES, FLAGGED, etc. are NOT FLAG directives (just comments).
     public static readonly Regex DirectiveRegex = new(
-        @"^\s*--\s*##(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|(?:FLAG|FLAGS)-(?:FILE|DIRECTORY)\s*\(\s*\#?[a-z0-9_-]+(?:\s*,\s*\#?[a-z0-9_-]+)*\s*\)\x20?|(?:FLAG|FLAGS)-DIRECTORY|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*)$",
+        @"^\s*--\s*##(?:(?<directive>(?:FLAG|FLAGS)-(?:FILE|DIRECTORY)(?![a-z0-9_-])(?:\s*\(\s*\#?[a-z0-9_-]+(?:\s*,\s*\#?[a-z0-9_-]+)*\s*\)\s*)?)(?::\s*)?(?<data>.*)|(?<directive>(?:FLAG|FLAGS)(?:-DEFAULT|-END)?(?![a-z0-9_-]))\s*(?=[(:])(?<data>.*)|(?<directive>ROOT|OUTPUT|RUNNER|FILE-MARKER|VERSION-CHECKER|FILE|DIRECTORY|COMMENT|:|CONDITION-DEFAULT|CONDITION|CONDITION-END):\s*(?<data>.*))$",
         RegexOptions.IgnoreCase | RegexOptions.Singleline | RegexOptions.CultureInvariant | RegexOptions.Compiled);
 
     // TOKENS in .sql files: {{##NAME}} - where everything but NAME is literal, and NAME is UPPER-CASE letters and numbers with

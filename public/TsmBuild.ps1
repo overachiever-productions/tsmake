@@ -293,16 +293,25 @@ function Invoke-TsmBuild {
 		foreach ($artifact in $buildResult.Artifacts) {
 			Write-Host "`t$($artifact.ArtifactType.ToString().ToUpper()) ARTIFACT: ";
 			Write-Host "`t`tPATH: $($artifact.Path)";
-			if ($artifact.WriteResult.Success) {
+			if ($artifact.WriteResult -and  $artifact.WriteResult.Success) {
 				Write-Host "`t`tOUTCOME: Success!";
 				Write-Host "`t`tSIZE: $($artifact.WriteResult.FileSizeKB) KB";
 			}
 			else {
 				Write-Host "`t`tOUTCOME: !FAILURE!";
-				Write-Host "`t`t$($artifact.WriteResult.Exception.ToString())";
+				if ($artifact.WriteResult -and $artifact.WriteResult.Exception) {
+					Write-Host "`t`t$($artifact.WriteResult.Exception.ToString())";
+				}
+				else{
+					Write-Host "... Hmm. Poor Error Handling - Somewhere. ";
+				}
 			}
 		}
 		
-		#return $buildResult;
+		
+		Write-Host "`r`n";
+		Write-Host "";
+		
+		return $buildResult;
 	};
 }
