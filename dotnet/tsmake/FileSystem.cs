@@ -38,7 +38,7 @@ public interface IFileSystem
     IFileWriteResult WriteFile(string filePath, string contents); //, bool overwrite = true);
 }
 
-public class FileSystem (string workingDirectory) : IFileSystem
+public class FileSystem(string workingDirectory) : IFileSystem
 {
     public string RootDirectory { get; private set; } = workingDirectory;
     public SourceType RootSourceType { get; private set; } = SourceType.Convention;
@@ -82,10 +82,11 @@ public class FileSystem (string workingDirectory) : IFileSystem
             .ToList();
     }
 
-    // NOTE: checks the directory AT path - NOT its parent. Callers holding a FILE path (e.g., ##OUTPUT) must pass in its directory.
     public bool DirectoryExists(string path)
     {
-        return Directory.Exists(path);
+        string pathDirectory = System.IO.Path.GetDirectoryName(path) ?? path;
+
+        return Directory.Exists(pathDirectory);
     }
 
     public bool FileExists(string filePath)

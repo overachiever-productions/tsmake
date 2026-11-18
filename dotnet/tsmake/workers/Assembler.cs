@@ -51,6 +51,9 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
+            var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
+
+            // TODO: https://overachieverllc.atlassian.net/browse/TSM-48  (allow token replacement for ##OUTPUT and ##FILE-MARKER directives). USE a new method (on .TokenTransformer) for this. 
             this.ValidateBuildFileAndExtractBuildDirectives(buildFilePath);
 
             if (this.SyntaxErrors.Count > 0)
@@ -61,7 +64,6 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
-            var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
             tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors);
 
             if (this.BuildResult.Artifacts == null || !this.BuildResult.Artifacts.Any(artifact => artifact is BuildArtifact))
@@ -207,8 +209,10 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
         {
             var fileMarker = new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective);
-            fileMarker.TranslatePlaceHolders(this.Options, this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
 
+            // HACK: temporary implementation. See https://overachieverllc.atlassian.net/browse/TSM-48 for more info. 
+            //    I'll LIKELY allow the DirectivesParser to have a TokenTransformer - so that OUTPUT and FILE-MARKER directives can be token-processed during LOAD/DISCOVERY. 
+            fileMarker.TranslatePlaceHolders(this.Options, this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
 
             this.BuildResult.Artifacts.Add(fileMarker);
         }

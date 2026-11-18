@@ -86,6 +86,11 @@ public class SampleBuilds()
         var fileSystem = new FileSystem(pwd);
 
         var tokenDefinitionRegistry = TokenDefinitionRegistry.NewRegistry;
+        var version = new TokenDefinition("##VERSION", "14.xx.yy");
+        var summary = new TokenDefinition("##SUMMARY", "This is the build summary");
+        tokenDefinitionRegistry.DefinedTokens.Add(version.Name, version);
+        tokenDefinitionRegistry.DefinedTokens.Add(summary.Name, summary);
+
         AssemblerOptions buildOptions = new AssemblerOptions(tokenDefinitionRegistry, OperationType.Build);
         buildOptions.AddRootPath(new RankedString(SourceType.Convention, pwd));
 
@@ -93,6 +98,7 @@ public class SampleBuilds()
 
         var commentRemovalDirectives = CommentRemovalDirectives.RemoveHeaderComments | CommentRemovalDirectives.RemoveDocComments;
         buildOptions.SetDirectives(LineEndingsType.CrLf, commentRemovalDirectives, tokenExclusionDirectives: TokenExclusionDirectives.ExcludeBlockComments);
+
 
         BuildResult buildResult = new BuildResult();
 

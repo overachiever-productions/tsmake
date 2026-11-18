@@ -69,7 +69,7 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
 
     public void Persist(IFileSystem fileSystem)
     {
-
+        this.WriteResult = fileSystem.WriteFile(this.Path, this.Body ?? "");
     }
 }
 

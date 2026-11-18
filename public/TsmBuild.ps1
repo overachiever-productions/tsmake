@@ -61,6 +61,7 @@ function Invoke-TsmBuild {
 		[string]$BuildFile,
 		#[string]$ConfigFile,			# https://overachieverllc.atlassian.net/browse/TSM-30
 		#[object]$Config,
+		[string]$RootPath, 				# when specified, overwrites CONFIG and BUILD file values
 		[string]$OutputPath,
 		[string]$Version,  
 		[string]$Summary,

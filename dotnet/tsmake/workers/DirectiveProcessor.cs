@@ -68,6 +68,8 @@ public class DirectiveProcessor : IDirectiveProcessor
                     if (!markerSet)
                     {
                         // NOTE: .Path - NOT .Payload - which also includes any [body: ...] clause. (The body travels with the directive.)
+                        // PROBLEM: this path can/will have placeholders (and eventually) tokens... 
+                        // see the comment for: https://overachieverllc.atlassian.net/browse/TSM-48
                         parent.FileMarkerPath.Add(new RankedString(SourceType.BuildFile, fileMarkerDirective.Path, directive));
                         markerSet = true;
                     }

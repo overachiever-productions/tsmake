@@ -112,8 +112,7 @@ public class OutputDirective : BaseDirective
         string fullPath = this.FileSystem.TranslatePath(this.Payload);
 
         // NOTE: ##OUTPUT is the path of the build ARTIFACT (a file) - so check ONLY that the directory it'll be written INTO exists.
-        string outputDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
-        if(this.FileSystem.DirectoryExists(outputDirectory))
+        if(this.FileSystem.DirectoryExists(fullPath))
         {
             base.IsValid = true;
             this.Path = fullPath;
@@ -122,7 +121,8 @@ public class OutputDirective : BaseDirective
         else
         {
             base.IsValid = false;
-            base.ValidationMessage = $"The directory for the specified ##OUTPUT path does not exist: {outputDirectory}";
+            string pathDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
+            base.ValidationMessage = $"The directory for the specified ##OUTPUT path does not exist: {pathDirectory}"; 
         }
     }
 }
