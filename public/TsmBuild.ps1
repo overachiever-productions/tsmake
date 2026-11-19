@@ -29,13 +29,7 @@
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\includes");
 				Invoke-TsmBuild; 
 	
-	S4 Build: 
-
-				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
-				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
-				Invoke-TsmBuild -CommentDirectives "RemoveHeader";
-
-	SUMMARY and Version (built-in tokens)
+	S4 Build with SUMMARY and Version:
 
 				Import-Module -Name "D:\Dropbox\Repositories\tsmake" -Force;
 				Set-Location (Get-Location | Split-Path -Parent | Join-Path -ChildPath "\test_files\");
@@ -121,8 +115,10 @@ function Invoke-TsmBuild {
 	};
 	
 	process {
+		$bfd = Split-Path -Path $BuildFile -Parent;
 		$pwd = Get-Location;
-		Write-Verbose "Current Working Directory: [$pwd]";
+		Write-Verbose "Build File Directory: [$bfd]";
+		Write-Verbose "`tCurrent Working Directory: [$pwd]";
 		
 		# ====================================================================================================
 		# Config-File(s):
@@ -217,8 +213,8 @@ function Invoke-TsmBuild {
 		[tsmake.data_models.TokenDefinitionRegistry]$tokenRegistry = [tsmake.data_models.TokenDefinitionRegistry]::CreateRegistry($buildTokens);
 		[tsmake.data_models.AssemblerOptions]$assemblerOptions = New-Object tsmake.data_models.AssemblerOptions($tokenRegistry, [tsmake.OperationType]::Build);
 		
-		[tsmake.data_models.RankedString]$pwdRoot = New-Object tsmake.data_models.RankedString([tsmake.SourceType]::Convention, $pwd);
-		$assemblerOptions.AddRootPath($pwdRoot);
+		[tsmake.data_models.RankedString]$bfdRoot = New-Object tsmake.data_models.RankedString([tsmake.SourceType]::Convention, $bfd);
+		$assemblerOptions.AddRootPath($bfdRoot);
 		
 		# TODO check .config for BOTH root and output paths... 
 		
@@ -234,13 +230,13 @@ function Invoke-TsmBuild {
 			$assemblerOptions.SetFlags($Flags, $flagsSource);
 		}
 		
-		Write-Verbose "Starting BUILD. BUILD FILE: [$file]";
+		Write-Verbose "Starting BUILD. BUILD FILE: [$BuildFile]";
 		
 		## REFACTOR: Because I'm now handling SO MUCH logic within C# and NOT 'stopping' every, friggin, step to check for errors... 
 		##    the pipeline is, legit, only around 4-ish REAL lines of code. 
 		##    probably JUST fine to roll that into this - i.e., execute those lines down below ... instead of trying to have some big 'pipeline'.
 		
-		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions -WorkingDirectory $pwd;
+		[tsmake.data_models.BuildResult]$buildResult = Execute-Build -BuildFile $BuildFile -BuildOptions $assemblerOptions;
 	};
 	
 	end {
@@ -279,7 +275,7 @@ function Invoke-TsmBuild {
 			}
 			
 			if (-not ($buildErrors)) {
-				Write-Host "`tSYNTAX ERRORS:";
+				Write-Host "`tSYNTAX ERRORS: ($($buildResult.SyntaxErrors.Count))";
 				foreach ($err in $buildResult.SyntaxErrors) {
 					Write-Host "`t`t$($err.Summarize())";
 				}

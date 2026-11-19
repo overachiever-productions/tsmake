@@ -6,9 +6,7 @@ function Execute-Build {
 		[Parameter(Mandatory)]
 		[string]$BuildFile,
 		[Parameter(Mandatory)]
-		[tsmake.data_models.AssemblerOptions]$BuildOptions,
-		[Parameter(Mandatory)]
-		[string]$WorkingDirectory
+		[tsmake.data_models.AssemblerOptions]$BuildOptions
 	);
 	
 	begin {
@@ -22,7 +20,8 @@ function Execute-Build {
 		# ====================================================================================================
 		# 1. FileSystem, TokenTransformer, ConditionalProcessor, and BuildTransformer
 		# ====================================================================================================	
-		[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($WorkingDirectory); # vNEXT++ ... have different IFileSystem implementations for Mac, Linux, etc. 
+		$bfd = Split-Path -Path $BuildFile -Parent;
+		[tsmake.FileSystem]$fileSystem = New-Object tsmake.FileSystem($bfd); # vNEXT++ ... have different IFileSystem implementations for Mac, Linux, etc. 
 		[tsmake.workers.OpsFactory]$opsFactory = New-Object tsmake.workers.OpsFactory($fileSystem, $BuildOptions);
 		
 		# ====================================================================================================

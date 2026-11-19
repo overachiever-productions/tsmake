@@ -17,6 +17,7 @@ public class BuildArtifact(string path, SourceType sourceType) : IArtifact
     public ArtifactType ArtifactType { get; } = ArtifactType.Build;
     public SourceType SourceType { get; } = sourceType;
     public IFileWriteResult WriteResult { get; set; } = null!;
+
     public string ArtifactBody { get; private set; } = string.Empty;
 
     internal void SetBody(string artifactBody)
@@ -32,28 +33,30 @@ public class BuildArtifact(string path, SourceType sourceType) : IArtifact
 
 public class FileMarkerArtifact(string path, SourceType sourceType, IDirective sourceDirective) : IArtifact
 {
-    public IDirective SourceDirective { get; } = sourceDirective;
     public string Path { get; private set; } = path;
-    // From the ##FILE-MARKER directive's [body: ...] clause - as-is (i.e., {placeholders}, `r`n, etc. are NOT processed yet).
-    //      null: no [body: ...] clause - or the path didn't come from a directive (e.g., it was passed in by the caller).
-    public string? Body { get; private set; } = (sourceDirective as FileMarkerDirective)?.Body;
     public ArtifactType ArtifactType { get; } = ArtifactType.FileMarker;
     public SourceType SourceType { get; } = sourceType;
     public IFileWriteResult WriteResult { get; set; } = null!;
+
+    // From the ##FILE-MARKER directive's [body: ...] clause - as-is (i.e., {placeholders}, `r`n, etc. are NOT processed yet).
+    //      null: no [body: ...] clause - or the path didn't come from a directive (e.g., it was passed in by the caller).
+    public string? ArtifactBody { get; private set; } = (sourceDirective as FileMarkerDirective)?.Body;
+    public IDirective SourceDirective { get; } = sourceDirective;
 
     public void TranslatePlaceHolders(IAssemblerOptions options, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
     {
         var lineEndings = options.LineEndingsType.ToLineEnding();
 
-        if (this.Body != null && !this.Body.IsWhiteSpace())
+        if (this.ArtifactBody != null && !this.ArtifactBody.IsWhiteSpace())
         {
-            this.Body = this.Body.ReplaceLineEndings(lineEndings);
+            this.ArtifactBody = this.ArtifactBody.Replace("`r", @"\r").Replace("`n", @"\n");
+            this.ArtifactBody = this.ArtifactBody.ReplaceLineEndings(lineEndings);
 
             if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
-                this.Body = this.Body.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
+                this.ArtifactBody = this.ArtifactBody.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
 
             if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
-                this.Body = this.Body.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
+                this.ArtifactBody = this.ArtifactBody.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
         }
 
         if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
@@ -69,7 +72,7 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
 
     public void Persist(IFileSystem fileSystem)
     {
-        this.WriteResult = fileSystem.WriteFile(this.Path, this.Body ?? "");
+        this.WriteResult = fileSystem.WriteFile(this.Path, this.ArtifactBody ?? "");
     }
 }
 

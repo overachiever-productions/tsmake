@@ -38,9 +38,10 @@ public interface IFileSystem
     IFileWriteResult WriteFile(string filePath, string contents); //, bool overwrite = true);
 }
 
-public class FileSystem(string workingDirectory) : IFileSystem
+public class FileSystem(string buildFileDirectory) : IFileSystem
 {
-    public string RootDirectory { get; private set; } = workingDirectory;
+    public string RootDirectory { get; private set; } = buildFileDirectory;
+    public string BuildFileDirectory { get; private set; } = buildFileDirectory;
     public SourceType RootSourceType { get; private set; } = SourceType.Convention;
 
     public void SetRootDirectory(string rootDirectory, SourceType sourceType)
@@ -65,7 +66,7 @@ public class FileSystem(string workingDirectory) : IFileSystem
             case PathType.Absolute:
                 return path;
             case PathType.Relative:
-                return CollapsePath(this.RootDirectory, path);
+                return CollapsePath(this.BuildFileDirectory, path);
             case PathType.Rooted:
                 return CollapsePath(this.RootDirectory, path.Substring(2));     // strip ONLY the leading ~\ (other '~' chars are legal in names).
             default:
@@ -93,11 +94,6 @@ public class FileSystem(string workingDirectory) : IFileSystem
     {
         return File.Exists(filePath);
     }
-
-    //public static bool FileOrDirectoryExists(string path)
-    //{
-    //    return (Directory.Exists(path) || File.Exists(path));
-    //}
 
     public string GetFileContent(string filePath)
     {

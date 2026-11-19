@@ -12,7 +12,7 @@ public record DirectoryOptions(string Path, IReadOnlyList<string>? Exclude, IRea
 }
 
 // FilePath: exactly as specified (NOT translated) - including any {placeholders} (e.g., {version}), which are swapped out later.
-// Body: the text of the optional [body: ...] clause - as-is (placeholders, markdown, `r`n, etc.) - or null if there's no [body: ...] clause.
+// ArtifactBody: the text of the optional [body: ...] clause - as-is (placeholders, markdown, `r`n, etc.) - or null if there's no [body: ...] clause.
 public record FileMarkerOptions(string FilePath, string? Body)
 {
     public bool HasBody => this.Body is not null;
@@ -905,7 +905,7 @@ public static class FileMarkerParser
     ///     ~\{version}.marker.md [body:# S4 - {version}`r`n`r`n{summary}`r`n`r`nSee the [change log](/changelog.md).]
     /// Rules:
     ///     - the path is REQUIRED - and is everything up to the first [body: (or the end of the payload). Spaces are fine. Not quoted.
-    ///     - [body: is optional (case-insensitive; whitespace allowed: [ Body : ). If present, the body is everything after it, MINUS the
+    ///     - [body: is optional (case-insensitive; whitespace allowed: [ ArtifactBody : ). If present, the body is everything after it, MINUS the
     ///         LAST ']' - which must be the last thing on the line (other than whitespace). So the body can contain [ ] (markdown, etc.).
     ///     - path and body are trimmed - and returned as-is otherwise: {placeholders}, `r`n, etc. are NOT processed here.
     /// Throws FormatException (with a hint) for invalid syntax.

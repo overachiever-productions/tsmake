@@ -80,7 +80,7 @@ public class FileMarkerDirectiveTests
         var directive = LoadDirective(@"-- ##FILE-MARKER: ~\x.md [body: hello]", new Mock<IFileSystem>().Object);
         var artifact = new FileMarkerArtifact(@"~\x.md", SourceType.BuildFile, directive);
 
-        Assert.That(artifact.Body, Is.EqualTo("hello"));
+        Assert.That(artifact.ArtifactBody, Is.EqualTo("hello"));
     }
 
     [Test]
@@ -88,7 +88,7 @@ public class FileMarkerDirectiveTests
     {
         var artifact = new FileMarkerArtifact("marker.md", SourceType.CommandLine, null!);
 
-        Assert.That(artifact.Body, Is.Null);
+        Assert.That(artifact.ArtifactBody, Is.Null);
     }
     #endregion
 
@@ -132,7 +132,7 @@ public class FileMarkerDirectiveTests
         var marker = result.Artifacts.OfType<FileMarkerArtifact>().Single();
         Assert.That(marker.Path, Is.EqualTo(@"~\{version}.marker.md"));
         Assert.That(marker.SourceType, Is.EqualTo(SourceType.BuildFile));
-        Assert.That(marker.Body, Is.EqualTo(Body));
+        Assert.That(marker.ArtifactBody, Is.EqualTo(Body));
     }
 
     [Test]
@@ -143,7 +143,7 @@ public class FileMarkerDirectiveTests
         Assert.That(assembler.ConfigErrors, Is.Empty);
         var marker = result.Artifacts.OfType<FileMarkerArtifact>().Single();
         Assert.That(marker.Path, Is.EqualTo(@"~\{version}.marker.md"));
-        Assert.That(marker.Body, Is.Null);
+        Assert.That(marker.ArtifactBody, Is.Null);
     }
 
     [Test]

@@ -1,0 +1,13 @@
+-- 3
+-- 5
+-- 6.0 (azure)
+-- 6.1 (azure)
+-- 6.2 (azure)
+-- 6.3 (azure)
+-- 6.4 (azure)
+-- 6.5 (azure)
+-- 6.7 (azure)
+-- 6.8 (azure)
+-- 6.9 (azure)
+-- 7
+-- 8

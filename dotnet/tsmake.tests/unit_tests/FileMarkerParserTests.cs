@@ -69,7 +69,7 @@ public class FileMarkerParserTests
 
     [TestCase(@"~\x.md [body:hello]")]
     [TestCase(@"~\x.md [BODY:hello]")]
-    [TestCase(@"~\x.md [Body:hello]")]
+    [TestCase(@"~\x.md [ArtifactBody:hello]")]
     [TestCase(@"~\x.md [ body : hello]")]
     [TestCase(@"~\x.md [body:   hello   ]")]
     public void Body_Keyword_Is_Case_And_Whitespace_Insensitive_And_Body_Is_Trimmed(string payload)
