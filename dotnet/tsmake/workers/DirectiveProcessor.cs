@@ -113,9 +113,11 @@ public class DirectiveProcessor : IDirectiveProcessor
             }
             codeLine.Directive = directive;
 
-            // Tokens are NEVER replaced within directives (directive lines don't make it into the artifact) - so don't let a
-            //      directive LOOK like it uses one. (Exempt: ##COMMENT: and ##:: - they're just notes - and ##:: comments after a directive.)
-            if (directive.DirectiveType != DirectiveType.Comment && Global.TokenRegex.IsMatch(directive.Payload))
+            // Tokens are NOT replaced within directives (directive lines don't make it into the artifact) - so don't let a directive
+            //      LOOK like it uses one. EXCEPT:
+            //      - ##OUTPUT and ##FILE-MARKER: their paths (and the marker's [body:]) ARE token-replaced - by TokenTransformer.TransformBuildArtifacts().
+            //      - ##COMMENT: and ##:: - they're just notes (as are ##:: comments after a directive - which aren't part of its .Payload).
+            if (directive.DirectiveType is not (DirectiveType.Comment or DirectiveType.Output or DirectiveType.FileMarker) && Global.TokenRegex.IsMatch(directive.Payload))
                 syntaxErrors.Add(new SyntaxError("Tokens can't be used within directives - they are never replaced there.", directive.Payload, codeLine.LineNumber, codeLine.FileDetail));
 
             if (!directive.IsValid)

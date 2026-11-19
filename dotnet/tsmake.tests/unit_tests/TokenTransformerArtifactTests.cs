@@ -24,7 +24,21 @@ public class TokenTransformerArtifactTests
         return errors;
     }
 
-    private static BuildArtifact Output(string path) => new(path, SourceType.BuildFile);
+    // A BuildArtifact from a real ##OUTPUT directive line (so: with its line number for errors).
+    private static BuildArtifact Output(string path, int lineNumber = 3)
+    {
+        string lineText = "-- ##OUTPUT: " + path;
+        var codeLine = new CodeLine(lineText, lineNumber, 0, lineText.Length, new FileDetail("s4.build.sql", 0, 1));
+        var fileSystem = new Mock<IFileSystem>();
+        fileSystem.Setup(fs => fs.TranslatePath(It.IsAny<string>())).Returns<string>(p => p);
+        fileSystem.Setup(fs => fs.DirectoryExists(It.IsAny<string>())).Returns(true);
+
+        var m = Global.DirectiveRegex.Match(lineText);
+        var directive = (OutputDirective)DirectiveParser.LoadDirective(m.Groups["directive"].Value, m.Groups["data"].Value, codeLine, fileSystem.Object);
+        Assert.That(directive.IsValid, Is.True, directive.ValidationMessage);
+
+        return new BuildArtifact(directive.Path, SourceType.BuildFile, directive);
+    }
 
     // A FileMarkerArtifact from a real ##FILE-MARKER directive line (so: with its [body:] - and its line number for errors).
     private static FileMarkerArtifact Marker(string payload, int lineNumber = 4)
@@ -71,17 +85,29 @@ public class TokenTransformerArtifactTests
     }
 
     [Test]
-    public void Undefined_Output_Path_Token_Is_An_Error_And_Is_Left_As_Is()
+    public void Undefined_Output_Path_Token_Is_An_Error_Against_The_Directive_Line()
     {
-        var output = Output(@"D:\builds\s4_{{##VERSION}}_{{##BUILD-DATE}}.sql");
+        var output = Output(@"D:\builds\s4_{{##VERSION}}_{{##BUILD-DATE}}.sql", lineNumber: 5);
 
         var error = Transform([output]).Single();
 
-        Assert.That(output.Path, Is.EqualTo(@"D:\builds\s4_14.8.5629.2_{{##BUILD-DATE}}.sql"));
+        Assert.That(output.Path, Is.EqualTo(@"D:\builds\s4_14.8.5629.2_{{##BUILD-DATE}}.sql"));      // left as-is.
         Assert.That(error.Message, Does.StartWith("Undefined token in the ##OUTPUT path: {{##BUILD-DATE}}."));
         Assert.That(error.Detail, Is.EqualTo(@"D:\builds\s4_{{##VERSION}}_{{##BUILD-DATE}}.sql"));
-        Assert.That(error.LineNumber, Is.EqualTo(0));           // a BuildArtifact doesn't know its directive (yet).
-        Assert.That(error.FileName, Is.EqualTo("(BuildFile)"));
+        Assert.That(error.LineNumber, Is.EqualTo(5));
+        Assert.That(error.FileName, Is.EqualTo("s4.build.sql"));
+    }
+
+    [Test]
+    public void Output_Without_A_Directive_Reports_Without_A_Line_Number()
+    {
+        // e.g., an output path passed in by the caller.
+        var output = new BuildArtifact(@"D:\builds\s4_{{##BUILD-DATE}}.sql", SourceType.CommandLine, null!);
+
+        var error = Transform([output]).Single();
+
+        Assert.That(error.LineNumber, Is.EqualTo(0));
+        Assert.That(error.FileName, Is.EqualTo("(CommandLine)"));
     }
 
     [Test]

@@ -7,15 +7,19 @@ public interface IArtifact
     string Path { get; }
     ArtifactType ArtifactType { get; }
     SourceType SourceType { get; }
+    // The directive the artifact came from (e.g., ##OUTPUT, ##FILE-MARKER) - for its line, in errors.
+    //      null: the artifact didn't come from a directive (e.g., its path was passed in by the caller).
+    IDirective SourceDirective { get; }
     IFileWriteResult WriteResult { get; set; }
     void Persist(IFileSystem fileSystem);
 }
 
-public class BuildArtifact(string path, SourceType sourceType) : IArtifact
+public class BuildArtifact(string path, SourceType sourceType, IDirective sourceDirective) : IArtifact
 {
     public string Path { get; private set; } = path;
     public ArtifactType ArtifactType { get; } = ArtifactType.Build;
     public SourceType SourceType { get; } = sourceType;
+    public IDirective SourceDirective { get; } = sourceDirective;
     public IFileWriteResult WriteResult { get; set; } = null!;
 
     public string ArtifactBody { get; private set; } = string.Empty;
@@ -66,7 +70,9 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
 
         if (this.ArtifactBody != null && !this.ArtifactBody.IsWhiteSpace())
         {
-            this.ArtifactBody = this.ArtifactBody.Replace("`r", @"\r").Replace("`n", @"\n");
+            // `r and `n (literal text in the build file - a directive is a single line) => REAL line breaks: CR and LF (NOT @"\r" - which
+            //      is a backslash + 'r'). Then: ALL of them => the build's line endings (`r`n, `n and `r alike).
+            this.ArtifactBody = this.ArtifactBody.Replace("`r", "\r").Replace("`n", "\n");
             this.ArtifactBody = this.ArtifactBody.ReplaceLineEndings(lineEndings);
 
             if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))

@@ -132,7 +132,7 @@ public class FileMarkerDirectiveTests
         var marker = result.Artifacts.OfType<FileMarkerArtifact>().Single();
         Assert.That(marker.Path, Is.EqualTo(@"~\{version}.marker.md"));
         Assert.That(marker.SourceType, Is.EqualTo(SourceType.BuildFile));
-        Assert.That(marker.ArtifactBody, Is.EqualTo(Body));
+        Assert.That(marker.ArtifactBody, Is.EqualTo(Body.Replace("`r`n", "\r\n")));      // `r`n => real line breaks (the build's: CrLf by default).
     }
 
     [Test]

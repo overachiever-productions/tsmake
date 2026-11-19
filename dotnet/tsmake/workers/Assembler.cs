@@ -68,7 +68,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
             tokenTransformer.TransformCodeLines(this.ArtifactLines, this.SyntaxErrors);
 
-            if (this.BuildResult.Artifacts == null || !this.BuildResult.Artifacts.Any(artifact => artifact is BuildArtifact))
+            // NOTE: this.Artifacts - NOT this.BuildResult.Artifacts (which only gets them in MarshalResults()).
+            if (!this.Artifacts.Any(artifact => artifact is BuildArtifact))
             {
                 this.ConfigErrors.Add(new ConfigError("No BUILD Output was specified.", "Build Can't proceed..", this.BuildOutput));
                 this.MarshalResults();
@@ -86,7 +87,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //      Each transform is, essentially, a (semi-complex) REGEX + REPLACE - against the entire 'body' of the main output/artifact. 
             //          MAIN-ARTIFACT = this.ArtifactBody if BUILD or a ... something-something representation of ALL documentation components (if we're in DOCUMENT mode).
 
-            foreach (IArtifact artifact in this.BuildResult.Artifacts)
+            foreach (IArtifact artifact in this.Artifacts)
             {
                 try
                 {
@@ -207,7 +208,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
         IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
         if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-            this.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
+            this.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType, buildOutput.SourceDirective));
 
         IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
         if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
