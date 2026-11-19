@@ -1,6 +1,6 @@
 --##COMMENT: This is a build file only (i.e., it stores upgrade/install directives + place-holders for code to drop into admindb, etc.)
 --##ROOT: D:\Dropbox\Repositories\S4\
---##OUTPUT: ~\test_S4_latest.sql
+--##OUTPUT: test_S4_latest.sql
 --##FILE-MARKER: {{##VERSION}}.marker.md [body:![](https://assets.overachiever.net/s4/images/s4_main_logo.png)`r`n`r`n# S4 - {{##VERSION}}`r`n> [!NOTE]`r`n> This is a marker-file only; it provides 'at a glance' version information for admindb_latest.sql`r`n`r`n{{##SUMMARY}}`r`n`r`nFor more information see the [change log](/changelog.md) or check out the [readme](/readme.md) for this project.]
 SET NOCOUNT ON;
 /*

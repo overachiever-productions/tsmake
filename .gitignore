@@ -359,3 +359,6 @@ MigrationBackup/
 /tsmake.TempPoint.psm1
 /tsmake.psproj.psbuild
 /tsmake.msi
+/test_files/test_S4_latest.sql
+/test_files/simple1/basic_latest.sql
+/test_files/14.8.5629.2.marker.md
