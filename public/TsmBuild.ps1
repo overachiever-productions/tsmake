@@ -219,7 +219,7 @@ function Invoke-TsmBuild {
 		# TODO check .config for BOTH root and output paths... 
 		
 		if (-not ([string]::IsNullOrEmpty($OutputPath))) {
-			[tsmake.data_models.RankedString]$cmdLineOutputPath = New-Object tsmake.data_models.RankedString([tsmake.Sourcetype]::CommandLine);
+			[tsmake.data_models.RankedString]$cmdLineOutputPath = New-Object tsmake.data_models.RankedString([tsmake.SourceType]::CommandLine, $OutputPath);
 			$assemblerOptions.AddOutputPath($cmdLineOutputPath);
 		}
 		
