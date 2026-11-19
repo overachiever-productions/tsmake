@@ -11,6 +11,11 @@ public interface IArtifact
     //      null: the artifact didn't come from a directive (e.g., its path was passed in by the caller).
     IDirective SourceDirective { get; }
     IFileWriteResult WriteResult { get; set; }
+
+    // Resolves .Path - the same way as every other path: relative => the build file's folder, ~\ => ##ROOT - and checks that the
+    //      directory it'll be written INTO exists (a syntax error if not - and .Path is left as-is). Called AFTER ##ROOT is set and the
+    //      path's tokens are replaced (TokenTransformer.TransformBuildArtifacts) - so ~\ works, and tokens can be part of the DIRECTORY.
+    void TranslatePath(IFileSystem fileSystem, List<ISyntaxError> syntaxErrors);
     void Persist(IFileSystem fileSystem);
 }
 
@@ -33,6 +38,12 @@ public class BuildArtifact(string path, SourceType sourceType, IDirective source
     internal void SetPath(string path)
     {
         this.Path = path;
+    }
+
+    public void TranslatePath(IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
+    {
+        if (this.ResolvePath("OUTPUT", fileSystem, syntaxErrors) is { } fullPath)
+            this.Path = fullPath;
     }
 
     public void Persist(IFileSystem fileSystem)
@@ -91,23 +102,10 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
         // NOTE: the path is translated + checked in TranslatePath() - i.e., AFTER its tokens are replaced.
     }
 
-    // Resolves the marker's path - the same way as every other path: relative => the build file's folder, ~\ => ##ROOT.
-    //      Called AFTER its tokens are replaced (TokenTransformer.TransformBuildArtifacts) - so a token can be part of the DIRECTORY,
-    //      too: e.g., ~\{{##VERSION}}\s4.marker.md. A missing directory is a syntax error (and the path is left as-is).
     public void TranslatePath(IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
     {
-        if (Global.TokenRegex.IsMatch(this.Path))
-            return;     // an UNDEFINED token - already reported by TransformBuildArtifacts().
-
-        string fullPath = fileSystem.TranslatePath(this.Path);
-        if (!fileSystem.DirectoryExists(fullPath))
-        {
-            string directory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
-            syntaxErrors.Add(this.NewSyntaxError("Invalid --##FILE-MARKER Directive.", $"The directory for the specified ##FILE-MARKER path does not exist: {directory}"));
-            return;
-        }
-
-        this.Path = fullPath;
+        if (this.ResolvePath("FILE-MARKER", fileSystem, syntaxErrors) is { } fullPath)
+            this.Path = fullPath;
     }
 
     public void Persist(IFileSystem fileSystem)
@@ -127,6 +125,24 @@ public static class ArtifactExtensions
         return codeLine is not null
             ? new SyntaxError(message, detail, codeLine)
             : new SyntaxError(message, detail, 0, new FileDetail($"({artifact.SourceType})", 0, 0));
+    }
+
+    // Shared by every artifact's TranslatePath() (see IArtifact): the translated path - or null if it can't be used (already reported).
+    //      directiveName: for messages - e.g., "OUTPUT", "FILE-MARKER".
+    internal static string? ResolvePath(this IArtifact artifact, string directiveName, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
+    {
+        if (Global.TokenRegex.IsMatch(artifact.Path))
+            return null;     // an UNDEFINED token - already reported by TokenTransformer.TransformBuildArtifacts().
+
+        string fullPath = fileSystem.TranslatePath(artifact.Path);
+        if (!fileSystem.DirectoryExists(fullPath))      // NOTE: checks the directory the file will be written INTO.
+        {
+            string directory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
+            syntaxErrors.Add(artifact.NewSyntaxError($"Invalid --##{directiveName} Directive.", $"The directory for the specified ##{directiveName} path does not exist: {directory}"));
+            return null;
+        }
+
+        return fullPath;
     }
 }
 

@@ -58,9 +58,10 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
             tokenTransformer.TransformBuildArtifacts(this.Artifacts, this.SyntaxErrors);
 
-            // ##FILE-MARKER paths can contain tokens (in their directory, too) - so they're translated + checked only AFTER token replacement.
-            foreach (var fileMarker in this.Artifacts.OfType<FileMarkerArtifact>())
-                fileMarker.TranslatePath(this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
+            // Artifact paths (##OUTPUT, ##FILE-MARKER) can use ~\ (i.e., ##ROOT) and contain tokens (in their directories, too) - so they're
+            //      translated + checked only now: AFTER ##ROOT is set (ExtractBuildDirectives) and their tokens are replaced.
+            foreach (var artifact in this.Artifacts)
+                artifact.TranslatePath(this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
 
             if (this.SyntaxErrors.Count > 0)
             {

@@ -291,7 +291,7 @@ function Invoke-TsmBuild {
 			Write-Host "`t$($artifact.ArtifactType.ToString().ToUpper()) ARTIFACT: ";
 			Write-Host "`t`tPATH: $($artifact.Path)";
 			if ($artifact.WriteResult -and  $artifact.WriteResult.Success) {
-				Write-Host "`t`tOUTCOME: Success!";
+				Write-Host "`t`tOUTCOME: Success";
 				Write-Host "`t`tSIZE: $($artifact.WriteResult.FileSizeKB) KB";
 			}
 			else {
@@ -304,7 +304,6 @@ function Invoke-TsmBuild {
 				}
 			}
 		}
-		
 		
 		Write-Host "`r`n";
 		Write-Host "";

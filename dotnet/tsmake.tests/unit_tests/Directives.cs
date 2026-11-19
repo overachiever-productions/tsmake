@@ -368,33 +368,32 @@ public class Directives
         StringAssert.Contains("The specified ##ROOT path does not exist", directive.ValidationMessage);
     }
 
-    [Test]
-    public void OutputDirective_Checks_The_Directory_The_Artifact_Is_Written_Into()
+    // ##OUTPUT's path is NOT translated or checked when the directive is loaded (##ROOT isn't known yet, and the path can contain tokens):
+    //      BuildArtifact.TranslatePath() does both - AFTER ##ROOT is set and tokens are replaced (see AssemblerArtifactTokenTests).
+    [TestCase(@"builds\inclusive.sql", PathType.Relative)]
+    [TestCase(@"~\builds\inclusive.sql", PathType.Rooted)]
+    [TestCase(@"D:\builds\{{##VERSION}}\inclusive.sql", PathType.Absolute)]
+    public void OutputDirective_Keeps_The_Path_As_Specified(string path, PathType expectedPathType)
     {
-        var fileSystem = new Mock<IFileSystem>();
-        fileSystem.Setup(fs => fs.TranslatePath(@"builds\inclusive.sql")).Returns(@"D:\repos\myrepo\builds\inclusive.sql");
-        fileSystem.Setup(fs => fs.DirectoryExists(@"D:\repos\myrepo\builds")).Returns(true);
+        var fileSystem = new Mock<IFileSystem>(MockBehavior.Strict);      // i.e., the file system isn't touched.
 
-        var directive = LoadDirective(@"-- ##OUTPUT: builds\inclusive.sql", fileSystem.Object);
+        var directive = LoadDirective($"-- ##OUTPUT: {path}", fileSystem.Object);
 
         Assert.That(directive, Is.TypeOf<OutputDirective>());
         Assert.That(directive.IsValid, Is.True, directive.ValidationMessage);
-        Assert.That(((OutputDirective)directive).Path, Is.EqualTo(@"D:\repos\myrepo\builds\inclusive.sql"));
-        fileSystem.Verify(fs => fs.DirectoryExists(@"D:\repos\myrepo\builds\inclusive.sql"), Times.Never);
+        Assert.That(((OutputDirective)directive).Path, Is.EqualTo(path));
+        Assert.That(((OutputDirective)directive).PathType, Is.EqualTo(expectedPathType));
     }
 
-    [Test]
-    public void OutputDirective_Is_Not_Valid_If_Its_Directory_Not_Found()
+    [TestCase("-- ##OUTPUT:")]
+    [TestCase("-- ##OUTPUT:    ")]
+    [TestCase("-- ##OUTPUT: ##:: just a note")]
+    public void OutputDirective_Requires_A_Path(string lineText)
     {
-        var fileSystem = new Mock<IFileSystem>();
-        fileSystem.Setup(fs => fs.TranslatePath(It.IsAny<string>())).Returns(@"D:\repos\myrepo\builds\inclusive.sql");
-        fileSystem.Setup(fs => fs.DirectoryExists(It.IsAny<string>())).Returns(false);
-
-        var directive = LoadDirective(@"-- ##OUTPUT: builds\inclusive.sql", fileSystem.Object);
+        var directive = LoadDirective(lineText, new Mock<IFileSystem>(MockBehavior.Strict).Object);
 
         Assert.That(directive.IsValid, Is.False);
-        StringAssert.Contains("The directory for the specified ##OUTPUT path does not exist", directive.ValidationMessage);
-        StringAssert.Contains(@"D:\repos\myrepo\builds", directive.ValidationMessage);
+        Assert.That(directive.ValidationMessage, Is.EqualTo("A ##OUTPUT path is required."));
     }
     #endregion
 
@@ -465,15 +464,34 @@ public class Directives
     }
 
     [Test]
-    public void Real_OutputDirective_Validates_The_Directory_It_Writes_Into()
+    public void Real_BuildArtifact_Validates_The_Directory_It_Writes_Into()
     {
         WithTempRoot((temp, fs) =>
         {
             Directory.CreateDirectory(Path.Combine(temp, "builds"));
 
-            Assert.That(LoadDirective("-- ##OUTPUT: inclusive.sql", fs).IsValid, Is.True);              // root itself
-            Assert.That(LoadDirective(@"-- ##OUTPUT: builds\inclusive.sql", fs).IsValid, Is.True);
-            Assert.That(LoadDirective(@"-- ##OUTPUT: no_such_folder\inclusive.sql", fs).IsValid, Is.False);
+            foreach (var (path, valid) in new[] { ("inclusive.sql", true), (@"builds\inclusive.sql", true), (@"~\builds\inclusive.sql", true), (@"no_such_folder\inclusive.sql", false) })
+            {
+                var directive = (OutputDirective)LoadDirective($"-- ##OUTPUT: {path}", fs);
+                var artifact = new BuildArtifact(directive.Path, SourceType.BuildFile, directive);
+                var errors = new List<ISyntaxError>();
+
+                artifact.TranslatePath(fs, errors);
+
+                if (valid)
+                {
+                    Assert.That(errors, Is.Empty, path);
+                    Assert.That(artifact.Path, Is.EqualTo(Path.Combine(temp, path.Replace(@"~\", ""))), path);     // root = the build file's folder, here.
+                }
+                else
+                {
+                    var error = errors.Single();
+                    Assert.That(error.Message, Is.EqualTo("Invalid --##OUTPUT Directive."));
+                    Assert.That(error.Detail, Is.EqualTo($"The directory for the specified ##OUTPUT path does not exist: {Path.Combine(temp, "no_such_folder")}"));
+                    Assert.That(error.LineNumber, Is.EqualTo(37));
+                    Assert.That(artifact.Path, Is.EqualTo(path));       // left as-is.
+                }
+            }
         });
     }
 

@@ -98,6 +98,59 @@ public class AssemblerArtifactTokenTests
         Assert.That(run.Written["s4.marker.md"], Is.EqualTo(expected));
     }
 
+    #region ##OUTPUT paths: translated AFTER ##ROOT is set and their tokens are replaced
+    [Test]
+    public void Rooted_Output_Path_Is_Written_Under_Root()
+    {
+        var run = Build("-- ##ROOT: %TEMP%\\proj\r\n-- ##OUTPUT: ~\\s4_latest.sql\r\nSELECT 1;", dirs: ["proj"]);
+
+        Assert.That(run.Assembler.SyntaxErrors, Is.Empty);
+        Assert.That(run.Assembler.ConfigErrors, Is.Empty);
+        Assert.That(run.Written, Is.EqualTo(new Dictionary<string, string> { [@"proj\s4_latest.sql"] = "SELECT 1;" }));
+    }
+
+    [Test]
+    public void Relative_Output_Path_Is_Written_Next_To_The_Build_File_Even_With_Root()
+    {
+        var run = Build("-- ##ROOT: %TEMP%\\proj\r\n-- ##OUTPUT: s4_latest.sql\r\nSELECT 1;", dirs: ["proj"]);
+
+        Assert.That(run.Assembler.SyntaxErrors, Is.Empty);
+        Assert.That(run.Written.Keys, Is.EqualTo(new[] { "s4_latest.sql" }));
+    }
+
+    [Test]
+    public void A_Token_Can_Be_Part_Of_The_Output_Directory()
+    {
+        var run = Build("-- ##OUTPUT: builds\\{{##VERSION}}\\s4_{{##VERSION}}.sql\r\nSELECT 1;", dirs: [@"builds\14.8"], tokens: [("VERSION", "14.8")]);
+
+        Assert.That(run.Assembler.SyntaxErrors, Is.Empty);
+        Assert.That(run.Assembler.ConfigErrors, Is.Empty);
+        Assert.That(run.Written.Keys, Is.EqualTo(new[] { @"builds\14.8\s4_14.8.sql" }));
+    }
+
+    [Test]
+    public void Missing_Output_Directory_Is_Reported_Against_Its_Line_And_Nothing_Is_Written()
+    {
+        var run = Build("SET NOCOUNT ON;\r\n-- ##OUTPUT: builds\\{{##VERSION}}\\s4.sql\r\nSELECT 1;", tokens: [("VERSION", "14.8")]);
+
+        var error = run.Assembler.SyntaxErrors.Single();
+        Assert.That(error.Message, Is.EqualTo("Invalid --##OUTPUT Directive."));
+        Assert.That(error.Detail, Does.StartWith("The directory for the specified ##OUTPUT path does not exist: ").And.EndWith(@"\builds\14.8"));
+        Assert.That(error.LineNumber, Is.EqualTo(2));
+        Assert.That(run.Written, Is.Empty);
+    }
+
+    [Test]
+    public void Output_Without_A_Path_Is_Reported()
+    {
+        var run = Build("-- ##OUTPUT:\r\nSELECT 1;");
+
+        Assert.That(run.Assembler.ConfigErrors.Select(e => e.Message), Does.Contain("Invalid ##Output directive."));
+        Assert.That(run.Assembler.SyntaxErrors.Select(e => e.Message), Does.Contain("A ##OUTPUT path is required."));
+        Assert.That(run.Written, Is.Empty);
+    }
+    #endregion
+
     #region ##FILE-MARKER paths: translated AFTER their tokens are replaced
     [Test]
     public void Relative_Marker_Path_Is_Written_Next_To_The_Build_File()

@@ -109,21 +109,21 @@ public class OutputDirective : BaseDirective
         base.DirectiveType = DirectiveType.Output;
         this.FileSystem = fileSystem;
 
-        string fullPath = this.FileSystem.TranslatePath(this.Payload);
-
-        // NOTE: ##OUTPUT is the path of the build ARTIFACT (a file) - so check ONLY that the directory it'll be written INTO exists.
-        if(this.FileSystem.DirectoryExists(fullPath))
-        {
-            base.IsValid = true;
-            this.Path = fullPath;
-            this.PathType = this.Path.GetPathType();
-        }
-        else
+        // NOTE: the path is NOT translated or checked here - i.e., .Path is the path AS SPECIFIED:
+        //      - ~\ means ##ROOT - which isn't known yet when the build file's directives are loaded (they're all loaded BEFORE ##ROOT is set).
+        //      - the path can contain tokens - in its directory, too: e.g., ~\builds\{{##VERSION}}\s4_latest.sql.
+        //      So it's translated (and the directory it'll be written INTO is checked) by BuildArtifact.TranslatePath() - AFTER ##ROOT is set
+        //      and its tokens are replaced. (Same as ##FILE-MARKER.)
+        if (string.IsNullOrWhiteSpace(this.Payload))
         {
             base.IsValid = false;
-            string pathDirectory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
-            base.ValidationMessage = $"The directory for the specified ##OUTPUT path does not exist: {pathDirectory}"; 
+            base.ValidationMessage = "A ##OUTPUT path is required.";
+            return;
         }
+
+        this.Path = this.Payload;
+        this.PathType = this.Path.GetPathType();
+        base.IsValid = true;
     }
 }
 
