@@ -88,14 +88,45 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
         if(options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
             this.Path = this.Path.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
 
+        // NOTE: the path is translated + checked in TranslatePath() - i.e., AFTER its tokens are replaced.
+    }
+
+    // Resolves the marker's path - the same way as every other path: relative => the build file's folder, ~\ => ##ROOT.
+    //      Called AFTER its tokens are replaced (TokenTransformer.TransformBuildArtifacts) - so a token can be part of the DIRECTORY,
+    //      too: e.g., ~\{{##VERSION}}\s4.marker.md. A missing directory is a syntax error (and the path is left as-is).
+    public void TranslatePath(IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
+    {
+        if (Global.TokenRegex.IsMatch(this.Path))
+            return;     // an UNDEFINED token - already reported by TransformBuildArtifacts().
+
         string fullPath = fileSystem.TranslatePath(this.Path);
         if (!fileSystem.DirectoryExists(fullPath))
-            syntaxErrors.Add(new SyntaxError("Invalid --##FILE-MARKER Directive.", $"The directory for the specified ##FILE-MARKER path does not exist: {fullPath}", this.SourceDirective.CodeLine));
+        {
+            string directory = System.IO.Path.GetDirectoryName(fullPath) ?? fullPath;
+            syntaxErrors.Add(this.NewSyntaxError("Invalid --##FILE-MARKER Directive.", $"The directory for the specified ##FILE-MARKER path does not exist: {directory}"));
+            return;
+        }
+
+        this.Path = fullPath;
     }
 
     public void Persist(IFileSystem fileSystem)
     {
         this.WriteResult = fileSystem.WriteFile(this.Path, this.ArtifactBody ?? "");
+    }
+}
+
+public static class ArtifactExtensions
+{
+    // A syntax error ABOUT an artifact - reported against its directive's line (##OUTPUT, ##FILE-MARKER). No directive (e.g., the
+    //      path was passed in by the caller): no line number - just where the path came from, e.g., "(CommandLine)".
+    public static ISyntaxError NewSyntaxError(this IArtifact artifact, string message, string detail)
+    {
+        ICodeLine? codeLine = artifact.SourceDirective?.CodeLine;
+
+        return codeLine is not null
+            ? new SyntaxError(message, detail, codeLine)
+            : new SyntaxError(message, detail, 0, new FileDetail($"({artifact.SourceType})", 0, 0));
     }
 }
 

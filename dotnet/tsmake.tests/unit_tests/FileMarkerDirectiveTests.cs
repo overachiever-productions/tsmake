@@ -129,8 +129,10 @@ public class FileMarkerDirectiveTests
         // The ranked value is the PATH only - not the whole payload:
         Assert.That(assembler.FileMarkerPath.Select(r => r.Value), Is.EqualTo(new[] { @"~\{version}.marker.md" }));
 
+        // ... and the artifact's path is TRANSLATED (~\ => ##ROOT: the throw-away folder):
         var marker = result.Artifacts.OfType<FileMarkerArtifact>().Single();
-        Assert.That(marker.Path, Is.EqualTo(@"~\{version}.marker.md"));
+        Assert.That(Path.IsPathRooted(marker.Path), Is.True, marker.Path);
+        Assert.That(marker.Path, Does.EndWith(@"\{version}.marker.md").And.Contains("tsmake_tests_"));
         Assert.That(marker.SourceType, Is.EqualTo(SourceType.BuildFile));
         Assert.That(marker.ArtifactBody, Is.EqualTo(Body.Replace("`r`n", "\r\n")));      // `r`n => real line breaks (the build's: CrLf by default).
     }
@@ -142,7 +144,7 @@ public class FileMarkerDirectiveTests
 
         Assert.That(assembler.ConfigErrors, Is.Empty);
         var marker = result.Artifacts.OfType<FileMarkerArtifact>().Single();
-        Assert.That(marker.Path, Is.EqualTo(@"~\{version}.marker.md"));
+        Assert.That(marker.Path, Does.EndWith(@"\{version}.marker.md").And.Contains("tsmake_tests_"));
         Assert.That(marker.ArtifactBody, Is.Null);
     }
 

@@ -62,12 +62,8 @@ public class TokenTransformer(TokenExclusionDirectives tokenExclusionDirectives,
             string message = $"Undefined token{(undefined.Count > 1 ? "s" : "")} in {description}: {string.Join(", ", undefined)}. " +
                 "Define each token (e.g., via -Version, -Summary or -Tokens) - or remove it.";
 
-            // Reported against the artifact's directive (##OUTPUT, ##FILE-MARKER) - i.e., its file + line. No directive (e.g., the path
-            //      was passed in by the caller): no line number - just where the path came from.
-            ICodeLine? codeLine = artifact.SourceDirective?.CodeLine;
-            syntaxErrors.Add(codeLine is not null
-                ? new SyntaxError(message, text, codeLine)
-                : new SyntaxError(message, text, 0, new FileDetail($"({artifact.SourceType})", 0, 0)));
+            // Against the artifact's directive (##OUTPUT, ##FILE-MARKER) line - or, without one, where the path came from.
+            syntaxErrors.Add(artifact.NewSyntaxError(message, text));
         }
 
         return transformed;
