@@ -256,7 +256,7 @@ function Invoke-TsmBuild {
 		Write-Host "SETTINGS:";
 		Write-Host "`tBUILD ROOT: $($buildResult.BuildRoot) (SOURCE: $($buildResult.BuildRootSourceType)).";
 		Write-Host "`tBUILD FLAGS: $($buildResult.Flags -join ', ') (SOURCE: $($buildResult.FlagsSource)))";
-		Write-Host "`tTOKENS: <hmmm> "
+		Write-Host "`tTOKENS: <hmmm> "; # 2 sources: TransformBuildDirectives and TransformCodeLines - need to count (from both) a) matched/encountered. and b) replaced.
 		Write-Host "";
 		
 		if ($null -ne $buildResult.Exception) {

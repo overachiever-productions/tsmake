@@ -12,8 +12,8 @@ public interface IArtifact
 }
 
 public class BuildArtifact(string path, SourceType sourceType) : IArtifact
-{   
-    public string Path { get; } = path;
+{
+    public string Path { get; private set; } = path;
     public ArtifactType ArtifactType { get; } = ArtifactType.Build;
     public SourceType SourceType { get; } = sourceType;
     public IFileWriteResult WriteResult { get; set; } = null!;
@@ -23,6 +23,12 @@ public class BuildArtifact(string path, SourceType sourceType) : IArtifact
     internal void SetBody(string artifactBody)
     {
         this.ArtifactBody = artifactBody;
+    }
+
+    // Used by TokenTransformer.TransformBuildArtifacts() - i.e., the path with its tokens replaced.
+    internal void SetPath(string path)
+    {
+        this.Path = path;
     }
 
     public void Persist(IFileSystem fileSystem)
@@ -42,6 +48,17 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
     //      null: no [body: ...] clause - or the path didn't come from a directive (e.g., it was passed in by the caller).
     public string? ArtifactBody { get; private set; } = (sourceDirective as FileMarkerDirective)?.Body;
     public IDirective SourceDirective { get; } = sourceDirective;
+
+    // Used by TokenTransformer.TransformBuildArtifacts() - i.e., the path and body with their tokens replaced.
+    internal void SetPath(string path)
+    {
+        this.Path = path;
+    }
+
+    internal void SetBody(string? artifactBody)
+    {
+        this.ArtifactBody = artifactBody;
+    }
 
     public void TranslatePlaceHolders(IAssemblerOptions options, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
     {

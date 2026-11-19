@@ -21,7 +21,7 @@ public class TokenTransformerTests
     private static List<ICodeLine> TransformLines(List<ICodeLine> lines, TokenExclusionDirectives exclusions, params (string Name, string Value)[] tokens)
     {
         var registry = TokenDefinitionRegistry.CreateRegistry(tokens.Select(t => new TokenDefinition(t.Name, t.Value)));
-        new TokenTransformer(exclusions, registry).TransformTokens(lines, new List<ISyntaxError>());
+        new TokenTransformer(exclusions, registry).TransformCodeLines(lines, new List<ISyntaxError>());
         return lines;
     }
 

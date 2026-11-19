@@ -41,6 +41,8 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     public List<IConfigError> ConfigErrors { get; private set; } = new List<IConfigError>();
     public List<ICodeLine> ArtifactLines { get; private set; } = new List<ICodeLine>();
     public string ArtifactBody { get; private set; } = string.Empty;
+    public List<IArtifact> Artifacts { get; private set; } = new List<IArtifact>();
+
     public List<ICodeLine> DocLines { get; private set; } = new List<ICodeLine>();
 
     public List<IRankedString> BuildRoot { get; private set; } = options.BuildRoot;
@@ -51,25 +53,25 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
-            var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
+            this.ExtractBuildDirectives(buildFilePath);
 
-            // TODO: https://overachieverllc.atlassian.net/browse/TSM-48  (allow token replacement for ##OUTPUT and ##FILE-MARKER directives). USE a new method (on .TokenTransformer) for this. 
-            this.ValidateBuildFileAndExtractBuildDirectives(buildFilePath);
+            var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
+            tokenTransformer.TransformBuildArtifacts(this.Artifacts, this.SyntaxErrors);
 
             if (this.SyntaxErrors.Count > 0)
             {
-                this.SetResultDetails();
+                this.MarshalResults();
                 return;
             }
 
             ((IAssembler)this).RecursivelyAssemble(buildFilePath, 0);
 
-            tokenTransformer.TransformTokens(this.ArtifactLines, this.SyntaxErrors);
+            tokenTransformer.TransformCodeLines(this.ArtifactLines, this.SyntaxErrors);
 
             if (this.BuildResult.Artifacts == null || !this.BuildResult.Artifacts.Any(artifact => artifact is BuildArtifact))
             {
                 this.ConfigErrors.Add(new ConfigError("No BUILD Output was specified.", "Build Can't proceed..", this.BuildOutput));
-                this.SetResultDetails();
+                this.MarshalResults();
                 return;
             }
                 
@@ -97,7 +99,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
                 }
             }
 
-            this.SetResultDetails();
+            this.MarshalResults();
         }
         catch (Exception ex)
         {
@@ -145,13 +147,15 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         }
     }
 
-    private void SetResultDetails()
+    private void MarshalResults()
     {
         this.BuildResult.SetBuildRoot(this.OpsFactory.CurrentFileSystem.RootDirectory, this.OpsFactory.CurrentFileSystem.RootSourceType);
         this.BuildResult.SetFlagsDetails(this.Options.Flags, this.Options.FlagsSource);
         this.BuildResult.SetConfigErrors(this.ConfigErrors);
         this.BuildResult.SetSyntaxErrors(this.SyntaxErrors);
         this.BuildResult.SetStatistics(this._fileCount, this.ArtifactLines.Count, this._directivesCount);
+        this.BuildResult.Artifacts.AddRange(this.Artifacts);
+
         this.BuildResult.SetComplete();
 
         this.BuildResult.AddAssembler(this);
@@ -187,7 +191,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         }
     }
 
-    private void ValidateBuildFileAndExtractBuildDirectives(string buildFilePath)
+    private void ExtractBuildDirectives(string buildFilePath)
     {
         var buildFile = new FileDetail(buildFilePath, 0, 1);
         string fileContent = this.OpsFactory.CurrentFileSystem.GetFileContent(buildFilePath);
@@ -203,7 +207,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
 
         IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
         if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
-            this.BuildResult.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
+            this.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType));
 
         IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
         if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
@@ -214,7 +218,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
             //    I'll LIKELY allow the DirectivesParser to have a TokenTransformer - so that OUTPUT and FILE-MARKER directives can be token-processed during LOAD/DISCOVERY. 
             fileMarker.TranslatePlaceHolders(this.Options, this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
 
-            this.BuildResult.Artifacts.Add(fileMarker);
+            this.Artifacts.Add(fileMarker);
         }
             
     }
