@@ -117,7 +117,7 @@ public class OutputDirective : BaseDirective
         if (string.IsNullOrWhiteSpace(this.Payload))
         {
             base.IsValid = false;
-            base.ValidationMessage = "A ##OUTPUT path is required.";
+            base.ValidationMessage = "An ##OUTPUT path is required.";
             return;
         }
 
@@ -141,13 +141,11 @@ public class FileMarkerDirective : BaseDirective
         base.DirectiveType = DirectiveType.FileMarker;
         this.FileSystem = fileSystem;
 
-        // REVISIT: FileMarkerParser's syntax rules are PROVISIONAL (likely to be consolidated with the other directive parsers).
         try
         {
             this.Options = FileMarkerParser.Parse(this.Payload);
 
-            // NOTE: Path is NOT translated or validated (yet): it can contain {placeholders} - e.g., ~\{version}.marker.md - and those
-            //      have to be swapped out first. (Then: translate + check its directory exists - i.e., the commented-out logic below.)
+            // NOTE: Path is NOT translated or validated (yet): it can contain {{##TOKENS}}
             this.Path = this.Options.FilePath;
             this.Body = this.Options.Body;
             this.PathType = this.Path.GetPathType();
@@ -164,6 +162,7 @@ public class FileMarkerDirective : BaseDirective
 
 // A line that LOOKS like a directive - but isn't a valid one: e.g., ##FLAG(#Azure): ... (DirectiveParser throws for these, with a hint).
 //      ALWAYS invalid - so it's reported (against its line) and dropped from the output, the same as any other invalid directive.
+// TODO: probably need a build-switch that ignores these (i.e., won't throw/prevent-the-build but WILL still 'echo out' these details).
 public class InvalidDirective : BaseDirective
 {
     public InvalidDirective(string payload, ICodeLine codeLine, string validationMessage) : base(payload, codeLine)

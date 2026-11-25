@@ -53,6 +53,7 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
     {
         try
         {
+            this.BuildResult.SetBuildFile(buildFilePath);
             this.ExtractBuildDirectives(buildFilePath);
 
             var tokenTransformer = this.OpsFactory.NewTokenTransformer(this.Options.TokenExclusionDirectives, this.Options.TokenDefinitionRegistry);
@@ -208,24 +209,18 @@ public class Assembler(IOpsFactory opsFactory, IAssemblerOptions options, IResul
         directivesProcessor.ProcessGlobalBuildFileDirectives(this, this.OpsFactory.CurrentFileSystem, buildLines);
 
         IRankedString buildRoot = RankedString.GetRankedValue(this.BuildRoot);
-        if (buildRoot.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+        if (buildRoot.IsValid)  
             this.OpsFactory.CurrentFileSystem.SetRootDirectory(buildRoot.Value, buildRoot.SourceType);
 
         IRankedString buildOutput = RankedString.GetRankedValue(this.BuildOutput);
-        if (buildOutput.IsValid)  // if NOT valid, a .ConfigError has already been logged. 
+        if (buildOutput.IsValid)
             this.Artifacts.Add(new BuildArtifact(buildOutput.Value, buildOutput.SourceType, buildOutput.SourceDirective));
 
         IRankedString fileMarkerOutput = RankedString.GetRankedValue(this.FileMarkerPath);
-        if (fileMarkerOutput.IsValid) // if NOT valid, a .ConfigError has already been logged. 
+        if (fileMarkerOutput.IsValid)
         {
             var fileMarker = new FileMarkerArtifact(fileMarkerOutput.Value, fileMarkerOutput.SourceType, fileMarkerOutput.SourceDirective);
-
-            // HACK: temporary implementation. See https://overachieverllc.atlassian.net/browse/TSM-48 for more info. 
-            //    I'll LIKELY allow the DirectivesParser to have a TokenTransformer - so that OUTPUT and FILE-MARKER directives can be token-processed during LOAD/DISCOVERY. 
-            fileMarker.TranslatePlaceHolders(this.Options, this.OpsFactory.CurrentFileSystem, this.SyntaxErrors);
-
             this.Artifacts.Add(fileMarker);
         }
-            
     }
 }

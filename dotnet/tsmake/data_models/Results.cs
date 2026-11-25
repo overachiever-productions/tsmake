@@ -24,6 +24,7 @@ public interface IResult
     int DirectivesCount { get; }
 
     string BuildRoot { get; }
+    string BuildFile { get; }
     SourceType BuildRootSourceType { get; }
 
     void AddAssembler(IAssembler assembler);    
@@ -32,7 +33,8 @@ public interface IResult
     void SetConfigErrors(List<IConfigError> errors);  
     void SetFlagsDetails(List<string> flags, FlagsSource source);
     void AddArtifact(IArtifact artifact);
-    void SetBuildRoot(string path, SourceType sourceType);  
+    void SetBuildRoot(string path, SourceType sourceType);
+    void SetBuildFile(string path);
 
     void AddException(Exception ex);
     void SetStatistics(int fileCount, int codeLineCount, int directivesCount);   
@@ -53,6 +55,7 @@ public class BaseResult : IResult
     public int CodeLineCount { get; private set; }
     public int DirectivesCount { get; private set; }
     public string BuildRoot { get; private set; }
+    public string BuildFile { get; private set; } = string.Empty;
     public SourceType BuildRootSourceType { get; private set; }
     public List<IArtifact> Artifacts { get; } = new List<IArtifact>();
     public DateTime Start { get; }
@@ -91,6 +94,11 @@ public class BaseResult : IResult
     {
         this.BuildRoot = path;
         this.BuildRootSourceType = sourceType;
+    }
+
+    public void SetBuildFile(string path)
+    {
+        this.BuildFile = path;
     }
 
     public void AddException(Exception ex)

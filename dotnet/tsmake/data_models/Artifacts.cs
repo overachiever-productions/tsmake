@@ -75,33 +75,6 @@ public class FileMarkerArtifact(string path, SourceType sourceType, IDirective s
         this.ArtifactBody = artifactBody;
     }
 
-    public void TranslatePlaceHolders(IAssemblerOptions options, IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
-    {
-        var lineEndings = options.LineEndingsType.ToLineEnding();
-
-        if (this.ArtifactBody != null && !this.ArtifactBody.IsWhiteSpace())
-        {
-            // `r and `n (literal text in the build file - a directive is a single line) => REAL line breaks: CR and LF (NOT @"\r" - which
-            //      is a backslash + 'r'). Then: ALL of them => the build's line endings (`r`n, `n and `r alike).
-            this.ArtifactBody = this.ArtifactBody.Replace("`r", "\r").Replace("`n", "\n");
-            this.ArtifactBody = this.ArtifactBody.ReplaceLineEndings(lineEndings);
-
-            if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
-                this.ArtifactBody = this.ArtifactBody.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
-
-            if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
-                this.ArtifactBody = this.ArtifactBody.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
-        }
-
-        if (options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##VERSION"))
-            this.Path = this.Path.Replace("{version}", options.TokenDefinitionRegistry.DefinedTokens["##VERSION"].SpecifiedValue);
-
-        if(options.TokenDefinitionRegistry.DefinedTokens.ContainsKey("##SUMMARY"))
-            this.Path = this.Path.Replace("{summary}", options.TokenDefinitionRegistry.DefinedTokens["##SUMMARY"].SpecifiedValue);
-
-        // NOTE: the path is translated + checked in TranslatePath() - i.e., AFTER its tokens are replaced.
-    }
-
     public void TranslatePath(IFileSystem fileSystem, List<ISyntaxError> syntaxErrors)
     {
         if (this.ResolvePath("FILE-MARKER", fileSystem, syntaxErrors) is { } fullPath)
